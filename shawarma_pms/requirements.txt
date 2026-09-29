@@ -1,0 +1,5 @@
+Django>=5.0,<5.3
+# Phase 2 (WebSocket push) - not needed for Phase 1 polling:
+# channels>=4.1
+# channels-redis>=4.2
+# daphne>=4.1
