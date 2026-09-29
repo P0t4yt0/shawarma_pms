@@ -1,0 +1,425 @@
+{% load static %}
+
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Shawarma POS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+```
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        color: #222;
+    }
+
+    .header {
+        background: #222;
+        color: white;
+        padding: 18px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header h1 {
+        margin: 0;
+        font-size: 24px;
+    }
+
+    .pos-container {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 20px;
+        padding: 20px;
+        max-width: 1400px;
+        margin: auto;
+    }
+
+    .menu-section,
+    .order-section {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .section-title {
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+
+    .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 15px;
+    }
+
+    .menu-card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        cursor: pointer;
+        background: white;
+        transition: 0.2s;
+    }
+
+    .menu-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .menu-name {
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .menu-variant {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .menu-price {
+        margin-top: 10px;
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .empty-cart {
+        text-align: center;
+        color: #888;
+        padding: 30px 10px;
+    }
+
+    .cart-item {
+        border-bottom: 1px solid #eee;
+        padding: 12px 0;
+    }
+
+    .cart-item-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .cart-item-name {
+        font-weight: bold;
+    }
+
+    .cart-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .quantity-button {
+        border: 1px solid #ccc;
+        background: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .order-summary {
+        margin-top: 20px;
+        border-top: 2px solid #eee;
+        padding-top: 15px;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .total {
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    .order-button {
+        width: 100%;
+        border: none;
+        background: #222;
+        color: white;
+        padding: 14px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 15px;
+    }
+
+    .order-button:hover {
+        background: #444;
+    }
+
+    .order-button:disabled {
+        background: #aaa;
+        cursor: not-allowed;
+    }
+
+    #alerts {
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        width: 280px;
+        z-index: 1000;
+    }
+
+    .alert {
+        background: #2e7d32;
+        color: white;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+    }
+
+    @media (max-width: 900px) {
+        .pos-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+```
+
+</head>
+
+<body data-poll-ms="{{ poll_ms }}">
+
+<header class="header">
+    <h1>Shawarma POS</h1>
+    <span>Point of Sale</span>
+</header>
+
+<div class="pos-container">
+
+```
+<section class="menu-section">
+    <h2 class="section-title">Menu</h2>
+
+    <div class="menu-grid">
+        {% for variant in variants %}
+            <div
+                class="menu-card"
+                data-id="{{ variant.id }}"
+                data-name="{{ variant.item.name }}"
+                data-variant="{{ variant.name }}"
+                data-price="{{ variant.price }}"
+                onclick="addToCart(this)"
+            >
+                <div class="menu-name">
+                    {{ variant.item.name }}
+                </div>
+
+                <div class="menu-variant">
+                    {{ variant.name }}
+                </div>
+
+                <div class="menu-price">
+                    ₱{{ variant.price }}
+                </div>
+            </div>
+        {% empty %}
+            <p>No menu items available.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="order-section">
+    <h2 class="section-title">Current Order</h2>
+
+    <div id="cart">
+        <div class="empty-cart">
+            No items added yet.
+        </div>
+    </div>
+
+    <div class="order-summary">
+        <div class="summary-row">
+            <span>Subtotal</span>
+            <span id="subtotal">₱0.00</span>
+        </div>
+
+        <div class="summary-row total">
+            <span>Total</span>
+            <span id="total">₱0.00</span>
+        </div>
+
+        <button
+            id="placeOrderButton"
+            class="order-button"
+            onclick="placeOrder()"
+            disabled
+        >
+            Place Order
+        </button>
+    </div>
+</section>
+```
+
+</div>
+
+<div id="alerts" aria-live="polite"></div>
+
+<script>
+    window.CSRF = "{{ csrf_token }}";
+
+    let cart = [];
+
+    function addToCart(element) {
+        const id = Number(element.dataset.id);
+        const name = element.dataset.name;
+        const variant = element.dataset.variant;
+        const price = Number(element.dataset.price);
+
+        const existing = cart.find(item => item.variant_id === id);
+
+        if (existing) {
+            existing.quantity += 1;
+        } else {
+            cart.push({
+                variant_id: id,
+                name: name,
+                variant: variant,
+                price: price,
+                quantity: 1
+            });
+        }
+
+        renderCart();
+    }
+
+    function changeQuantity(index, amount) {
+        cart[index].quantity += amount;
+
+        if (cart[index].quantity <= 0) {
+            cart.splice(index, 1);
+        }
+
+        renderCart();
+    }
+
+    function renderCart() {
+        const cartElement = document.getElementById("cart");
+        const button = document.getElementById("placeOrderButton");
+
+        if (cart.length === 0) {
+            cartElement.innerHTML = `
+                <div class="empty-cart">
+                    No items added yet.
+                </div>
+            `;
+
+            button.disabled = true;
+            updateTotal();
+            return;
+        }
+
+        cartElement.innerHTML = cart.map((item, index) => `
+            <div class="cart-item">
+                <div class="cart-item-header">
+                    <span class="cart-item-name">
+                        ${item.name} (${item.variant})
+                    </span>
+
+                    <span>
+                        ₱${(item.price * item.quantity).toFixed(2)}
+                    </span>
+                </div>
+
+                <div class="cart-controls">
+                    <button
+                        class="quantity-button"
+                        onclick="changeQuantity(${index}, -1)"
+                    >
+                        −
+                    </button>
+
+                    <span>${item.quantity}</span>
+
+                    <button
+                        class="quantity-button"
+                        onclick="changeQuantity(${index}, 1)"
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
+        `).join("");
+
+        button.disabled = false;
+        updateTotal();
+    }
+
+    function updateTotal() {
+        const total = cart.reduce(
+            (sum, item) => sum + (item.price * item.quantity),
+            0
+        );
+
+        document.getElementById("subtotal").textContent =
+            `₱${total.toFixed(2)}`;
+
+        document.getElementById("total").textContent =
+            `₱${total.toFixed(2)}`;
+    }
+
+    async function placeOrder() {
+        if (cart.length === 0) {
+            return;
+        }
+
+        const button = document.getElementById("placeOrderButton");
+
+        button.disabled = true;
+        button.textContent = "Placing Order...";
+
+        const items = cart.map(item => ({
+            variant_id: item.variant_id,
+            quantity: item.quantity
+        }));
+
+        try {
+            const response = await fetch("/pos/api/orders/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": window.CSRF
+                },
+                body: JSON.stringify({
+                    items: items
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || "Failed to create order.");
+            }
+
+            alert(`Order ${data.order_number || data.id} created successfully!`);
+
+            cart = [];
+            renderCart();
+
+        } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+            button.textContent = "Place Order";
+        }
+    }
+</script>
+
+<script src="{% static 'js/cashier_alerts.js' %}"></script>
+Remove-Item .\templates\point_of_sale
+</body>
+</html>

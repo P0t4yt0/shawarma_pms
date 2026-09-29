@@ -40,7 +40,7 @@ def kds_screen(request):
 @permission_required("point_of_sale.add_order", raise_exception=True)
 def pos_screen(request):
     variants = MenuVariant.objects.filter(is_active=True, item__is_active=True).select_related("item")
-    return render(request, "point_of_sale/pos.html",
+    return render(request, "pos.html",
                   {"variants": variants, "poll_ms": settings.KDS_POLL_SECONDS * 1000})
 
 
