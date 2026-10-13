@@ -1,6 +1,5 @@
-
 from django.contrib import messages
-from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import authenticate, login as auth_login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -8,7 +7,6 @@ from django.views.decorators.http import require_POST, require_http_methods
 
 from activity_log.services import log_activity
 from .models import Attendance
-
 
 @require_http_methods(["GET", "POST"])
 def login_view(request):
@@ -29,7 +27,6 @@ def login_view(request):
             messages.error(request, "Invalid username or password.")
             return render(request, "login.html")
 
-        # Employees must have an active EmployeeProfile.
         employee = getattr(user, "employee", None)
 
         if employee is None and not user.is_staff:
@@ -48,8 +45,6 @@ def login_view(request):
 
         auth_login(request, user)
 
-        # Remember Me keeps the session for 14 days.
-        # Otherwise, the session expires when the browser closes.
         if request.POST.get("remember_me") == "on":
             request.session.set_expiry(1209600)
         else:
@@ -113,3 +108,12 @@ def forgot_password(request):
     return render(request, "forgot_password.html", {
         "step": "request",
     })
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "You have been logged out.")
+    return redirect("security:login")
+
+@login_required
+def dashboard_view(request):
+    return render(request, "dashboard.html")

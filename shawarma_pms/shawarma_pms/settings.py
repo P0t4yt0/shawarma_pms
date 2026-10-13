@@ -55,7 +55,7 @@ TIME_ZONE = "Asia/Manila"
 USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-LOGIN_URL = "/admin/login/"
+LOGIN_URL = "/security/login/"
 LOGIN_REDIRECT_URL = "/security/home/"
 
 # --- business settings ---
