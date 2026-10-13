@@ -1,761 +1,431 @@
 {% extends 'dashboard.html' %}
 {% block content %}
 
-<script>
-    (function() {
-        const savedCat = sessionStorage.getItem('activeCategory');
-        if (savedCat && savedCat !== 'All') {
-            const style = document.createElement('style');
-            style.id = 'anti-flicker-style';
-            const safeCat = savedCat.replace(/"/g, '\\"');
-            
-            style.innerHTML = `
-                .product-card:not([data-category="${safeCat}"]) { display: none !important; }
-                .category-tabs .tab { background: rgba(255, 255, 255, 0.7) !important; color: var(--text-secondary) !important; border-color: var(--border-color) !important; box-shadow: none !important; }
-                .category-tabs .tab[data-name="${safeCat}"] { background: var(--yellow) !important; color: var(--black) !important; border-color: var(--black) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important; }
-            `;
-            document.head.appendChild(style);
-        }
-    })();
-</script>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Inconsolata:wght@200..900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://unpkg.com/@phosphor-icons/web"></script>
-
 <script>
-    window.productStocks = {}; // Store raw database stock
-    window.cartQtys = {};      // Store current cart quantity
+    const csrfToken = '{{ csrf_token }}';
 </script>
 
 <style>
-    body { background-color: var(--bg-main); margin: 0; overflow: hidden; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+    .swal-neo { border: 3px solid var(--black) !important; border-radius: 16px !important; box-shadow: 8px 8px 0px var(--black) !important; padding: 24px !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: 2px solid var(--black) !important; box-shadow: 4px 4px 0px var(--black) !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; text-transform: uppercase !important; transition: all 0.1s ease; }
+    .swal-neo-confirm:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black) !important; background-color: var(--yellow-hover) !important; }
+    .swal-neo-cancel { background-color: var(--bg-main) !important; color: var(--text-secondary) !important; border: 2px solid var(--border-color) !important; font-weight: 700 !important; border-radius: 8px !important; font-family: var(--font-main) !important; transition: all 0.1s ease; }
+    .swal-neo-cancel:hover { background-color: var(--border-color) !important; color: var(--black) !important; }
+    .swal-neo-input { border: 2px solid var(--black) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: box-shadow 0.2s ease; }
+    .swal-neo-input:focus { box-shadow: 0 0 0 4px var(--yellow-tint) !important; }
 
-    .pos-container { display: flex; height: calc(95vh - 90px); gap: 24px; overflow: hidden; max-width: 1500px; }
-    .swal2-container { z-index: 100000 !important; }
-
+    .pos-container { display: flex; height: calc(100vh - 120px); gap: 24px; overflow: hidden; max-width: 1600px; margin: 0 auto; }
     .inventory-section { flex: 2.2; display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; }
     .search-header { display: flex; gap: 16px; margin-bottom: 20px; flex-shrink: 0; }
-    .search-input-group { position: relative; flex: 1.5; }
-    .search-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--black); }
-    .search-input { width: 100%; padding: 14px 16px 14px 48px; border: 2px solid var(--black); border-radius: 12px; outline: none; background: rgba(255, 255, 255, 0.9); font-size: 14px; font-family: var(--font-main); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
-    .search-input:focus { box-shadow: 0 0 0 4px var(--yellow-tint); background: #FFFFFF; }
-    .text-search { flex: 1; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 12px; outline: none; font-size: 14px; font-family: var(--font-main); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); transition: all 0.3s ease; }
-    .text-search:focus { border-color: var(--black); background: #FFFFFF; box-shadow: 0 0 0 4px var(--yellow-tint); }
+    .search-input-group { position: relative; flex: 1; }
+    .search-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--text-secondary); }
+    .search-input { width: 100%; padding: 14px 16px 14px 48px; border: 2px solid var(--border-color); border-radius: 12px; outline: none; background: var(--bg-card); font-size: 14px; font-family: var(--font-main); transition: all 0.3s ease; }
+    .search-input:focus { border-color: var(--yellow); box-shadow: 0 0 0 4px var(--yellow-tint); }
 
     .category-tabs { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
-    .tab { padding: 10px 24px; border-radius: 10px; border: 1px solid var(--border-color); font-weight: 700; font-size: 13px; font-family: var(--font-main); cursor: pointer; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); color: var(--text-secondary); flex-shrink: 0; transition: all 0.2s ease; }
-    .tab:hover { border-color: var(--black); background: rgba(255, 255, 255, 0.9); color: var(--black); transform: translateY(-2px); }
-    .tab.active { background: var(--yellow); color: var(--black); border-color: var(--black); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+    .tab { padding: 10px 24px; border-radius: 20px; border: 1px solid var(--border-color); font-weight: 700; font-size: 13px; font-family: var(--font-main); cursor: pointer; background: var(--bg-card); color: var(--text-secondary); flex-shrink: 0; transition: all 0.2s ease; }
+    .tab:hover { border-color: var(--black); color: var(--black); }
+    .tab.active { background: var(--black); color: #FFFFFF; border-color: var(--black); }
 
-    .product-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; overflow-y: auto; align-content: start; padding-right: 8px; padding-bottom: 24px; }
-    .product-card { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; padding: 16px; text-align: left; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04); display: flex; flex-direction: column; justify-content: space-between; height: 130px; }
-    .product-card:hover { border-color: var(--yellow); transform: translateY(-4px); box-shadow: 0 12px 24px rgba(255, 196, 0, 0.15); background: rgba(255, 255, 255, 0.95); }
+    .product-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; overflow-y: auto; align-content: start; padding-right: 8px; padding-bottom: 24px; }
+    .product-card { background: var(--bg-card); border-radius: 16px; padding: 16px; text-align: center; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02); display: flex; flex-direction: column; justify-content: space-between; height: 160px; }
+    .product-card:hover { border-color: var(--yellow); transform: translateY(-4px); box-shadow: 0 8px 16px rgba(255, 196, 0, 0.15); }
+    .product-card .pid { font-size: 11px; font-family: 'Inconsolata', monospace; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+    .product-card .name { font-weight: 800; color: var(--text-primary); font-size: 14px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-card .price { color: var(--yellow); font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; margin-top: auto; }
+
+    .order-section { flex: 1.1; background: var(--bg-card); border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04); border: 1px solid var(--border-color); overflow: hidden; min-width: 400px; height: 100%; }
+    .order-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .order-header h3 { margin: 0; font-size: 18px; color: var(--black); font-weight: 800; }
+    .order-header .ref-number { font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 14px; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 8px; }
     
-    .product-card.disabled { opacity: 0.5; pointer-events: none; filter: grayscale(80%); border-color: var(--border-color); }
-    .product-card.disabled .qty-badge { color: var(--status-red) !important; font-weight: 900; }
-    
-    .product-card .pid-row { display: flex; justify-content: space-between; align-items: center; }
-    .product-card .pid { font-size: 12px; font-family: 'Inconsolata', monospace; color: var(--text-secondary); font-weight: 700; }
-    .product-card .qty-badge {font-size: 12px; font-family: 'Inconsolata', monospace; color: var(--black); font-weight: 800; transition: color 0.3s ease; background: var(--yellow-tint); padding: 2px 6px; border-radius: 6px;}
-    .product-card .name { font-weight: 700; color: var(--text-primary); font-size: 14px; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-align: center; }
-    .product-card .price { color: var(--black); font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 18px; margin-top: auto; text-align: center; }
-
-    .order-section { flex: 1.1; background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: var(--border-radius); display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid var(--border-color); overflow: hidden; min-width: 420px; height: 100%; }
-    .order-header { padding: 24px; border-bottom: 1px solid var(--border-color); background: rgba(248, 250, 252, 0.6); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .order-header h3 { margin: 0; font-size: 20px; color: var(--black); font-weight: 800; font-family: var(--font-heading); }
-
-    #cart-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-    .cart-container { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; }
+    .cart-container { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; display: flex; flex-direction: column; }
+    .empty-cart { margin: auto; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 12px; }
     .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
-    .cart-item-name { margin: 0; font-size: 14px; color: var(--text-primary); font-weight: 700; margin-bottom: 6px; }
-    .cart-item-price { color: var(--text-secondary); font-size: 14px; font-family: 'Inconsolata', monospace; font-weight: 600; }
-    .qty-controls { display: flex; align-items: center; gap: 6px; background: rgba(248, 250, 252, 0.8); padding: 6px; border-radius: 10px; border: 1px solid var(--border-color); }
-    
-    .qty-btn { background: white; border: 1px solid var(--border-color); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 16px; color: var(--text-secondary); transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-    .qty-btn:hover:not(:disabled) { background: var(--yellow); color: var(--black); border-color: var(--black); }
-    .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
-    
-    .qty-input { width: 44px; height: 30px; text-align: center; font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 15px; border: none; background: transparent; outline: none; color: var(--black); }
-    .delete-btn { background: #FFF5F5; border: 1px solid #FECACA; color: var(--status-red); width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-    .delete-btn:hover { background: var(--status-red); color: white; border-color: var(--status-red); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2); }
-    .item-subtotal { font-weight: 800; color: var(--black); min-width: 80px; font-family: 'Inconsolata', monospace; text-align: right; font-size: 16px; }
+    .cart-item-name { margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: var(--black); }
+    .cart-item-price { color: var(--text-secondary); font-size: 13px; font-family: 'Inconsolata', monospace; font-weight: 600; }
+    .qty-controls { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .qty-btn:hover { background: var(--yellow); border-color: var(--black); color: var(--black); }
+    .qty-input { width: 32px; text-align: center; font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 14px; border: none; outline: none; background: transparent; }
+    .item-subtotal { font-weight: 800; font-family: 'Inconsolata', monospace; font-size: 16px; color: var(--black); }
 
-    .order-summary { padding: 24px; background: rgba(255, 255, 255, 0.9); border-top: 1px solid var(--border-color); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.02); flex-shrink: 0; }
-    .total-row { display: flex; justify-content: space-between; font-weight: 800; font-size: 28px; color: var(--black); margin-bottom: 24px; align-items: center; letter-spacing: -1px; }
-    .btn-action-group { display: flex; gap: 12px; width: 100%; margin-bottom: 16px; }
-    .btn-void { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid #FECACA; background: #FFF5F5; color: var(--status-red); font-weight: 700; font-family: var(--font-main); cursor: pointer; text-align: center; text-decoration: none; font-size: 14px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-    .btn-void:hover { background: var(--status-red); color: white; border-color: var(--status-red); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
-    .btn-quote { flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--black); background: white; color: var(--black); font-weight: 700; font-family: var(--font-main); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.2s; width: 100%; }
-    .btn-quote:hover { background: var(--yellow); border-color: var(--black); color: var(--black); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-    .btn-main { width: 100%; padding: 20px; border-radius: 12px; border: 2px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 800; font-family: var(--font-main); font-size: 18px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 0 var(--black); display: flex; align-items: center; justify-content: center; gap: 8px; letter-spacing: 0.5px; }
-    .btn-main:hover { background: var(--yellow-hover); transform: translateY(-1px); box-shadow: 0 5px 0 var(--black); }
-    .btn-main:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--black); }
+    .order-summary { padding: 24px; background: #FFFFFF; border-top: 1px solid var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.02); flex-shrink: 0; }
+    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .total-label { font-weight: 800; font-size: 20px; color: var(--yellow); }
+    .total-amount { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 36px; color: var(--yellow); letter-spacing: -1px; }
 
-    #payment-view { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
-    .pay-method-tabs { display: flex; border-bottom: 2px solid var(--border-color); background: rgba(248, 250, 252, 0.6); flex-shrink: 0; }
-    .pay-tab { flex: 1; padding: 16px 8px; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; background: transparent; font-weight: 700; font-size: 13px; font-family: var(--font-main); color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .pay-tab i { font-size: 18px; }
-    .pay-tab:hover { background: rgba(255, 255, 255, 0.5); color: var(--black); }
-    .pay-tab.active { color: var(--black); border-bottom-color: var(--yellow); background: rgba(255, 255, 255, 0.8); font-weight: 800; }
-
-    .payment-body { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; }
-    .pay-total-display { background: var(--yellow-tint); border: 1px solid rgba(255, 196, 0, 0.3); border-radius: 16px; padding: 20px; margin-bottom: 24px; text-align: center; }
-
-    .pay-footer { padding: 20px 24px; border-top: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.9); flex-shrink: 0; display: flex; gap: 12px; }
-    .btn-back { flex: 1; padding: 16px; border-radius: 12px; border: 2px solid var(--border-color); background: white; color: var(--text-secondary); font-weight: 700; font-family: var(--font-main); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-    .btn-back:hover { background: #F8FAFC; border-color: var(--black); color: var(--black); transform: translateY(-2px); }
-
-    .btn-confirm { flex: 2.5; padding: 16px; border-radius: 12px; border: 2px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 800; font-family: var(--font-main); cursor: pointer; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 0 var(--black); display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-confirm:hover { background: var(--yellow-hover); transform: translateY(-1px); box-shadow: 0 5px 0 var(--black); }
-    .btn-confirm:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--black); }
-    .btn-confirm i { font-size: 20px; }
+    .btn-action-group { display: flex; gap: 12px; width: 100%; margin-bottom: 12px; }
+    .btn-void { flex: 1; padding: 14px; border-radius: 10px; border: 2px solid var(--status-red); background: transparent; color: var(--status-red); font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+    .btn-void:hover { background: rgba(239, 68, 68, 0.1); }
+    .btn-brutalist { width: 100%; padding: 18px; border-radius: 12px; border: 3px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 5px 5px 0px var(--black); transition: all 0.15s ease-in-out; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-brutalist:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0px var(--black); background: var(--yellow-hover); }
+    .btn-brutalist:active { transform: translate(5px, 5px); box-shadow: 0px 0px 0px var(--black); }
 </style>
 
 <div class="pos-container">
     <div class="inventory-section">
         <div class="search-header">
             <div class="search-input-group">
-                <i class="ph ph-barcode"></i>
-                <input type="text" id="barcode-input" class="search-input" placeholder="Scan Barcode..." autofocus>
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="menu-search" class="search-input" placeholder="Enter product name or SKU...">
             </div>
-            <input type="text" class="text-search" placeholder="Enter product name or ID...">
         </div>
 
         <div class="category-tabs">
-            <button class="tab" data-name="All" onclick="filterCategory('All')">All Categories</button>
+            <button class="tab active" data-name="All" onclick="filterCategory('All')">All Categories</button>
             {% for category in categories %}
-                <button class="tab" data-name="{{ category.name|escapejs }}" onclick="filterCategory('{{ category.name|escapejs }}')">{{ category.name }}</button>
+                <button class="tab" data-name="{{ category.name }}" onclick="filterCategory('{{ category.name }}')">{{ category.name }}</button>
             {% endfor %}
         </div>
 
-        <div class="product-grid">
-            {% for item in products %}
-                <script>window.productStocks["{{ item.id }}"] = {{ item.quantity }};</script>
-                {% if item.quantity > 0 %}
-                <div class="product-card" id="prod-card-{{ item.id }}" data-category="{{ item.category.name|escapejs }}" onclick="addToCart('{{ item.id }}')">
-                    <div>
-                        <div class="pid-row">
-                            <span class="pid">ID: {{ item.product_id }}</span>
-                            <span class="qty-badge" id="prod-qty-{{ item.id }}">Qty: {{ item.quantity }}</span>
-                        </div>
-                        <div class="name">{{ item.item_name }}</div>
-                    </div>
-                    <div class="price">₱{{ item.price }}</div>
-                </div>
-                {% endif %}
+        <div class="product-grid" id="product-list">
+            <!-- Dynamic Database Loop -->
+            {% for variant in variants %}
+            <div class="product-card" data-category="{{ variant.item.category.name }}" onclick="addToCart({{ variant.id }}, '{{ variant.item.name }} ({{ variant.name }})', {{ variant.price }})">
+                <div class="pid">SKU: {{ variant.sku }}</div>
+                <div class="name">{{ variant.item.name }}<br><small style="color: var(--text-secondary); font-weight: 600;">{{ variant.name }}</small></div>
+                <div class="price">₱{{ variant.price }}</div>
+            </div>
+            {% empty %}
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary);">
+                No active menu items found in the database.
+            </div>
             {% endfor %}
         </div>
     </div>
 
     <div class="order-section">
         <div class="order-header">
-            <h3 id="order-header-title">Order Details</h3>
-            <p style="font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 16px; margin: 0; color: var(--black); background: var(--yellow-tint); padding: 6px 12px; border-radius: 10px;">
-                #{{ transaction.transaction_ref }}
-            </p>
+            <h3>Order Details</h3>
+            <!-- Pinalitan nating NEW ORDER imbes na dynamic ID -->
+            <span class="ref-number" style="text-transform: uppercase;">New Order</span>
         </div>
 
-        <div id="cart-view">
-            <div class="cart-container" id="cart-container">
-                
-                <div id="empty-cart-msg" style="text-align:center; color:var(--text-secondary); margin-top:60px; display: {% if sold_items %}none{% else %}flex{% endif %}; flex-direction:column; align-items:center; gap:12px;">
-                    <i class="ph ph-shopping-cart" style="font-size:56px; color: rgba(203, 213, 225, 0.8);"></i>
-                    <span style="font-weight:600; font-size: 16px;">Cart is empty</span>
-                </div>
-
-                {% for item in sold_items %}
-                <script>window.cartQtys["{{ item.inventory_item.id }}"] = {{ item.quantity }};</script>
-                <div class="cart-item" id="cart-item-{{ item.id }}" data-product-id="{{ item.inventory_item.id }}">
-                    <div style="flex:1; padding-right:12px;">
-                        <h5 class="cart-item-name">{{ item.inventory_item.item_name }}</h5>
-                        <div class="cart-item-price">₱{{ item.unit_price }} each</div>
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <div class="qty-controls">
-                            <button type="button" class="qty-btn" onclick="updateQty('{{ item.id }}', 'decrease', '{{ item.inventory_item.id }}')">-</button>
-                            <input type="number" min="1" class="qty-input" value="{{ item.quantity }}" onchange="setQty('{{ item.id }}', this.value, '{{ item.inventory_item.id }}')">
-                            <button type="button" class="qty-btn btn-plus" onclick="updateQty('{{ item.id }}', 'increase', '{{ item.inventory_item.id }}')">+</button>
-                        </div>
-                        <button type="button" class="delete-btn" onclick="confirmRemoveItem('{{ item.id }}', '{{ item.inventory_item.item_name|escapejs }}', '{{ item.inventory_item.id }}')">
-                            <i class="ph ph-trash"></i>
-                        </button>
-                    </div>
-
-                    <div class="item-subtotal">₱{{ item.subtotal }}</div>
-                </div>
-                {% endfor %}
+        <div class="cart-container">
+            <div class="empty-cart" id="empty-cart-msg">
+                <i class="ph ph-shopping-cart" style="font-size: 56px; color: var(--border-color);"></i>
+                <span>Cart is empty</span>
             </div>
-
-            <div class="order-summary">
-                <div class="total-row">
-                    <span>Total Due</span>
-                    <span style="font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 32px; color: var(--black);">
-                        ₱<span id="grand-total">{{ transaction.total_amount }}</span>
-                    </span>
-                </div>
-
-                <div class="btn-action-group">
-                    <a href="#" class="btn-void" onclick="confirmVoid(event, this.href)">
-                        <i class="ph ph-x-circle" style="margin-right:6px; font-size: 18px;"></i>Clear Cart
-                    </a>
-                    <form action="{% url 'point_of_sale:save_quotation' transaction.id %}" method="POST" style="flex:1; display:flex;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-quote">
-                            <i class="ph ph-file-text" style="margin-right:6px; font-size: 18px;"></i>Save Quotation
-                        </button>
-                    </form>
-                </div>
-
-                <button class="btn-main" onclick="showPaymentView()">PAY NOW</button>
-            </div>
+            <div id="cart-items-wrapper"></div>
         </div>
 
-        <div id="payment-view">
-            <div class="pay-method-tabs">
-                <button class="pay-tab active" data-method="Cash" onclick="switchPayTab('Cash')">
-                    <i class="ph ph-money"></i> Cash
-                </button>
-                <button class="pay-tab" data-method="Online Bank" onclick="switchPayTab('Online Bank')">
-                    <i class="ph ph-wallet"></i> Mobile Wallet
-                </button>
-                <button class="pay-tab" data-method="Trade Credit" onclick="switchPayTab('Trade Credit')">
-                    <i class="ph ph-handshake"></i> Trade Credit
+        <div class="order-summary">
+            <div class="total-row">
+                <span class="total-label">Total Due</span>
+                <span class="total-amount">₱<span id="grand-total">0.00</span></span>
+            </div>
+
+            <div class="btn-action-group">
+                <button type="button" class="btn-void" onclick="confirmVoid()">
+                    <i class="ph ph-x-circle"></i> Void Order
                 </button>
             </div>
 
-            <div class="payment-body">
-                <div class="pay-total-display">
-                    <p style="color:var(--black); font-size:12px; margin:0 0 6px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Total Due</p>
-                    <div style="color:var(--black); font-size:36px; font-family:'Inconsolata', monospace; font-weight:800; line-height:1.1; letter-spacing:-1px;">
-                        ₱<span id="modal-total-due">0.00</span>
-                    </div>
-                </div>
-
-                <div id="ref-number-group" style="display:none; margin-bottom:20px;">
-                    <label style="font-weight:700; font-size:14px; color:var(--text-secondary); display:block; margin-bottom:8px;">
-                        Reference Number <span style="color:var(--status-red);">*</span>
-                    </label>
-                    <input type="text" id="ref-number-input" placeholder="e.g. GCash / Transfer Ref #"
-                        style="width:100%; padding:14px 16px; border-radius:10px; border:2px solid var(--border-color); background: rgba(255, 255, 255, 0.8); font-size:15px; font-family:'Inconsolata', monospace; letter-spacing:0.5px; outline:none; box-sizing:border-box; transition:all 0.3s ease;"
-                        onfocus="this.style.borderColor='var(--black)'; this.style.boxShadow='0 0 0 4px var(--yellow-tint)';" onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none';">
-                </div>
-
-                <div id="credit-customer-group" style="display:none; margin-bottom:20px; background:rgba(255, 245, 245, 0.6); padding:20px; border-radius:12px; border:1px solid #FECACA;">
-                    <label style="font-weight:700; font-size:14px; color:var(--status-red); display:block; margin-bottom:8px;">
-                        Select Approved Customer <span style="color:var(--status-red);">*</span>
-                    </label>
-                    <select id="credit-customer" onchange="updateCreditSummary()"
-                        style="width:100%; padding:14px; border-radius:10px; border:1px solid #FECACA; font-size:14px; font-family: var(--font-main); outline:none; background:white; cursor:pointer; color:var(--text-primary); transition: all 0.2s ease;"
-                        onfocus="this.style.borderColor='var(--status-red)'; this.style.boxShadow='0 0 0 3px rgba(239, 68, 68, 0.1)';" onblur="this.style.borderColor='#FECACA'; this.style.boxShadow='none';">
-                        <option value="">-- Choose Contractor --</option>
-                        {% for customer in credit_customers %}
-                            <option value="{{ customer.id }}" data-terms="{{ customer.payment_terms }}">
-                                {{ customer.name }} (Limit: ₱{{ customer.available_credit }})
-                            </option>
-                        {% endfor %}
-                    </select>
-
-                    <div id="credit-summary" style="display:none; margin-top:16px; border-top:1px dashed #FECACA; padding-top:16px;">
-                        <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:12px;">
-                            <span style="color:var(--text-secondary); font-weight:600;">Principal Amount:</span>
-                            <span id="cs-principal" style="font-family:'Inconsolata', monospace; font-weight:700; color:var(--text-primary); font-size: 16px;">₱0.00</span>
-                        </div>
-
-                        <div style="background:white; border:1px solid var(--border-color); border-radius:10px; padding:14px; margin-bottom:10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span id="cs-term-label" style="font-weight:800; font-size:15px; color:var(--black);">Net XX</span>
-                                <span id="cs-due-badge" style="font-size:12px; color:var(--black); background:var(--yellow-tint); padding:4px 10px; border-radius:20px; font-weight:700;">Due in XX days</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom:4px;">
-                                <span id="cs-interest-label">Interest (X%):</span>
-                                <span id="cs-interest-amount" style="font-family:'Inconsolata', monospace; font-weight:700; color:var(--status-red);">+₱0.00</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items: center; border-top:1px dashed var(--border-color); padding-top:12px; margin-top:8px;">
-                                <span style="font-weight:700; font-size:14px; color:var(--text-primary);">Total Payable:</span>
-                                <span id="cs-total-payable" style="font-weight:800; font-size:24px; color:var(--black); font-family:'Inconsolata', monospace; letter-spacing:-0.5px;">₱0.00</span>
-                            </div>
-                            <div id="cs-due-date" style="font-size:12px; color:var(--text-secondary); margin-top:8px; text-align:right; font-weight: 500;"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="amount-paid-group" style="margin-bottom:20px;">
-                    <label style="font-weight:700; font-size:14px; color:var(--text-secondary); display:block; margin-bottom:8px;">Amount Paid:</label>
-                    <input type="number" id="cash-received" oninput="calculateChange()" placeholder="0.00"
-                        style="width:100%; padding:16px; border-radius:12px; border:2px solid var(--black); background: rgba(255, 255, 255, 0.9); font-family:'Inconsolata', monospace; font-size:28px; font-weight:800; color: var(--black); margin-bottom:16px; box-sizing:border-box; outline:none; transition: box-shadow 0.3s ease;"
-                        onfocus="this.style.boxShadow='0 0 0 4px var(--yellow-tint)'" onblur="this.style.boxShadow='none'">
-                    
-                    <div style="background:rgba(240, 253, 244, 0.8); border:1px solid #bbf7d0; border-radius:12px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:700; color:var(--status-green); font-size:16px;">Change:</span>
-                        <span style="font-weight:800; color:#15803d; font-size:24px; font-family:'Inconsolata', monospace;">
-                            ₱<span id="sum-change">0.00</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="pay-footer">
-                <button class="btn-back" onclick="showCartView()">
-                    <i class="ph ph-arrow-left" style="font-size:18px;"></i> Back
-                </button>
-                <button class="btn-confirm" onclick="finalizeAndPrint()">
-                    <i class="ph ph-check-circle"></i> Confirm Payment
-                </button>
-            </div>
+            <button class="btn-brutalist" onclick="processPayment()">
+                PAY NOW
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-    // NEW CORE LOGIC: Visual Stock Engine
-    function updateVisualStock(productId) {
-        let baseStock = window.productStocks[productId] || 0;
-        let cartQty = window.cartQtys[productId] || 0;
-        let available = baseStock - cartQty;
+    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel', input: 'swal-neo-input' }, buttonsStyling: false };
+    let cart = [];
 
-        let card = document.getElementById('prod-card-' + productId);
-        let badge = document.getElementById('prod-qty-' + productId);
-        if (card && badge) {
-            badge.innerText = 'Qty: ' + available;
-            if (available <= 0) {
-                card.classList.add('disabled');
-            } else {
-                card.classList.remove('disabled');
-            }
-        }
-
-        let cartRow = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
-        if (cartRow) {
-            let plusBtn = cartRow.querySelector('.btn-plus');
-            if (plusBtn) {
-                if (available <= 0) {
-                    plusBtn.setAttribute('disabled', 'true');
-                } else {
-                    plusBtn.removeAttribute('disabled');
-                }
-            }
-        }
+    function filterCategory(category) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.tab[data-name="${category}"]`).classList.add('active');
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.style.display = (category === 'All' || card.getAttribute('data-category') === category) ? 'flex' : 'none';
+        });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const savedCategory = sessionStorage.getItem('activeCategory') || 'All';
-        
-        document.querySelectorAll('.tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.name === savedCategory);
-        });
-
-        const searchTerm = document.querySelector('.text-search').value.toLowerCase();
-        applyFilters(savedCategory, searchTerm);
-
-        const antiFlicker = document.getElementById('anti-flicker-style');
-        if (antiFlicker) {
-            requestAnimationFrame(() => antiFlicker.remove());
-        }
-
-        Object.keys(window.productStocks).forEach(pid => {
-            updateVisualStock(pid);
+    document.getElementById('menu-search').addEventListener('input', function() {
+        const term = this.value.toLowerCase();
+        document.querySelectorAll('.product-card').forEach(card => {
+            const name = card.querySelector('.name').innerText.toLowerCase();
+            const id = card.querySelector('.pid').innerText.toLowerCase();
+            card.style.display = (name.includes(term) || id.includes(term)) ? 'flex' : 'none';
         });
     });
 
-    {% if messages %}
-        {% for message in messages %}
-            let swalIcon = 'info';
-            {% if message.tags == 'error' %} swalIcon = 'error'; {% endif %}
-            {% if message.tags == 'success' %} swalIcon = 'success'; {% endif %}
-            
-            Swal.fire({
-                title: swalIcon === 'error' ? 'Oops!' : 'Notice',
-                text: '{{ message|escapejs }}',
-                icon: swalIcon,
-                confirmButtonColor: '#0F0F0F',
-                timer: 3000,
-                timerProgressBar: true
-            });
-        {% endfor %}
-    {% endif %}
-
-    let selectedMethod = "Cash";
-    let selectedTerm   = 60;
-
-    function renderCartItemHTML(data, productId) {
-        return `
-            <div class="cart-item" id="cart-item-${data.item_id}" data-product-id="${productId}">
-                <div style="flex:1; padding-right:12px;">
-                    <h5 class="cart-item-name">${data.item_name}</h5>
-                    <div class="cart-item-price">₱${data.unit_price} each</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div class="qty-controls">
-                        <button type="button" class="qty-btn" onclick="updateQty('${data.item_id}', 'decrease', '${productId}')">-</button>
-                        <input type="number" min="1" class="qty-input" value="${data.quantity}" onchange="setQty('${data.item_id}', this.value, '${productId}')">
-                        <button type="button" class="qty-btn btn-plus" onclick="updateQty('${data.item_id}', 'increase', '${productId}')">+</button>
-                    </div>
-                    <button type="button" class="delete-btn" onclick="confirmRemoveItem('${data.item_id}', '${data.item_name}', '${productId}')">
-                        <i class="ph ph-trash"></i>
-                    </button>
-                </div>
-                <div class="item-subtotal">₱${data.item_subtotal}</div>
-            </div>`;
+    function addToCart(id, name, price) {
+        const existing = cart.find(item => item.id === id);
+        if (existing) { existing.qty += 1; } 
+        else { cart.push({ id, name, price, qty: 1 }); }
+        renderCart();
     }
 
-    function addToCart(productId) {
-        let baseStock = window.productStocks[productId] || 0;
-        let cartQty = window.cartQtys[productId] || 0;
-        if ((baseStock - cartQty) <= 0) return; 
-
-        fetch("#")
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                    
-                    let emptyMsg = document.getElementById('empty-cart-msg');
-                    if (emptyMsg) emptyMsg.style.display = 'none';
-
-                    let existingItem = document.getElementById('cart-item-' + data.item_id);
-                    if (existingItem) {
-                        existingItem.querySelector('.qty-input').value = data.quantity;
-                        existingItem.querySelector('.item-subtotal').innerText = '₱' + parseFloat(data.item_subtotal).toFixed(2);
-                    } else {
-                        document.getElementById('cart-container').insertAdjacentHTML('beforeend', renderCartItemHTML(data, productId));
-                    }
-                    
-                    window.cartQtys[productId] = data.quantity;
-                    updateVisualStock(productId);
-
-                } else {
-                    Swal.fire({ title: 'Cannot Add Item', text: data.message || 'Insufficient stock or item is unavailable.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-                }
-            })
-            .catch(err => console.error("Error adding to cart:", err));
-    }
-
-    function confirmVoid(event, targetUrl) {
-        event.preventDefault();
-        Swal.fire({
-            title: 'Void Transaction?',
-            text: 'Are you sure you want to void this transaction? This cannot be undone.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: 'var(--status-red)',
-            cancelButtonColor: 'var(--text-secondary)',
-            confirmButtonText: 'Yes, Void It'
-        }).then(result => { if (result.isConfirmed) window.location.href = targetUrl; });
-    }
-
-    function getCSRFToken() {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.startsWith('csrftoken=')) {
-                    cookieValue = decodeURIComponent(cookie.slice('csrftoken='.length));
-                    break;
-                }
-            }
+    function updateQty(id, delta) {
+        const item = cart.find(item => item.id === id);
+        if (item) {
+            item.qty += delta;
+            if (item.qty <= 0) cart = cart.filter(i => i.id !== id);
         }
-        return cookieValue;
+        renderCart();
     }
 
-    function updateQty(itemId, action, productId) {
-        const url = "#";
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-            body: JSON.stringify({ item_id: itemId, action: action })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.status === 'success') {
-                document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                
-                let itemRow = document.getElementById('cart-item-' + data.item_id);
-                if (data.action === 'remove' || data.quantity === 0) {
-                    if (itemRow) itemRow.remove();
-                    window.cartQtys[productId] = 0; 
-                    if (document.querySelectorAll('.cart-item').length === 0) {
-                         document.getElementById('empty-cart-msg').style.display = 'flex';
-                    }
-                } else {
-                    if (itemRow) {
-                        itemRow.querySelector('.qty-input').value = data.quantity;
-                        itemRow.querySelector('.item-subtotal').innerText = '₱' + parseFloat(data.item_subtotal).toFixed(2);
-                        window.cartQtys[productId] = data.quantity; 
-                    }
-                }
-                updateVisualStock(productId);
-            } else { Swal.fire('Oops!', data.message || 'Failed to update item.', 'error'); }
-        })
-        .catch(() => Swal.fire('Error', 'Cannot connect to server.', 'error'));
-    }
-
-    function confirmRemoveItem(itemId, itemName, productId) {
-        Swal.fire({
-            title: 'Remove Item?',
-            text: `Are you sure you want to remove '${itemName}'?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: 'var(--status-red)',
-            cancelButtonColor: 'var(--text-secondary)',
-            confirmButtonText: 'Yes, remove it!'
-        }).then(result => { if (result.isConfirmed) updateQty(itemId, 'remove', productId); });
-    }
-
-    function setQty(itemId, newQty, productId) {
-        let maxAvailable = window.productStocks[productId] || 0;
-        let requestedQty = parseInt(newQty);
+    function renderCart() {
+        const wrapper = document.getElementById('cart-items-wrapper');
+        const emptyMsg = document.getElementById('empty-cart-msg');
+        wrapper.innerHTML = '';
         
-        if (!requestedQty || isNaN(requestedQty) || requestedQty <= 0) {
-            requestedQty = 1;
-        }
-        
-        if (requestedQty > maxAvailable) {
-            Swal.fire({title: 'Insufficient Stock', text: `Only ${maxAvailable} units of this item are available.`, icon: 'warning', confirmButtonColor: '#0F0F0F'});
-            document.querySelector(`#cart-item-${itemId} .qty-input`).value = window.cartQtys[productId];
-            return;
-        }
+        let total = 0;
 
-        const url = "{% url 'point_of_sale:update_cart_item' %}";
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-            body: JSON.stringify({ item_id: itemId, action: 'set', quantity: requestedQty })
-        })
-        .then(async r => {
-            const data = await r.json();
-            if (!r.ok) throw new Error(data.message || 'Server error: ' + r.status);
-            return data;
-        })
-        .then(data => {
-            if (data.status === 'success') {
-                document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                let itemRow = document.getElementById('cart-item-' + data.item_id);
-                if (data.action === 'remove' || data.quantity === 0) {
-                    if (itemRow) itemRow.remove();
-                    window.cartQtys[productId] = 0;
-                    if (document.querySelectorAll('.cart-item').length === 0) {
-                         document.getElementById('empty-cart-msg').style.display = 'flex';
-                    }
-                } else {
-                    if (itemRow) {
-                        itemRow.querySelector('.qty-input').value = data.quantity;
-                        itemRow.querySelector('.item-subtotal').innerText = '₱' + parseFloat(data.item_subtotal).toFixed(2);
-                        window.cartQtys[productId] = data.quantity;
-                    }
-                }
-                updateVisualStock(productId);
-            } else { Swal.fire({title: 'Oops!', text: data.message, icon: 'warning', confirmButtonColor: '#0F0F0F'}); }
-        })
-        .catch(err => Swal.fire({title: 'System Error', text: err.message, icon: 'error', confirmButtonColor: '#0F0F0F'}));
-    }
-
-    document.querySelector('.text-search').addEventListener('input', function () {
-        const searchTerm = this.value.toLowerCase();
-        const activeCategory = document.querySelector('.tab.active').dataset.name;
-        applyFilters(activeCategory, searchTerm);
-    });
-
-    function filterCategory(name) {
-        sessionStorage.setItem('activeCategory', name);
-
-        const searchTerm = document.querySelector('.text-search').value.toLowerCase();
-        document.querySelectorAll('.tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.name === name);
-        });
-        applyFilters(name, searchTerm);
-    }
-
-    function applyFilters(categoryName, searchTerm) {
-        document.querySelectorAll('.product-card').forEach(p => {
-            const name = p.querySelector('.name').innerText.toLowerCase();
-            const pid = p.querySelector('.pid').innerText.toLowerCase();
-            const cat  = p.getAttribute('data-category');
-            
-            const matchesSearch = name.includes(searchTerm) || pid.includes(searchTerm);
-            const matchesCategory = (categoryName === 'All' || cat === categoryName);
-            
-            const ok = matchesSearch && matchesCategory;
-            p.style.display = ok ? 'flex' : 'none';
-        });
-    }
-
-    document.getElementById('barcode-input').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            const val = this.value.trim();
-            if (val) {
-                fetch("#")
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                            
-                            let emptyMsg = document.getElementById('empty-cart-msg');
-                            if (emptyMsg) emptyMsg.style.display = 'none';
-
-                            location.reload(); 
-                        }
-                        else { Swal.fire({ title: 'Scan Error', text: data.message, icon: 'error', confirmButtonColor: '#0F0F0F' }); }
-                    });
-            }
-            this.value = '';
-        }
-    });
-
-    function showPaymentView() {
-        const totalText = document.getElementById('grand-total').innerText.replace(/,/g, '');
-        if (parseFloat(totalText) <= 0 || isNaN(parseFloat(totalText)) || totalText === '') {
-            return Swal.fire({ title: 'Empty Cart', text: 'Please add items to the cart before checking out.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
-        document.getElementById('modal-total-due').innerText = document.getElementById('grand-total').innerText;
-        document.getElementById('cart-view').style.display    = 'none';
-        document.getElementById('payment-view').style.display = 'flex';
-        document.getElementById('order-header-title').innerText = 'Payment';
-        switchPayTab('Cash');
-    }
-
-    function showCartView() {
-        document.getElementById('payment-view').style.display = 'none';
-        document.getElementById('cart-view').style.display    = 'flex';
-        document.getElementById('order-header-title').innerText = 'Order Details';
-        document.getElementById('cash-received').value   = '';
-        document.getElementById('ref-number-input').value = '';
-        document.getElementById('sum-change').innerText   = '0.00';
-    }
-
-    function switchPayTab(method) {
-        selectedMethod = method;
-        document.querySelectorAll('.pay-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.method === method);
-        });
-
-        const refGroup    = document.getElementById('ref-number-group');
-        const creditGroup = document.getElementById('credit-customer-group');
-        const amountGroup = document.getElementById('amount-paid-group');
-        const cashInput   = document.getElementById('cash-received');
-
-        if (method === 'Trade Credit') {
-            creditGroup.style.display = 'block';
-            amountGroup.style.display = 'none';
-            refGroup.style.display    = 'none';
-            cashInput.value = '';
-            updateCreditSummary();
-        } else if (method === 'Online Bank') {
-            creditGroup.style.display = 'none';
-            amountGroup.style.display = 'block';
-            refGroup.style.display    = 'block';
-            setTimeout(() => document.getElementById('ref-number-input').focus(), 100);
+        if (cart.length === 0) {
+            emptyMsg.style.display = 'flex';
         } else {
-            creditGroup.style.display = 'none';
-            amountGroup.style.display = 'block';
-            refGroup.style.display    = 'none';
-            setTimeout(() => cashInput.focus(), 100);
+            emptyMsg.style.display = 'none';
+            cart.forEach(item => {
+                const subtotal = item.price * item.qty;
+                total += subtotal;
+                wrapper.innerHTML += `
+                    <div class="cart-item">
+                        <div style="flex: 1;">
+                            <h5 class="cart-item-name">${item.name}</h5>
+                            <div class="cart-item-price">₱${item.price.toFixed(2)}</div>
+                        </div>
+                        <div class="qty-controls">
+                            <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
+                            <input type="text" class="qty-input" value="${item.qty}" readonly>
+                            <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
+                        </div>
+                        <div style="margin-left: 16px;">
+                            <span class="item-subtotal">₱${subtotal.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
         }
-        calculateChange();
+        document.getElementById('grand-total').innerText = total.toFixed(2);
     }
 
-    function calculateChange() {
-        const total  = parseFloat(document.getElementById('modal-total-due').innerText.replace(/,/g, '')) || 0;
-        const paid   = parseFloat(document.getElementById('cash-received').value) || 0;
-        const change = paid - total;
-
-        const el = document.getElementById('sum-change');
-        el.innerText   = change >= 0 ? change.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00';
-        el.style.color = change >= 0 ? '#15803d' : 'var(--status-red)';
+    function getCartTotal() {
+        return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     }
 
-    function finalizeAndPrint() {
-        const totalText  = document.getElementById('modal-total-due').innerText.replace(/,/g, '');
-        const total      = parseFloat(totalText) || 0;
-        const paidVal    = document.getElementById('cash-received').value || 0;
-        const customerId = document.getElementById('credit-customer').value;
-        const refNum     = document.getElementById('ref-number-input').value.trim();
-
-        if (selectedMethod !== 'Trade Credit' && parseFloat(paidVal) < total) {
-            return Swal.fire({ title: 'Insufficient Funds', text: 'The payment amount is less than the total due.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
-        if (selectedMethod === 'Trade Credit' && !customerId) {
-            return Swal.fire({ title: 'Missing Customer', text: 'You must select an approved customer for Trade Credit.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
-        if (selectedMethod === 'Online Bank' && refNum === '') {
-            return Swal.fire({ title: 'Missing Details', text: 'Reference Number is required for Online Bank transactions.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
+    function confirmVoid() {
+        if (cart.length === 0) return Swal.fire({ ...swalNeoConfig, icon: 'info', title: 'Cart is empty', text: 'There is nothing to void.' });
 
         Swal.fire({
-            title: 'Complete Transaction?',
-            text: `Finalizing sale using ${selectedMethod}.`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0F0F0F',
-            cancelButtonColor: 'var(--text-secondary)',
-            confirmButtonText: 'Yes, Confirm!',
-            cancelButtonText: 'Cancel'
-        }).then(result => {
+            ...swalNeoConfig, title: 'Manager Override', text: 'Please enter the Manager PIN to void this order.', input: 'password', icon: 'warning',
+            showCancelButton: true, confirmButtonText: 'Authorize Void',
+            preConfirm: (pin) => {
+                if (pin !== '1234') { Swal.showValidationMessage('Incorrect Manager PIN!'); }
+                return pin === '1234';
+            }
+        }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire({ title: 'Processing...', text: 'Validating stocks and payment...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-                const principal    = parseFloat(totalText) || 0;
-                const interestRate = selectedTerm === 60 ? 0.02 : 0.04;
-                const creditTotal  = selectedMethod === 'Trade Credit'
-                    ? (principal * (1 + interestRate)).toFixed(2)
-                    : paidVal;
-
-                const paymentTerm  = selectedMethod === 'Trade Credit' ? `Net${selectedTerm}` : '';
-
-                window.location.href = "#";
-                    "&received=" + creditTotal +
-                    "&customer_id=" + customerId +
-                    "&ref_num=" + encodeURIComponent(refNum) +
-                    "&payment_term=" + paymentTerm;
+                cart = [];
+                renderCart();
+                Swal.fire({ ...swalNeoConfig, title: 'Order Voided', text: 'The cart has been cleared.', icon: 'success' });
             }
         });
     }
 
-    function updateCreditSummary() {
-        const selectEl = document.getElementById('credit-customer');
-        const selectedOption = selectEl.options[selectEl.selectedIndex];
+    async function processPayment() {
+        const totalAmount = getCartTotal();
+        if (cart.length === 0) return Swal.fire({ ...swalNeoConfig, icon: 'warning', title: 'Empty Cart', text: 'Please add items to cart before checking out.' });
 
-        if (!selectedOption || !selectedOption.value) {
-            document.getElementById('credit-summary').style.display = 'none';
-            return;
+        const { value: method } = await Swal.fire({
+            ...swalNeoConfig, title: 'Select Payment Method', input: 'radio', inputOptions: { 'cash': 'Cash Payment', 'ewallet': 'Online / E-Wallet' },
+            inputValidator: (value) => { if (!value) return 'Please choose a payment method!' }, confirmButtonText: 'Next', showCancelButton: true
+        });
+
+        if (!method) return;
+
+        let providerData = null;
+        let changeAmount = 0;
+
+        if (method === 'ewallet') {
+            const { value: ewalletData } = await Swal.fire({
+                ...swalNeoConfig, title: 'E-Wallet Details',
+                html: `
+                    <div style="font-weight: 800; font-size: 28px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 20px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
+                    <select id="ewallet-provider" class="swal2-select swal-neo-input" style="display: flex; width: 80%; margin: 0 auto 15px auto;" onchange="document.getElementById('ewallet-custom').style.display = this.value === 'Other' ? 'block' : 'none'">
+                        <option value="" disabled selected>Select Platform</option><option value="GCash">GCash</option><option value="Maya">Maya</option><option value="GrabPay">GrabPay</option><option value="Other">Other (Specify)</option>
+                    </select>
+                    <input id="ewallet-custom" class="swal2-input swal-neo-input" placeholder="Type Provider Name" style="display: none; width: 80%; margin: 0 auto 15px auto;">
+                    <input id="ewallet-ref" class="swal2-input swal-neo-input" placeholder="Enter Reference No." style="display: flex; width: 80%; margin: 0 auto;">
+                `,
+                confirmButtonText: 'Confirm Payment', showCancelButton: true,
+                preConfirm: () => {
+                    let provider = document.getElementById('ewallet-provider').value;
+                    if (provider === 'Other') provider = document.getElementById('ewallet-custom').value;
+                    const refNum = document.getElementById('ewallet-ref').value;
+                    if (!provider || provider.trim() === '') { Swal.showValidationMessage('Please select or type a provider.'); return false; }
+                    if (!refNum || refNum.trim() === '') { Swal.showValidationMessage('Reference Number is required.'); return false; }
+                    return { provider, refNum };
+                }
+            });
+            if (!ewalletData) return;
+            providerData = ewalletData;
+        } else {
+            const { value: cashGiven } = await Swal.fire({
+                ...swalNeoConfig, title: 'Cash Payment',
+                html: `
+                    <div style="font-weight: 800; font-size: 28px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 20px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
+                    <label style="font-weight: 700; color: var(--text-secondary);">Amount Received:</label>
+                    <input id="cash-amount" type="number" class="swal2-input swal-neo-input" placeholder="0.00" style="display: flex; width: 80%; margin: 10px auto; font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 24px; text-align: center;">
+                `,
+                confirmButtonText: 'Confirm Payment', showCancelButton: true,
+                preConfirm: () => {
+                    const amount = parseFloat(document.getElementById('cash-amount').value);
+                    if (!amount || amount < totalAmount) { Swal.showValidationMessage('Insufficient cash amount!'); return false; }
+                    return amount;
+                }
+            });
+            if (!cashGiven) return;
+            changeAmount = cashGiven - totalAmount;
         }
 
-        const terms = parseInt(selectedOption.getAttribute('data-terms')) || 30;
-        const totalText = document.getElementById('modal-total-due').innerText.replace(/,/g, '');
-        const principal = parseFloat(totalText) || 0;
-        if (!principal) return;
+        // POST TO DATABASE
+        Swal.fire({ ...swalNeoConfig, title: 'Processing...', text: 'Saving order to database...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-        let interestRate = 0;
-        if (terms === 60) interestRate = 0.02;
-        else if (terms === 90) interestRate = 0.04;
+        fetch("{% url 'pos:pos_screen' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ items: cart, payment_method: method })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // TAWAGIN ANG 3-COPY PRINT RECEIPT FUNCTION
+                generateThermalReceipt(data.order_number, cart, totalAmount, changeAmount, method, providerData);
 
-        const interestAmount = principal * interestRate;
-        const totalPayable = principal + interestAmount;
+                let messageHTML = `<div style="font-size: 16px; margin-top: 10px;">Order <strong style="color:var(--black); font-family:'Inconsolata',monospace;">#${data.order_number}</strong> placed via <strong>${method === 'cash' ? 'Cash' : 'E-Wallet'}</strong>.</div>`;
+                if (method === 'cash') {
+                    messageHTML += `<div style="margin-top: 15px; font-size: 20px; font-weight: 800; color: var(--status-green);">Change: ₱${changeAmount.toFixed(2)}</div>`;
+                } else {
+                    messageHTML += `<div style="margin-top: 15px; font-size: 15px; color: var(--text-secondary);">Provider: <strong>${providerData.provider}</strong><br>Ref No: <strong style="color: var(--black);">${providerData.refNum}</strong></div>`;
+                }
 
-        const fmt     = n => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const fmtDate = d => d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+                Swal.fire({ ...swalNeoConfig, title: 'Transaction Complete!', html: messageHTML, icon: 'success' }).then(() => {
+                    cart = [];
+                    renderCart();
+                });
+            } else {
+                Swal.fire({ ...swalNeoConfig, title: 'Error', text: data.error, icon: 'error' });
+            }
+        })
+        .catch(error => {
+            Swal.fire({ ...swalNeoConfig, title: 'Server Error', text: 'Could not connect to database.', icon: 'error' });
+        });
+    }
 
-        document.getElementById('cs-principal').innerText   = '₱' + fmt(principal);
-        document.getElementById('cs-term-label').innerText  = 'Net ' + terms;
-        document.getElementById('cs-due-badge').innerText   = 'Due in ' + terms + ' days';
-        document.getElementById('cs-interest-label').innerText = `Interest (${interestRate * 100}%):`;
-        document.getElementById('cs-interest-amount').innerText = '+₱' + fmt(interestAmount);
-        document.getElementById('cs-total-payable').innerText = '₱' + fmt(totalPayable);
+    // --- RECEIPT PRINTING LOGIC ---
+    function generateThermalReceipt(orderNumber, items, total, change, method, providerData) {
+        // Gumawa ng invisible iframe para mai-print nang hindi nasisira ang pos page
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
 
-        const today = new Date();
-        const dueDate = new Date(today); 
-        dueDate.setDate(today.getDate() + terms);
-        document.getElementById('cs-due-date').innerHTML = `<i class="ph ph-calendar-blank" style="vertical-align: middle; margin-right: 4px;"></i> Exact Due Date: <strong>${fmtDate(dueDate)}</strong>`;
+        const date = new Date().toLocaleString();
+        
+        let itemsHtml = '';
+        let kitchenItemsHtml = '';
+        
+        items.forEach(item => {
+            itemsHtml += `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>${item.qty}x ${item.name}</span>
+                    <span>P${(item.price * item.qty).toFixed(2)}</span>
+                </div>
+            `;
+            // Ang sa kitchen ay walang presyo
+            kitchenItemsHtml += `
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 6px;">
+                    [ ${item.qty}x ] ${item.name}
+                </div>
+            `;
+        });
 
-        document.getElementById('credit-summary').style.display = 'block';
+        let paymentHtml = `<div style="margin-top: 8px;">Method: ${method === 'cash' ? 'CASH' : 'E-WALLET (' + providerData.provider + ')'}</div>`;
+        if (method === 'cash') {
+            paymentHtml += `<div>Amount Paid: P${(total + change).toFixed(2)}</div>`;
+            paymentHtml += `<div>Change: P${change.toFixed(2)}</div>`;
+        } else {
+            paymentHtml += `<div>Ref No: ${providerData.refNum}</div>`;
+        }
+
+        const receiptTemplate = `
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Inconsolata', monospace; font-size: 12px; margin: 0; padding: 0; width: 300px; color: #000; }
+                    .receipt-section { border-bottom: 2px dashed #000; padding-bottom: 30px; margin-bottom: 30px; }
+                    .header { text-align: center; margin-bottom: 15px; }
+                    .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+                    .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
+                    .details { margin-bottom: 10px; }
+                    .total-line { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-size: 16px; font-weight: bold; text-align: right; }
+                    .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                </style>
+            </head>
+            <body>
+                <!-- CUSTOMER COPY -->
+                <div class="receipt-section">
+                    <div class="header">
+                        <div class="title">FAKE ARAB SHAWARMA</div>
+                        <div class="copy-type">CUSTOMER COPY</div>
+                    </div>
+                    <div class="details">
+                        <div>Order #: <strong>${orderNumber}</strong></div>
+                        <div>Date: ${date}</div>
+                    </div>
+                    <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
+                    ${itemsHtml}
+                    <div class="total-line">TOTAL: P${total.toFixed(2)}</div>
+                    ${paymentHtml}
+                    <div class="footer">Thank you for your purchase!</div>
+                </div>
+
+                <!-- CASHIER COPY -->
+                <div class="receipt-section">
+                    <div class="header">
+                        <div class="title">FAKE ARAB SHAWARMA</div>
+                        <div class="copy-type">CASHIER COPY</div>
+                    </div>
+                    <div class="details">
+                        <div>Order #: <strong>${orderNumber}</strong></div>
+                        <div>Date: ${date}</div>
+                    </div>
+                    <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
+                    ${itemsHtml}
+                    <div class="total-line">TOTAL: P${total.toFixed(2)}</div>
+                    ${paymentHtml}
+                </div>
+
+                <!-- KITCHEN COPY -->
+                <div class="receipt-section">
+                    <div class="header">
+                        <div class="title">KITCHEN TICKET</div>
+                        <div class="copy-type">KITCHEN COPY</div>
+                    </div>
+                    <div class="details">
+                        <div style="font-size: 16px;">Order #: <strong>${orderNumber}</strong></div>
+                        <div>Date: ${date}</div>
+                    </div>
+                    <div style="border-top: 2px solid #000; margin-bottom: 15px;"></div>
+                    ${kitchenItemsHtml}
+                </div>
+            </body>
+            </html>
+        `;
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(receiptTemplate);
+        iframe.contentWindow.document.close();
+
+        // Bigyan ng konting delay para mag-load ang Inconsolata font bago i-print
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            // Optional: document.body.removeChild(iframe); 
+        }, 500);
     }
 </script>
 

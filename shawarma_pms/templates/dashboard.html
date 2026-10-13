@@ -1,635 +1,396 @@
-{% extends 'dashboard.html' %}
-{% block content %}
-
-<script>
-    (function() {
-        const savedCat = sessionStorage.getItem('activeCategory');
-        if (savedCat && savedCat !== 'All') {
-            const style = document.createElement('style');
-            style.id = 'anti-flicker-style';
-            const safeCat = savedCat.replace(/"/g, '\\"');
-            
-            style.innerHTML = `
-                .product-card:not([data-category="${safeCat}"]) { display: none !important; }
-                .category-tabs .tab { background: rgba(255, 255, 255, 0.7) !important; color: var(--text-secondary) !important; border-color: var(--border-color) !important; box-shadow: none !important; }
-                .category-tabs .tab[data-name="${safeCat}"] { background: var(--yellow) !important; color: var(--black) !important; border-color: var(--black) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important; }
-            `;
-            document.head.appendChild(style);
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Shawarma POS</title>
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&family=Inconsolata:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --yellow: #FFC400;
+            --yellow-hover: #FFCF33;
+            --yellow-tint: rgba(255, 196, 0, 0.15);
+            --black: #0F0F0F;
+            --ink: #171717;
+            --bg-main: #F9FAFB;
+            --bg-card: #FFFFFF;
+            --text-primary: #111827;
+            --text-secondary: #6B7280;
+            --border-color: #E5E7EB;
+            --sidebar-bg: #0F0F0F;
+            --sidebar-border: #262626;
+            --sidebar-text: #D1D5DB;
+            --sidebar-muted: #6B7280;
+            --status-green: #22C55E;
+            --status-red: #EF4444;
+            --font-main: 'DM Sans', system-ui, sans-serif; 
+            --font-heading: 'Bricolage Grotesque', system-ui, sans-serif;
+            --border-radius: 16px;
+            --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.04);
         }
-    })();
-</script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Inconsolata:wght@200..900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://unpkg.com/@phosphor-icons/web"></script>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-main); }
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 800; }
+        body { background-color: var(--bg-main); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
 
-<script>
-    window.productStocks = {}; 
-    window.cartQtys = {};      
-</script>
+        /* ----- Sidebar Navigation (Dark) ----- */
+        .sidebar { width: 280px; background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; overflow-y: auto; }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background-color: var(--sidebar-border); border-radius: 10px; }
 
-<style>
-    body { background-color: var(--bg-main); margin: 0; overflow: hidden; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+        .logo-container { padding: 0 24px 24px 24px; border-bottom: 1px solid var(--sidebar-border); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .logo-placeholder { width: 100%; height: 64px; border: 2px dashed var(--sidebar-muted); border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.02); color: var(--sidebar-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; transition: border-color 0.2s, color 0.2s; }
+        .logo-container:hover .logo-placeholder { border-color: var(--yellow); color: var(--yellow); }
 
-    .pos-container { display: flex; height: calc(95vh - 90px); gap: 24px; overflow: hidden; max-width: 1500px; }
-    .swal2-container { z-index: 100000 !important; }
+        .nav-category { font-size: 11px; color: var(--sidebar-muted); font-weight: 700; text-transform: uppercase; margin: 24px 24px 8px 24px; letter-spacing: 0.1em; }
+        .nav-item { display: flex; align-items: center; padding: 10px 16px; margin: 2px 16px; color: var(--sidebar-text); text-decoration: none; font-size: 13px; font-weight: 600; border-radius: 10px; transition: all 0.2s ease; cursor: pointer; border: 2px solid transparent; }
+        .nav-item i { margin-right: 12px; font-size: 18px; transition: transform 0.2s ease; }
+        .nav-item:hover { background-color: var(--yellow-tint); color: var(--yellow); }
+        .nav-item.active { background: var(--yellow); color: var(--black); border-color: var(--black); box-shadow: 0 3px 0 var(--black); }
+        .nav-item.active i { color: var(--black); }
 
-    .inventory-section { flex: 2.2; display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; }
-    .search-header { display: flex; gap: 16px; margin-bottom: 20px; flex-shrink: 0; }
-    .search-input-group { position: relative; flex: 1.5; }
-    .search-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--black); }
-    .search-input { width: 100%; padding: 14px 16px 14px 48px; border: 2px solid var(--black); border-radius: 12px; outline: none; background: rgba(255, 255, 255, 0.9); font-size: 14px; font-family: var(--font-main); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
-    .search-input:focus { box-shadow: 0 0 0 4px var(--yellow-tint); background: #FFFFFF; }
-    .text-search { flex: 1; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 12px; outline: none; font-size: 14px; font-family: var(--font-main); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); transition: all 0.3s ease; }
-    .text-search:focus { border-color: var(--black); background: #FFFFFF; box-shadow: 0 0 0 4px var(--yellow-tint); }
+        .logout-form { width: 100%; margin-top: 30px; padding: 20px 0; border-top: 1px solid var(--sidebar-border); }
+        .btn-logout { background: transparent; border: none; width: calc(100% - 32px); text-align: left; cursor: pointer; font-family: inherit; color: var(--status-red); }
+        .btn-logout:hover { background-color: rgba(239, 68, 68, 0.1); color: var(--status-red); }
 
-    .category-tabs { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
-    .tab { padding: 10px 24px; border-radius: 10px; border: 1px solid var(--border-color); font-weight: 700; font-size: 13px; font-family: var(--font-main); cursor: pointer; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); color: var(--text-secondary); flex-shrink: 0; transition: all 0.2s ease; }
-    .tab:hover { border-color: var(--black); background: rgba(255, 255, 255, 0.9); color: var(--black); transform: translateY(-2px); }
-    .tab.active { background: var(--yellow); color: var(--black); border-color: var(--black); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        /* ----- Main Content Area ----- */
+        .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
-    .product-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; overflow-y: auto; align-content: start; padding-right: 8px; padding-bottom: 24px; }
-    .product-card { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; padding: 16px; text-align: left; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04); display: flex; flex-direction: column; justify-content: space-between; height: 130px; }
-    .product-card:hover { border-color: var(--yellow); transform: translateY(-4px); box-shadow: 0 12px 24px rgba(255, 196, 0, 0.15); background: rgba(255, 255, 255, 0.95); }
-    
-    .product-card.disabled { opacity: 0.5; pointer-events: none; filter: grayscale(80%); border-color: var(--border-color); }
-    .product-card.disabled .qty-badge { color: var(--status-red) !important; font-weight: 900; }
-    
-    .product-card .pid-row { display: flex; justify-content: space-between; align-items: center; }
-    .product-card .pid { font-size: 12px; font-family: 'Inconsolata', monospace; color: var(--text-secondary); font-weight: 700; }
-    .product-card .qty-badge {font-size: 12px; font-family: 'Inconsolata', monospace; color: var(--black); font-weight: 800; transition: color 0.3s ease; background: var(--yellow-tint); padding: 2px 6px; border-radius: 6px;}
-    .product-card .name { font-weight: 700; color: var(--text-primary); font-size: 14px; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-align: center; }
-    .product-card .price { color: var(--black); font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 18px; margin-top: auto; text-align: center; }
+        /* BLACK HEADER */
+        .top-header { height: 70px; background-color: var(--black); border-bottom: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .search-bar { display: flex; align-items: center; background-color: var(--ink); border: 1px solid var(--sidebar-border); border-radius: 8px; padding: 8px 16px; width: 300px; transition: border-color 0.2s; }
+        .search-bar:focus-within { border-color: var(--yellow); }
+        .search-bar input { border: none; background: transparent; outline: none; margin-left: 8px; width: 100%; font-size: 14px; color: var(--white); }
+        .search-bar input::placeholder { color: var(--sidebar-muted); }
+        .search-bar i { color: var(--sidebar-muted); }
 
-    .order-section { flex: 1.1; background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: var(--border-radius); display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid var(--border-color); overflow: hidden; min-width: 420px; height: 100%; }
-    .order-header { padding: 24px; border-bottom: 1px solid var(--border-color); background: rgba(248, 250, 252, 0.6); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .order-header h3 { margin: 0; font-size: 20px; color: var(--black); font-weight: 800; font-family: var(--font-heading); }
+        .header-actions { display: flex; align-items: center; gap: 16px; }
+        .btn { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; border: 2px solid var(--black); transition: all 0.15s ease; text-decoration: none; }
+        .btn-secondary { background-color: transparent; color: var(--sidebar-text); border-color: var(--sidebar-border); }
+        .btn-secondary:hover { background-color: var(--ink); border-color: var(--yellow); color: var(--yellow); }
+        .icon-btn { background: var(--ink); border: 1px solid var(--sidebar-border); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--sidebar-muted); font-size: 20px; transition: all 0.2s ease; }
+        .icon-btn:hover { color: var(--yellow); border-color: var(--yellow); }
 
-    #cart-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-    .cart-container { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; }
-    .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
-    .cart-item-name { margin: 0; font-size: 14px; color: var(--text-primary); font-weight: 700; margin-bottom: 6px; }
-    .cart-item-price { color: var(--text-secondary); font-size: 14px; font-family: 'Inconsolata', monospace; font-weight: 600; }
-    .qty-controls { display: flex; align-items: center; gap: 6px; background: rgba(248, 250, 252, 0.8); padding: 6px; border-radius: 10px; border: 1px solid var(--border-color); }
-    
-    .qty-btn { background: white; border: 1px solid var(--border-color); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 16px; color: var(--text-secondary); transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-    .qty-btn:hover:not(:disabled) { background: var(--yellow); color: var(--black); border-color: var(--black); }
-    .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
-    
-    .qty-input { width: 44px; height: 30px; text-align: center; font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 15px; border: none; background: transparent; outline: none; color: var(--black); }
-    .delete-btn { background: #FFF5F5; border: 1px solid #FECACA; color: var(--status-red); width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-    .delete-btn:hover { background: var(--status-red); color: white; border-color: var(--status-red); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2); }
-    .item-subtotal { font-weight: 800; color: var(--black); min-width: 80px; font-family: 'Inconsolata', monospace; text-align: right; font-size: 16px; }
+        /* Scrollable Content (Light) */
+        .content-scroll { flex: 1; overflow-y: auto; padding: 36px 48px; background-color: var(--bg-main); background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1.5px, transparent 1.5px); background-size: 24px 24px; position: relative; }
+        .content-scroll::-webkit-scrollbar { width: 8px; }
+        .content-scroll::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; }
 
-    .order-summary { padding: 24px; background: rgba(255, 255, 255, 0.9); border-top: 1px solid var(--border-color); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.02); flex-shrink: 0; }
-    .total-row { display: flex; justify-content: space-between; font-weight: 800; font-size: 28px; color: var(--black); margin-bottom: 24px; align-items: center; letter-spacing: -1px; }
-    .btn-action-group { display: flex; gap: 12px; width: 100%; margin-bottom: 16px; }
-    .btn-void { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid #FECACA; background: #FFF5F5; color: var(--status-red); font-weight: 700; font-family: var(--font-main); cursor: pointer; text-align: center; text-decoration: none; font-size: 14px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-    .btn-void:hover { background: var(--status-red); color: white; border-color: var(--status-red); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
-    
-    .btn-main { width: 100%; padding: 20px; border-radius: 12px; border: 2px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 800; font-family: var(--font-main); font-size: 18px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 0 var(--black); display: flex; align-items: center; justify-content: center; gap: 8px; letter-spacing: 0.5px; }
-    .btn-main:hover { background: var(--yellow-hover); transform: translateY(-1px); box-shadow: 0 5px 0 var(--black); }
-    .btn-main:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--black); }
+        .welcome-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .date-filter { display: flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 10px 20px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 14px; color: var(--text-primary); box-shadow: var(--shadow-subtle); }
+        .date-filter select { border: none; outline: none; background: transparent; font-weight: 700; color: var(--black); cursor: pointer; font-size: 15px; }
 
-    #payment-view { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
-    .pay-method-tabs { display: flex; border-bottom: 2px solid var(--border-color); background: rgba(248, 250, 252, 0.6); flex-shrink: 0; }
-    .pay-tab { flex: 1; padding: 16px 8px; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; background: transparent; font-weight: 700; font-size: 13px; font-family: var(--font-main); color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .pay-tab i { font-size: 18px; }
-    .pay-tab:hover { background: rgba(255, 255, 255, 0.5); color: var(--black); }
-    .pay-tab.active { color: var(--black); border-bottom-color: var(--yellow); background: rgba(255, 255, 255, 0.8); font-weight: 800; }
+        .kpi-link { text-decoration: none !important; color: inherit !important; display: block; }
+        .kpi-link .kpi-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; height: 100%; }
+        .kpi-link:hover .kpi-card { transform: translateY(-4px); border-color: var(--yellow); box-shadow: 0 10px 25px rgba(255, 196, 0, 0.15); }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
+        .kpi-card { background: var(--bg-card); border-radius: var(--border-radius); padding: 28px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-subtle); }
+        .kpi-title-wrapper { display: flex; align-items: center; gap: 12px; }
+        .icon-bg { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--yellow-tint); color: var(--yellow); }
+        .icon-bg.critical { background: rgba(239, 68, 68, 0.1); color: var(--status-red); }
+        .kpi-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+        .kpi-value { font-size: 32px; font-weight: 800; font-family: 'Inconsolata', monospace !important; letter-spacing: -1px; color: var(--black); }
 
-    .payment-body { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; }
-    .pay-total-display { background: var(--yellow-tint); border: 1px solid rgba(255, 196, 0, 0.3); border-radius: 16px; padding: 20px; margin-bottom: 24px; text-align: center; }
+        .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px; }
+        .panel { background: var(--bg-card); border-radius: var(--border-radius); padding: 32px; border: 1px solid var(--border-color); box-shadow: var(--shadow-subtle); }
+        .panel-title { font-size: 18px; font-weight: 800; color: var(--black); margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
 
-    .pay-footer { padding: 20px 24px; border-top: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.9); flex-shrink: 0; display: flex; gap: 12px; }
-    .btn-back { flex: 1; padding: 16px; border-radius: 12px; border: 2px solid var(--border-color); background: white; color: var(--text-secondary); font-weight: 700; font-family: var(--font-main); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-    .btn-back:hover { background: #F8FAFC; border-color: var(--black); color: var(--black); transform: translateY(-2px); }
+        .modern-list { list-style: none; padding: 0; margin: 0; }
+        .modern-list li { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--bg-main); border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--border-color); transition: all 0.2s ease; }
+        .modern-list li:hover { border-color: var(--yellow); transform: translateX(4px); background: var(--white); }
+        .item-main { font-size: 14px; font-weight: 700; color: var(--black); display: block; }
+        .item-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; display: block; }
+        .item-val { font-size: 13px; font-weight: 700; font-family: 'Inconsolata', monospace; color: var(--black);}
+        
+        /* Table Styles for Recent Orders */
+        .modern-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .modern-table th { padding: 12px 16px; border-bottom: 2px solid var(--black); color: var(--text-secondary); font-size: 13px; text-transform: uppercase; }
+        .modern-table td { padding: 16px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--black); font-weight: 500; }
+        .modern-table tr:hover td { background-color: var(--bg-main); }
+        .status-badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+        .status-completed { background: rgba(34, 197, 94, 0.1); color: var(--status-green); }
+        .status-pending { background: var(--yellow-tint); color: #B48600; }
 
-    .btn-confirm { flex: 2.5; padding: 16px; border-radius: 12px; border: 2px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 800; font-family: var(--font-main); cursor: pointer; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 0 var(--black); display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-confirm:hover { background: var(--yellow-hover); transform: translateY(-1px); box-shadow: 0 5px 0 var(--black); }
-    .btn-confirm:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--black); }
-    .btn-confirm i { font-size: 20px; }
-</style>
+        .btn-brutalist {
+            background-color: var(--yellow);
+            color: var(--black);
+            font-family: var(--font-main);
+            font-weight: 800;
+            font-size: 15px;
+            padding: 12px 24px;
+            border: 2.5px solid var(--black);
+            border-radius: 10px;
+            box-shadow: 4px 4px 0px var(--black);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            text-decoration: none;
+            letter-spacing: 0.3px;
+        }
 
-<div class="pos-container">
-    <div class="inventory-section">
-        <div class="search-header">
-            <div class="search-input-group">
-                <i class="ph ph-barcode"></i>
-                <input type="text" id="barcode-input" class="search-input" placeholder="Scan Barcode..." autofocus>
+        .btn-brutalist:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--black);
+            background-color: var(--yellow-hover);
+        }
+
+        .btn-brutalist:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px var(--black);
+        }
+
+        .btn-brutalist i {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <a href="{% url 'security:dashboard' %}" class="logo-container">
+            <div class="logo-placeholder">LOGO PLACEHOLDER</div>
+        </a>
+        
+        <!-- 1. Dashboard -->
+        <a href="{% url 'security:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="ph ph-squares-four"></i> Dashboard
+        </a>
+
+        <!-- 2. POS & Orders -->
+        <div class="nav-category">POS & Orders</div>
+        <a href="{% url 'pos:pos_screen' %}" class="nav-item {% if request.resolver_match.url_name == 'pos_screen' %}active{% endif %}">
+            <i class="ph ph-desktop"></i> New Sales
+        </a>
+        <a href="{% url 'pos:order_list' %}" class="nav-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+            <i class="ph ph-list-numbers"></i> Order List
+        </a>
+        <a href="{% url 'pos:kds_screen' %}" class="nav-item {% if request.resolver_match.url_name == 'kds_screen' %}active{% endif %}">
+            <i class="ph ph-cooking-pot"></i> Kitchen Orders
+        </a>
+        <a href="{% url 'pos:transaction_history' %}" class="nav-item {% if request.resolver_match.url_name == 'transaction_history' %}active{% endif %}">
+            <i class="ph ph-receipt"></i> Transaction History
+        </a>
+        <a href="{% url 'pos:receipts_list' %}" class="nav-item {% if request.resolver_match.url_name == 'receipts_list' %}active{% endif %}">
+            <i class="ph ph-ticket"></i> Receipts
+        </a>
+
+        <!-- 3. Products & Inventory -->
+        <div class="nav-category">Products & Inventory</div>
+        <a href="{% url 'inventory:products' %}" class="nav-item {% if request.resolver_match.url_name == 'products' %}active{% endif %}">
+            <i class="ph ph-hamburger"></i> Product Management
+        </a>
+        <a href="#" class="nav-item"><i class="ph ph-folders"></i> Category Management</a>
+        <a href="{% url 'inventory:list' %}" class="nav-item {% if 'ingredients' in request.path %}active{% endif %}">
+            <i class="ph ph-carrot"></i> Ingredient Stock
+        </a>
+        <a href="#" class="nav-item"><i class="ph ph-arrows-left-right"></i> Stock In / Stock Out</a>
+        <a href="#" class="nav-item"><i class="ph ph-book-open"></i> Recipe Management</a>
+        <a href="#" class="nav-item"><i class="ph ph-truck"></i> Supplier List</a>
+        <a href="#" class="nav-item"><i class="ph ph-warning-octagon"></i> Expiration & Spoilage</a>
+
+        <!-- 4. Promotions & Discounts -->
+        <div class="nav-category">Promotions & Discounts</div>
+        <a href="#" class="nav-item"><i class="ph ph-tag"></i> Promotions</a>
+        <a href="#" class="nav-item"><i class="ph ph-percent"></i> Discounts</a>
+        <a href="#" class="nav-item"><i class="ph ph-clock-counter-clockwise"></i> Promotion History</a>
+
+        <!-- 5. Reports -->
+        <div class="nav-category">Reports</div>
+        <a href="#" class="nav-item"><i class="ph ph-chart-bar"></i> Sales Reports</a>
+        <a href="#" class="nav-item"><i class="ph ph-trend-up"></i> Product Sales</a>
+        <a href="#" class="nav-item"><i class="ph ph-clipboard-data"></i> Inventory Reports</a>
+        <a href="#" class="nav-item"><i class="ph ph-chart-line-up"></i> Sales Forecast</a>
+        <a href="#" class="nav-item"><i class="ph ph-trash"></i> Stock & Spoilage Reports</a>
+
+        <!-- 6. Employees -->
+        <div class="nav-category">Employees</div>
+        <a href="#" class="nav-item"><i class="ph ph-users"></i> Employee List</a>
+        <a href="#" class="nav-item"><i class="ph ph-calendar-check"></i> Attendance</a>
+        <a href="#" class="nav-item"><i class="ph ph-calendar"></i> Work Schedules</a>
+        <a href="#" class="nav-item"><i class="ph ph-shield-check"></i> User Roles & Access</a>
+
+        <!-- 7. Settings -->
+        <div class="nav-category">Settings</div>
+        <a href="#" class="nav-item"><i class="ph ph-gear"></i> General Settings</a>
+        <a href="#" class="nav-item"><i class="ph ph-lock-key"></i> Account & Security</a>
+        <a href="#" class="nav-item"><i class="ph ph-bell"></i> Notification Settings</a>
+        <a href="#" class="nav-item"><i class="ph ph-list-magnifying-glass"></i> Activity Logs</a>
+        <a href="#" class="nav-item"><i class="ph ph-database"></i> Backup & Restore</a>
+        <a href="#" class="nav-item"><i class="ph ph-book"></i> User Manual</a>
+
+        <form action="{% url 'security:logout' %}" method="POST" class="logout-form">
+            {% csrf_token %}
+            <button type="submit" class="nav-item btn-logout">
+                <i class="ph ph-sign-out"></i> Logout
+            </button>
+        </form>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="top-header">
+            <div class="search-bar">
+                <i class="ph ph-magnifying-glass"></i>        
+                <input type="text" placeholder="Search orders, products, or employees...">
             </div>
-            <input type="text" class="text-search" placeholder="Enter product name or ID...">
-        </div>
 
-        <div class="category-tabs">
-            <button class="tab" data-name="All" onclick="filterCategory('All')">All Categories</button>
-            {% for category in categories %}
-                <button class="tab" data-name="{{ category.name|escapejs }}" onclick="filterCategory('{{ category.name|escapejs }}')">{{ category.name }}</button>
-            {% endfor %}
-        </div>
+            <div class="header-actions">
+                <a href="{% url 'pos:pos_screen' %}" class="btn btn-secondary">
+                    <i class="ph ph-desktop"></i> New Sale
+                </a>
+                <button class="icon-btn"><i class="ph ph-bell"></i></button>
+                <button class="icon-btn"><i class="ph ph-user"></i></button>
+            </div>
+        </header>
 
-        <div class="product-grid">
-            {% for item in products %}
-                <script>window.productStocks["{{ item.id }}"] = {{ item.quantity }};</script>
-                {% if item.quantity > 0 %}
-                <div class="product-card" id="prod-card-{{ item.id }}" data-category="{{ item.category.name|escapejs }}" onclick="addToCart('{{ item.id }}')">
-                    <div>
-                        <div class="pid-row">
-                            <span class="pid">ID: {{ item.product_id }}</span>
-                            <span class="qty-badge" id="prod-qty-{{ item.id }}">Qty: {{ item.quantity }}</span>
+        <div class="content-scroll">
+            {% block content %}
+            <div class="welcome-header">
+                <div>
+                    <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Welcome, {{ request.user.first_name|default:"Admin" }}!</h1>
+                    <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Track today's Shawarma sales and stock levels.</p>
+                </div>
+                
+                <form method="GET" action="" style="margin: 0;">
+                    <div class="date-filter">
+                        <i class="ph ph-calendar" style="font-size: 20px; color: var(--black);"></i> 
+                        <select name="filter">
+                            <option value="today">Today</option>
+                            <option value="this_week">This Week</option>
+                            <option value="this_month">This Month</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <div class="kpi-grid">
+                <!-- 1. Sales Summary -->
+                <a href="#" class="kpi-link">
+                    <div class="kpi-card">
+                        <div class="kpi-title-wrapper">
+                            <div class="icon-bg"><i class="ph ph-trend-up"></i></div>
+                            <div class="kpi-title">Sales Summary</div>
                         </div>
-                        <div class="name">{{ item.item_name }}</div>
+                        <div class="kpi-value">₱0.00</div>
                     </div>
-                    <div class="price">₱{{ item.price }}</div>
-                </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="order-section">
-        <div class="order-header">
-            <h3 id="order-header-title">Order Details</h3>
-            <p style="font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 16px; margin: 0; color: var(--black); background: var(--yellow-tint); padding: 6px 12px; border-radius: 10px;">
-                #{{ transaction.transaction_ref|default:"NEW" }}
-            </p>
-        </div>
-
-        <div id="cart-view">
-            <div class="cart-container" id="cart-container">
-                
-                <div id="empty-cart-msg" style="text-align:center; color:var(--text-secondary); margin-top:60px; display: {% if sold_items %}none{% else %}flex{% endif %}; flex-direction:column; align-items:center; gap:12px;">
-                    <i class="ph ph-shopping-cart" style="font-size:56px; color: rgba(203, 213, 225, 0.8);"></i>
-                    <span style="font-weight:600; font-size: 16px;">Cart is empty</span>
-                </div>
-
-                {% for item in sold_items %}
-                <script>window.cartQtys["{{ item.inventory_item.id }}"] = {{ item.quantity }};</script>
-                <div class="cart-item" id="cart-item-{{ item.id }}" data-product-id="{{ item.inventory_item.id }}">
-                    <div style="flex:1; padding-right:12px;">
-                        <h5 class="cart-item-name">{{ item.inventory_item.item_name }}</h5>
-                        <div class="cart-item-price">₱{{ item.unit_price }} each</div>
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <div class="qty-controls">
-                            <button type="button" class="qty-btn" onclick="updateQty('{{ item.id }}', 'decrease', '{{ item.inventory_item.id }}')">-</button>
-                            <input type="number" min="1" class="qty-input" value="{{ item.quantity }}" onchange="setQty('{{ item.id }}', this.value, '{{ item.inventory_item.id }}')">
-                            <button type="button" class="qty-btn btn-plus" onclick="updateQty('{{ item.id }}', 'increase', '{{ item.inventory_item.id }}')">+</button>
+                </a>
+                <!-- 2. Recent Orders (Count) -->
+                <a href="#" class="kpi-link">
+                    <div class="kpi-card">
+                        <div class="kpi-title-wrapper">
+                            <div class="icon-bg"><i class="ph ph-receipt"></i></div>
+                            <div class="kpi-title">Total Orders Today</div>
                         </div>
-                        <button type="button" class="delete-btn" onclick="confirmRemoveItem('{{ item.id }}', '{{ item.inventory_item.item_name|escapejs }}', '{{ item.inventory_item.id }}')">
-                            <i class="ph ph-trash"></i>
-                        </button>
+                        <div class="kpi-value">0</div>
                     </div>
-
-                    <div class="item-subtotal">₱{{ item.subtotal }}</div>
-                </div>
-                {% endfor %}
+                </a>
+                <!-- 3. Low Stock Alerts -->
+                <a href="{% url 'inventory:list' %}" class="kpi-link">
+                    <div class="kpi-card">
+                        <div class="kpi-title-wrapper">
+                            <div class="icon-bg critical"><i class="ph ph-warning-circle"></i></div>
+                            <div class="kpi-title">Low Stock Alerts</div>
+                        </div>
+                        <div class="kpi-value" style="color: var(--status-red);">0</div>
+                    </div>
+                </a>
+                <!-- 4. Active Promotions -->
+                <a href="#" class="kpi-link">
+                    <div class="kpi-card">
+                        <div class="kpi-title-wrapper">
+                            <div class="icon-bg"><i class="ph ph-tag"></i></div>
+                            <div class="kpi-title">Active Promotions</div>
+                        </div>
+                        <div class="kpi-value">0</div>
+                    </div>
+                </a>
             </div>
 
-            <div class="order-summary">
-                <div class="total-row">
-                    <span>Total Due</span>
-                    <span style="font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 32px; color: var(--black);">
-                        ₱<span id="grand-total">{{ transaction.total_amount|default:"0.00" }}</span>
-                    </span>
+            <div class="chart-row">
+                <!-- Panel 1: Recent Orders Table -->
+                <div class="panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 class="panel-title" style="margin: 0;">
+                            <span class="icon-bg" style="width: 32px; height: 32px; font-size: 16px;"><i class="ph ph-clock-counter-clockwise"></i></span>
+                            Recent Orders
+                        </h3>
+                        <a href="#" style="font-size: 13px; font-weight: 700; color: var(--black); text-decoration: none;">View All &rarr;</a>
+                    </div>
+                    
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Time</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Sample Data -->
+                            <tr>
+                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#ORD-001</td>
+                                <td>10:45 AM</td>
+                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱250.00</td>
+                                <td><span class="status-badge status-completed">Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#ORD-002</td>
+                                <td>10:50 AM</td>
+                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱180.00</td>
+                                <td><span class="status-badge status-pending">Preparing</span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 32px 16px;">No recent orders to display.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-
-                <div class="btn-action-group">
-                    <!-- Changed to # so it doesn't trigger NoReverseMatch -->
-                    <a href="#" class="btn-void" onclick="confirmVoid(event, this.href)">
-                        <i class="ph ph-x-circle" style="margin-right:6px; font-size: 18px;"></i>Clear Cart
-                    </a>
+                
+                <!-- Panel 2: Best-Selling Products -->
+                <div class="panel" style="display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 class="panel-title" style="margin: 0;">
+                            <span class="icon-bg" style="width: 32px; height: 32px; font-size: 16px;"><i class="ph ph-star"></i></span>
+                            Best-Selling Products
+                        </h3>
+                    </div>
+                    
+                    <ul class="modern-list" style="margin: 0; flex: 1;">
+                        <!-- Sample Data -->
+                        <li>
+                            <div>
+                                <span class="item-main">Classic Beef Shawarma</span>
+                                <span class="item-sub">Wraps</span>
+                            </div>
+                            <span class="item-val">0 orders</span>
+                        </li>
+                        <li>
+                            <div>
+                                <span class="item-main">Chicken Shawarma Wrap</span>
+                                <span class="item-sub">Wraps</span>
+                            </div>
+                            <span class="item-val">0 orders</span>
+                        </li>
+                        <li>
+                            <div>
+                                <span class="item-main">All-Meat Shawarma Rice</span>
+                                <span class="item-sub">Rice Meals</span>
+                            </div>
+                            <span class="item-val">0 orders</span>
+                        </li>
+                    </ul>
                 </div>
-
-                <button class="btn-main" onclick="showPaymentView()">PAY NOW</button>
             </div>
+            {% endblock %}
         </div>
-
-        <div id="payment-view">
-            <div class="pay-method-tabs">
-                <button class="pay-tab active" data-method="Cash" onclick="switchPayTab('Cash')">
-                    <i class="ph ph-money"></i> Cash
-                </button>
-                <button class="pay-tab" data-method="Online Bank" onclick="switchPayTab('Online Bank')">
-                    <i class="ph ph-wallet"></i> Mobile Wallet
-                </button>
-            </div>
-
-            <div class="payment-body">
-                <div class="pay-total-display">
-                    <p style="color:var(--black); font-size:12px; margin:0 0 6px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Total Due</p>
-                    <div style="color:var(--black); font-size:36px; font-family:'Inconsolata', monospace; font-weight:800; line-height:1.1; letter-spacing:-1px;">
-                        ₱<span id="modal-total-due">0.00</span>
-                    </div>
-                </div>
-
-                <div id="ref-number-group" style="display:none; margin-bottom:20px;">
-                    <label style="font-weight:700; font-size:14px; color:var(--text-secondary); display:block; margin-bottom:8px;">
-                        Reference Number <span style="color:var(--status-red);">*</span>
-                    </label>
-                    <input type="text" id="ref-number-input" placeholder="e.g. GCash / Transfer Ref #"
-                        style="width:100%; padding:14px 16px; border-radius:10px; border:2px solid var(--border-color); background: rgba(255, 255, 255, 0.8); font-size:15px; font-family:'Inconsolata', monospace; letter-spacing:0.5px; outline:none; box-sizing:border-box; transition:all 0.3s ease;"
-                        onfocus="this.style.borderColor='var(--black)'; this.style.boxShadow='0 0 0 4px var(--yellow-tint)';" onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none';">
-                </div>
-                
-                <div id="amount-paid-group" style="margin-bottom:20px;">
-                    <label style="font-weight:700; font-size:14px; color:var(--text-secondary); display:block; margin-bottom:8px;">Amount Paid:</label>
-                    <input type="number" id="cash-received" oninput="calculateChange()" placeholder="0.00"
-                        style="width:100%; padding:16px; border-radius:12px; border:2px solid var(--black); background: rgba(255, 255, 255, 0.9); font-family:'Inconsolata', monospace; font-size:28px; font-weight:800; color: var(--black); margin-bottom:16px; box-sizing:border-box; outline:none; transition: box-shadow 0.3s ease;"
-                        onfocus="this.style.boxShadow='0 0 0 4px var(--yellow-tint)'" onblur="this.style.boxShadow='none'">
-                    
-                    <div style="background:rgba(240, 253, 244, 0.8); border:1px solid #bbf7d0; border-radius:12px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:700; color:var(--status-green); font-size:16px;">Change:</span>
-                        <span style="font-weight:800; color:#15803d; font-size:24px; font-family:'Inconsolata', monospace;">
-                            ₱<span id="sum-change">0.00</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="pay-footer">
-                <button class="btn-back" onclick="showCartView()">
-                    <i class="ph ph-arrow-left" style="font-size:18px;"></i> Back
-                </button>
-                <button class="btn-confirm" onclick="finalizeAndPrint()">
-                    <i class="ph ph-check-circle"></i> Confirm Payment
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    function updateVisualStock(productId) {
-        let baseStock = window.productStocks[productId] || 0;
-        let cartQty = window.cartQtys[productId] || 0;
-        let available = baseStock - cartQty;
-
-        let card = document.getElementById('prod-card-' + productId);
-        let badge = document.getElementById('prod-qty-' + productId);
-        if (card && badge) {
-            badge.innerText = 'Qty: ' + available;
-            if (available <= 0) {
-                card.classList.add('disabled');
-            } else {
-                card.classList.remove('disabled');
-            }
-        }
-
-        let cartRow = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
-        if (cartRow) {
-            let plusBtn = cartRow.querySelector('.btn-plus');
-            if (plusBtn) {
-                if (available <= 0) {
-                    plusBtn.setAttribute('disabled', 'true');
-                } else {
-                    plusBtn.removeAttribute('disabled');
-                }
-            }
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const savedCategory = sessionStorage.getItem('activeCategory') || 'All';
-        
-        document.querySelectorAll('.tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.name === savedCategory);
-        });
-
-        const searchTerm = document.querySelector('.text-search').value.toLowerCase();
-        applyFilters(savedCategory, searchTerm);
-
-        const antiFlicker = document.getElementById('anti-flicker-style');
-        if (antiFlicker) {
-            requestAnimationFrame(() => antiFlicker.remove());
-        }
-
-        Object.keys(window.productStocks).forEach(pid => {
-            updateVisualStock(pid);
-        });
-    });
-
-    let selectedMethod = "Cash";
-
-    function renderCartItemHTML(data, productId) {
-        return `
-            <div class="cart-item" id="cart-item-${data.item_id}" data-product-id="${productId}">
-                <div style="flex:1; padding-right:12px;">
-                    <h5 class="cart-item-name">${data.item_name}</h5>
-                    <div class="cart-item-price">₱${data.unit_price} each</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div class="qty-controls">
-                        <button type="button" class="qty-btn" onclick="updateQty('${data.item_id}', 'decrease', '${productId}')">-</button>
-                        <input type="number" min="1" class="qty-input" value="${data.quantity}" onchange="setQty('${data.item_id}', this.value, '${productId}')">
-                        <button type="button" class="qty-btn btn-plus" onclick="updateQty('${data.item_id}', 'increase', '${productId}')">+</button>
-                    </div>
-                    <button type="button" class="delete-btn" onclick="confirmRemoveItem('${data.item_id}', '${data.item_name}', '${productId}')">
-                        <i class="ph ph-trash"></i>
-                    </button>
-                </div>
-                <div class="item-subtotal">₱${data.item_subtotal}</div>
-            </div>`;
-    }
-
-    function addToCart(productId) {
-        let baseStock = window.productStocks[productId] || 0;
-        let cartQty = window.cartQtys[productId] || 0;
-        if ((baseStock - cartQty) <= 0) return; 
-
-        // Temp replaced with #
-        fetch("#?product_id=" + productId)
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                    
-                    let emptyMsg = document.getElementById('empty-cart-msg');
-                    if (emptyMsg) emptyMsg.style.display = 'none';
-
-                    let existingItem = document.getElementById('cart-item-' + data.item_id);
-                    if (existingItem) {
-                        existingItem.querySelector('.qty-input').value = data.quantity;
-                        existingItem.querySelector('.item-subtotal').innerText = '₱' + parseFloat(data.item_subtotal).toFixed(2);
-                    } else {
-                        document.getElementById('cart-container').insertAdjacentHTML('beforeend', renderCartItemHTML(data, productId));
-                    }
-                    
-                    window.cartQtys[productId] = data.quantity;
-                    updateVisualStock(productId);
-
-                } else {
-                    Swal.fire({ title: 'Cannot Add Item', text: data.message || 'Insufficient stock or item is unavailable.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-                }
-            })
-            .catch(err => console.error("Error adding to cart:", err));
-    }
-
-    function confirmVoid(event, targetUrl) {
-        event.preventDefault();
-        Swal.fire({
-            title: 'Clear Cart?',
-            text: 'Are you sure you want to clear this cart? This cannot be undone.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: 'var(--status-red)',
-            cancelButtonColor: 'var(--text-secondary)',
-            confirmButtonText: 'Yes, Clear It'
-        }).then(result => { if (result.isConfirmed) window.location.href = targetUrl; });
-    }
-
-    function getCSRFToken() {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.startsWith('csrftoken=')) {
-                    cookieValue = decodeURIComponent(cookie.slice('csrftoken='.length));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    function updateQty(itemId, action, productId) {
-        // Temp replaced with #
-        const url = "#";
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-            body: JSON.stringify({ item_id: itemId, action: action })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.status === 'success') {
-                document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                
-                let itemRow = document.getElementById('cart-item-' + data.item_id);
-                if (data.action === 'remove' || data.quantity === 0) {
-                    if (itemRow) itemRow.remove();
-                    window.cartQtys[productId] = 0; 
-                    if (document.querySelectorAll('.cart-item').length === 0) {
-                         document.getElementById('empty-cart-msg').style.display = 'flex';
-                    }
-                } else {
-                    if (itemRow) {
-                        itemRow.querySelector('.qty-input').value = data.quantity;
-                        itemRow.querySelector('.item-subtotal').innerText = '₱' + parseFloat(data.item_subtotal).toFixed(2);
-                        window.cartQtys[productId] = data.quantity; 
-                    }
-                }
-                updateVisualStock(productId);
-            } else { Swal.fire('Oops!', data.message || 'Failed to update item.', 'error'); }
-        })
-        .catch(() => Swal.fire('Error', 'Cannot connect to server.', 'error'));
-    }
-
-    function confirmRemoveItem(itemId, itemName, productId) {
-        Swal.fire({
-            title: 'Remove Item?',
-            text: `Are you sure you want to remove '${itemName}'?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: 'var(--status-red)',
-            cancelButtonColor: 'var(--text-secondary)',
-            confirmButtonText: 'Yes, remove it!'
-        }).then(result => { if (result.isConfirmed) updateQty(itemId, 'remove', productId); });
-    }
-
-    function setQty(itemId, newQty, productId) {
-        let maxAvailable = window.productStocks[productId] || 0;
-        let requestedQty = parseInt(newQty);
-        
-        if (!requestedQty || isNaN(requestedQty) || requestedQty <= 0) {
-            requestedQty = 1;
-        }
-        
-        if (requestedQty > maxAvailable) {
-            Swal.fire({title: 'Insufficient Stock', text: `Only ${maxAvailable} units of this item are available.`, icon: 'warning', confirmButtonColor: '#0F0F0F'});
-            document.querySelector(`#cart-item-${itemId} .qty-input`).value = window.cartQtys[productId];
-            return;
-        }
-
-        // Temp replaced with #
-        const url = "#";
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-            body: JSON.stringify({ item_id: itemId, action: 'set', quantity: requestedQty })
-        })
-        .then(async r => {
-            const data = await r.json();
-            if (!r.ok) throw new Error(data.message || 'Server error: ' + r.status);
-            return data;
-        })
-        .then(data => {
-            if (data.status === 'success') {
-                document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                let itemRow = document.getElementById('cart-item-' + data.item_id);
-                if (data.action === 'remove' || data.quantity === 0) {
-                    if (itemRow) itemRow.remove();
-                    window.cartQtys[productId] = 0;
-                    if (document.querySelectorAll('.cart-item').length === 0) {
-                         document.getElementById('empty-cart-msg').style.display = 'flex';
-                    }
-                } else {
-                    if (itemRow) {
-                        itemRow.querySelector('.qty-input').value = data.quantity;
-                        itemRow.querySelector('.item-subtotal').innerText = '₱' + parseFloat(data.item_subtotal).toFixed(2);
-                        window.cartQtys[productId] = data.quantity;
-                    }
-                }
-                updateVisualStock(productId);
-            } else { Swal.fire({title: 'Oops!', text: data.message, icon: 'warning', confirmButtonColor: '#0F0F0F'}); }
-        })
-        .catch(err => Swal.fire({title: 'System Error', text: err.message, icon: 'error', confirmButtonColor: '#0F0F0F'}));
-    }
-
-    document.querySelector('.text-search').addEventListener('input', function () {
-        const searchTerm = this.value.toLowerCase();
-        const activeCategory = document.querySelector('.tab.active').dataset.name;
-        applyFilters(activeCategory, searchTerm);
-    });
-
-    function filterCategory(name) {
-        sessionStorage.setItem('activeCategory', name);
-
-        const searchTerm = document.querySelector('.text-search').value.toLowerCase();
-        document.querySelectorAll('.tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.name === name);
-        });
-        applyFilters(name, searchTerm);
-    }
-
-    function applyFilters(categoryName, searchTerm) {
-        document.querySelectorAll('.product-card').forEach(p => {
-            const name = p.querySelector('.name').innerText.toLowerCase();
-            const pid = p.querySelector('.pid').innerText.toLowerCase();
-            const cat  = p.getAttribute('data-category');
-            
-            const matchesSearch = name.includes(searchTerm) || pid.includes(searchTerm);
-            const matchesCategory = (categoryName === 'All' || cat === categoryName);
-            
-            const ok = matchesSearch && matchesCategory;
-            p.style.display = ok ? 'flex' : 'none';
-        });
-    }
-
-    document.getElementById('barcode-input').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            const val = this.value.trim();
-            if (val) {
-                // Temp replaced with #
-                fetch("#?barcode=" + encodeURIComponent(val))
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            document.getElementById('grand-total').innerText = parseFloat(data.transaction_total).toFixed(2);
-                            let emptyMsg = document.getElementById('empty-cart-msg');
-                            if (emptyMsg) emptyMsg.style.display = 'none';
-                            location.reload(); 
-                        }
-                        else { Swal.fire({ title: 'Scan Error', text: data.message, icon: 'error', confirmButtonColor: '#0F0F0F' }); }
-                    });
-            }
-            this.value = '';
-        }
-    });
-
-    function showPaymentView() {
-        const totalText = document.getElementById('grand-total').innerText.replace(/,/g, '');
-        if (parseFloat(totalText) <= 0 || isNaN(parseFloat(totalText)) || totalText === '') {
-            return Swal.fire({ title: 'Empty Cart', text: 'Please add items to the cart before checking out.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
-        document.getElementById('modal-total-due').innerText = document.getElementById('grand-total').innerText;
-        document.getElementById('cart-view').style.display    = 'none';
-        document.getElementById('payment-view').style.display = 'flex';
-        document.getElementById('order-header-title').innerText = 'Payment';
-        switchPayTab('Cash');
-    }
-
-    function showCartView() {
-        document.getElementById('payment-view').style.display = 'none';
-        document.getElementById('cart-view').style.display    = 'flex';
-        document.getElementById('order-header-title').innerText = 'Order Details';
-        document.getElementById('cash-received').value   = '';
-        document.getElementById('ref-number-input').value = '';
-        document.getElementById('sum-change').innerText   = '0.00';
-    }
-
-    function switchPayTab(method) {
-        selectedMethod = method;
-        document.querySelectorAll('.pay-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.method === method);
-        });
-
-        const refGroup    = document.getElementById('ref-number-group');
-        const amountGroup = document.getElementById('amount-paid-group');
-        const cashInput   = document.getElementById('cash-received');
-
-        if (method === 'Online Bank') {
-            amountGroup.style.display = 'block';
-            refGroup.style.display    = 'block';
-            setTimeout(() => document.getElementById('ref-number-input').focus(), 100);
-        } else {
-            amountGroup.style.display = 'block';
-            refGroup.style.display    = 'none';
-            setTimeout(() => cashInput.focus(), 100);
-        }
-        calculateChange();
-    }
-
-    function calculateChange() {
-        const total  = parseFloat(document.getElementById('modal-total-due').innerText.replace(/,/g, '')) || 0;
-        const paid   = parseFloat(document.getElementById('cash-received').value) || 0;
-        const change = paid - total;
-
-        const el = document.getElementById('sum-change');
-        el.innerText   = change >= 0 ? change.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00';
-        el.style.color = change >= 0 ? '#15803d' : 'var(--status-red)';
-    }
-
-    function finalizeAndPrint() {
-        const totalText  = document.getElementById('modal-total-due').innerText.replace(/,/g, '');
-        const total      = parseFloat(totalText) || 0;
-        const paidVal    = document.getElementById('cash-received').value || 0;
-        const refNum     = document.getElementById('ref-number-input').value.trim();
-
-        if (parseFloat(paidVal) < total) {
-            return Swal.fire({ title: 'Insufficient Funds', text: 'The payment amount is less than the total due.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
-        if (selectedMethod === 'Online Bank' && refNum === '') {
-            return Swal.fire({ title: 'Missing Details', text: 'Reference Number is required for Online Bank transactions.', icon: 'warning', confirmButtonColor: '#0F0F0F' });
-        }
-
-        Swal.fire({
-            title: 'Complete Transaction?',
-            text: `Finalizing sale using ${selectedMethod}.`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0F0F0F',
-            cancelButtonColor: 'var(--text-secondary)',
-            confirmButtonText: 'Yes, Confirm!',
-            cancelButtonText: 'Cancel'
-        }).then(result => {
-            if (result.isConfirmed) {
-                Swal.fire({ title: 'Processing...', text: 'Validating stocks and payment...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                
-                // Temp replaced with #
-                window.location.href = "#";
-            }
-        });
-    }
-
-</script>
-
-{% endblock %}
+    </main>
+</body>
+</html>

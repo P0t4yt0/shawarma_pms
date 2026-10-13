@@ -20,6 +20,9 @@ from activity_log.services import log_activity
 from inventory.models import InsufficientStock
 from .models import InvalidTransition, MenuVariant, Order, OrderStatusLog
 from .services import create_order, latest_event_id, serialize_event, serialize_order
+from django.shortcuts import render
+from django.db import transaction
+from .models import Category, MenuVariant, Order, OrderItem
 
 
 def _json_body(request):
@@ -33,15 +36,57 @@ def _json_body(request):
 @login_required
 @permission_required("point_of_sale.view_kds", raise_exception=True)
 def kds_screen(request):
-    return render(request, "point_of_sale/kds.html", {"poll_ms": settings.KDS_POLL_SECONDS * 1000})
+    return render(request, 'kds.html')
 
 
 @login_required
 @permission_required("point_of_sale.add_order", raise_exception=True)
 def pos_screen(request):
-    variants = MenuVariant.objects.filter(is_active=True, item__is_active=True).select_related("item")
-    return render(request, "pos.html",
-                  {"variants": variants, "poll_ms": settings.KDS_POLL_SECONDS * 1000})
+    # Kapag nag-click ng PAY NOW ang cashier, papasok dito ang data
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            cart_items = data.get('items', [])
+            
+            if not cart_items:
+                return JsonResponse({"success": False, "error": "Cart is empty"})
+
+            with transaction.atomic():
+                # Gumawa ng bagong order (automatic mag-ge-generate ng order_number base sa OrderCounter)
+                order = Order.objects.create(
+                    cashier=request.user if request.user.is_authenticated else None,
+                    status=Order.Status.PENDING, # Pending para lumabas sa Kitchen Display System
+                    order_type=Order.Type.WALK_IN
+                )
+                
+                # I-save ang bawat produkto sa cart
+                for item in cart_items:
+                    variant = MenuVariant.objects.get(id=item['id'])
+                    OrderItem.objects.create(
+                        order=order,
+                        variant=variant,
+                        item_name=f"{variant.item.name} ({variant.name})",
+                        quantity=item['qty'],
+                        unit_price=variant.price
+                    )
+                
+                # I-calculate ang subtotal at tax
+                order.recalculate_totals(save=True)
+                
+                # Ibalik ang totoong Order Number na ginawa ng database sa screen
+                return JsonResponse({"success": True, "order_number": order.order_number})
+                
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    # GET Request: I-load ang POS Screen kasama ang menu
+    categories = Category.objects.filter(is_active=True)
+    variants = MenuVariant.objects.filter(is_active=True).select_related('item__category')
+    
+    return render(request, 'pos.html', {
+        'categories': categories,
+        'variants': variants
+    })
 
 
 # ------------------------------------------------------------------ KDS (kitchen) API
@@ -129,3 +174,12 @@ def api_order_status(request, pk):
     log_activity(request.user, "status_change", "point_of_sale", order, f"{log.from_status} -> {log.to_status}",
                  seconds_in_previous=log.seconds_in_previous)
     return JsonResponse(serialize_event(log))
+
+def order_list(request):
+    return render(request, 'order_list.html')
+
+def transaction_history(request):
+    return render(request, 'transaction_history.html')
+
+def receipts_list(request):
+    return render(request, 'receipts.html')

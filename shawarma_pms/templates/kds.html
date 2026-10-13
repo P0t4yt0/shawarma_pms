@@ -1,19 +1,107 @@
-{% load static %}
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Kitchen Display</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Kitchen Orders</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Monitor and update Shawarma order statuses in real-time.</p>
+    </div>
+</div>
+
 <style>
- body{font-family:system-ui,sans-serif;margin:0;background:#1b1b1b;color:#f2f2f2}
- header{padding:.6rem 1rem;background:#000;display:flex;justify-content:space-between}
- #board{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.8rem;padding:1rem}
- .t{background:#2c2c2c;border-radius:8px;padding:.7rem;border-top:6px solid #4caf50}
- .t.late{border-top-color:#e53935}.t.preparing{background:#33301f}
- .t h3{margin:0 0 .3rem}.t ul{padding-left:1.1rem;margin:.3rem 0}.note{color:#ffcc80;font-size:.85rem}
- button{width:100%;padding:.6rem;font-size:1rem;border:0;border-radius:6px;background:#ff9800;cursor:pointer}
-</style></head>
-<body data-poll-ms="{{ poll_ms }}">
-<header><strong>KDS</strong><span id="status">connecting…</span></header>
-<main id="board"></main>
-<script>window.CSRF="{{ csrf_token }}";</script>
-<script src="{% static 'js/kds.js' %}"></script>
-</body></html>
+    .kds-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; height: calc(100vh - 220px); }
+    .kds-column { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--border-radius); display: flex; flex-direction: column; overflow: hidden; }
+    .kds-header { padding: 16px 20px; font-weight: 800; font-size: 16px; border-bottom: 2px solid var(--black); display: flex; justify-content: space-between; align-items: center; }
+    
+    .kds-header.pending { background: var(--bg-card); color: var(--black); border-bottom-color: var(--status-red); }
+    .kds-header.preparing { background: var(--yellow-tint); color: #B48600; border-bottom-color: var(--yellow); }
+    .kds-header.ready { background: rgba(34, 197, 94, 0.1); color: var(--status-green); border-bottom-color: var(--status-green); }
+    
+    .kds-body { padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    
+    .ticket { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-subtle); transition: transform 0.2s; }
+    .ticket:hover { transform: translateY(-2px); border-color: var(--black); }
+    .ticket-header { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; }
+    .ticket-id { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 16px; color: var(--black); }
+    .ticket-time { font-size: 12px; color: var(--text-secondary); font-weight: 700; }
+    
+    .ticket-items { list-style: none; padding: 0; margin: 0 0 16px 0; }
+    .ticket-items li { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; font-weight: 600; color: var(--text-primary); }
+    
+    .ticket-action { width: 100%; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; border: 2px solid var(--black); transition: 0.2s; font-family: var(--font-main); }
+    .btn-start { background: var(--yellow); color: var(--black); }
+    .btn-start:hover { background: var(--yellow-hover); }
+    .btn-ready { background: var(--status-green); color: white; border-color: var(--status-green); }
+    .btn-ready:hover { background: #16a34a; border-color: #16a34a; }
+    .btn-complete { background: var(--bg-main); color: var(--text-secondary); border-color: var(--border-color); }
+    .btn-complete:hover { background: var(--border-color); color: var(--black); }
+</style>
+
+<div class="kds-board">
+    <!-- PENDING COLUMN -->
+    <div class="kds-column">
+        <div class="kds-header pending">
+            <span><i class="ph ph-clock"></i> Pending</span>
+            <span style="background: var(--status-red); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">1</span>
+        </div>
+        <div class="kds-body">
+            <!-- Sample Ticket -->
+            <div class="ticket">
+                <div class="ticket-header">
+                    <span class="ticket-id">#ORD-1003</span>
+                    <span class="ticket-time" style="color: var(--status-red);"><i class="ph ph-warning-circle"></i> 5 mins waiting</span>
+                </div>
+                <ul class="ticket-items">
+                    <li><span>2x Classic Beef Wrap</span></li>
+                    <li><span>1x Cheese Fries</span></li>
+                </ul>
+                <button class="ticket-action btn-start">Start Preparing</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREPARING COLUMN -->
+    <div class="kds-column">
+        <div class="kds-header preparing">
+            <span><i class="ph ph-fire"></i> Preparing</span>
+            <span style="background: var(--yellow); color: var(--black); padding: 2px 8px; border-radius: 12px; font-size: 12px;">1</span>
+        </div>
+        <div class="kds-body">
+            <!-- Sample Ticket -->
+            <div class="ticket">
+                <div class="ticket-header">
+                    <span class="ticket-id">#ORD-1001</span>
+                    <span class="ticket-time">Preparing...</span>
+                </div>
+                <ul class="ticket-items">
+                    <li><span>1x Chicken Rice Meal</span></li>
+                    <li><span>1x Extra Pita</span></li>
+                </ul>
+                <button class="ticket-action btn-ready">Mark as Ready</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- READY COLUMN -->
+    <div class="kds-column">
+        <div class="kds-header ready">
+            <span><i class="ph ph-bell-ringing"></i> Ready for Pickup</span>
+            <span style="background: var(--status-green); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">1</span>
+        </div>
+        <div class="kds-body">
+            <!-- Sample Ticket -->
+            <div class="ticket" style="border-color: var(--status-green);">
+                <div class="ticket-header">
+                    <span class="ticket-id" style="color: var(--status-green);">#ORD-1002</span>
+                    <span class="ticket-time">Ready</span>
+                </div>
+                <ul class="ticket-items">
+                    <li><span>3x All-Meat Shawarma</span></li>
+                </ul>
+                <button class="ticket-action btn-complete">Dispatch / Complete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
