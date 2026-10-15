@@ -4,6 +4,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const csrfToken = '{{ csrf_token }}';
+    const activePromos = JSON.parse('{{ promos_json|escapejs }}');
     
     (function() {
         const savedCat = sessionStorage.getItem('activeCategory');
@@ -11,7 +12,6 @@
             const style = document.createElement('style');
             style.id = 'anti-flicker-style';
             const safeCat = savedCat.replace(/"/g, '\\"');
-            
             style.innerHTML = `
                 .product-card:not([data-category="${safeCat}"]) { display: none !important; }
                 .category-tabs .tab { background: rgba(255, 255, 255, 0.7) !important; color: var(--text-secondary) !important; border-color: var(--border-color) !important; box-shadow: none !important; }
@@ -23,27 +23,22 @@
 </script>
 
 <style>
-    /* Clean Neo-Brutalist Popup Styling */
     .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
     .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
-    
     div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
-    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; box-shadow: none !important; transition: background 0.2s ease; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; transition: background 0.2s ease; box-shadow: none !important; }
     .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
     .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; font-family: var(--font-main) !important; padding: 14px 24px !important; border-radius: 8px !important; }
-    
-    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; box-shadow: none !important; font-weight: 700 !important; }
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; font-weight: 700 !important; box-shadow: none !important; }
     .swal-neo-input:focus { border-color: var(--yellow) !important; }
 
-    /* POS Layout Styles */
     .pos-container { display: flex; height: calc(100vh - 120px); gap: 24px; overflow: hidden; max-width: 1600px; margin: 0 auto; }
     .inventory-section { flex: 2.2; display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; }
-    
     .search-header { display: flex; gap: 16px; margin-bottom: 20px; flex-shrink: 0; }
     .search-input-group { position: relative; flex: 1; }
     .search-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--text-secondary); }
     .search-input { width: 100%; padding: 14px 16px 14px 48px; border: 2px solid var(--border-color); border-radius: 12px; outline: none; background: var(--bg-card); font-size: 14px; font-family: var(--font-main); transition: all 0.3s ease; }
-    .search-input:focus { border-color: var(--yellow); box-shadow: 0 0 0 4px var(--yellow-tint); }
+    .search-input:focus { border-color: var(--yellow); }
 
     .category-tabs { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
     .tab { padding: 10px 24px; border-radius: 20px; border: 1px solid var(--border-color); font-weight: 700; font-size: 13px; font-family: var(--font-main); cursor: pointer; background: var(--bg-card); color: var(--text-secondary); flex-shrink: 0; transition: all 0.2s ease; }
@@ -51,22 +46,20 @@
     .tab.active { background: var(--black); color: #FFFFFF; border-color: var(--black); }
 
     .product-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; overflow-y: auto; align-content: start; padding-right: 8px; padding-bottom: 24px; }
-    .product-card { background: var(--bg-card); border-radius: 16px; padding: 16px; text-align: center; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02); display: flex; flex-direction: column; justify-content: space-between; height: 160px; }
+    .product-card { background: var(--bg-card); border-radius: 16px; padding: 16px; text-align: center; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; height: 160px; }
     .product-card:hover { border-color: var(--yellow); transform: translateY(-4px); box-shadow: 0 8px 16px rgba(255, 196, 0, 0.15); }
     .product-card .pid { font-size: 11px; font-family: 'Inconsolata', monospace; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
     .product-card .name { font-weight: 800; color: var(--text-primary); font-size: 14px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .product-card .price { color: var(--yellow); font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; margin-top: auto; }
 
-    /* Cart Section */
-    .order-section { flex: 1.1; background: var(--bg-card); border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04); border: 1px solid var(--border-color); overflow: hidden; min-width: 400px; height: 100%; }
+    .order-section { flex: 1.1; background: var(--bg-card); border-radius: 20px; display: flex; flex-direction: column; border: 1px solid var(--border-color); overflow: hidden; min-width: 400px; height: 100%; }
     .order-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .order-header h3 { margin: 0; font-size: 18px; color: var(--black); font-weight: 800; font-family: 'Inconsolata', monospace; }
     .order-header .badge-new { font-weight: 700; font-size: 12px; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 8px; text-transform: uppercase; border: 1px solid var(--border-color); }
     
     .cart-container { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; display: flex; flex-direction: column; }
     .empty-cart { margin: auto; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    
-    .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
+    .cart-item { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
     .cart-item-name { margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: var(--black); }
     .cart-item-price { color: var(--text-secondary); font-size: 13px; font-family: 'Inconsolata', monospace; font-weight: 600; }
     .qty-controls { display: flex; align-items: center; gap: 8px; }
@@ -75,13 +68,10 @@
     .qty-input { width: 32px; text-align: center; font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 14px; border: none; outline: none; background: transparent; }
     .item-subtotal { font-weight: 800; font-family: 'Inconsolata', monospace; font-size: 16px; color: var(--black); }
 
-    .order-summary { padding: 24px; background: #FFFFFF; border-top: 1px solid var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.02); flex-shrink: 0; }
-    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .order-summary { padding: 24px; background: #FFFFFF; border-top: 1px solid var(--border-color); flex-shrink: 0; }
+    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .total-label { font-weight: 800; font-size: 20px; color: var(--yellow); }
     .total-amount { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 36px; color: var(--yellow); letter-spacing: -1px; }
-
-    .btn-void { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--status-red); background: transparent; color: var(--status-red); font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; margin-bottom: 12px; }
-    .btn-void:hover { background: rgba(239, 68, 68, 0.05); }
 
     .btn-brutalist { width: 100%; padding: 18px; border-radius: 12px; border: 3px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 4px 4px 0px var(--black); transition: all 0.15s ease-in-out; text-transform: uppercase; letter-spacing: 1px; }
     .btn-brutalist:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black); background: var(--yellow-hover); }
@@ -134,14 +124,24 @@
         </div>
 
         <div class="order-summary">
+            <div class="total-row" id="discount-summary-row" style="display: none; margin-bottom: 8px;">
+                <span style="font-weight: 700; font-size: 14px; color: #10B981;">Discount Applied</span>
+                <span id="total-discount-amount" style="font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 16px; color: #10B981;">-₱0.00</span>
+            </div>
+            
             <div class="total-row">
                 <span class="total-label">Total Due</span>
                 <span class="total-amount">₱<span id="grand-total">0.00</span></span>
             </div>
 
-            <button type="button" class="btn-void" onclick="confirmVoid()">
-                <i class="ph ph-x-circle"></i> Void Order
-            </button>
+            <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                <button type="button" onclick="confirmVoid()" style="flex: 1; padding: 14px; border-radius: 10px; border: 2px solid var(--status-red); background: transparent; color: var(--status-red); font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;">
+                    <i class="ph ph-x-circle"></i> Void
+                </button>
+                <button type="button" onclick="applyDiscount()" style="flex: 1; padding: 14px; border-radius: 10px; border: 2px solid #10B981; background: transparent; color: #10B981; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;">
+                    <i class="ph ph-tag"></i> Discount
+                </button>
+            </div>
 
             <button class="btn-brutalist" onclick="processPayment()">
                 PAY NOW
@@ -152,7 +152,9 @@
 
 <script>
     const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel', input: 'swal-neo-input' }, buttonsStyling: false };
+    
     let cart = [];
+    let currentPromo = null;
 
     function filterCategory(category) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -172,19 +174,94 @@
     });
 
     function addToCart(id, name, price) {
-        const existing = cart.find(item => item.id === id);
-        if (existing) { existing.qty += 1; } 
-        else { cart.push({ id, name, price, qty: 1 }); }
+        const existing = cart.find(item => item.id === id && item.notes === '');
+        if (existing) { 
+            existing.qty += 1; 
+        } else { 
+            cart.push({ id: id, name: name, price: price, qty: 1, discount: 0, notes: '' }); 
+        }
         renderCart();
     }
 
-    function updateQty(id, delta) {
-        const item = cart.find(item => item.id === id);
-        if (item) {
-            item.qty += delta;
-            if (item.qty <= 0) cart = cart.filter(i => i.id !== id);
+    function updateQty(index, delta) {
+        if (cart[index]) {
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) {
+                cart.splice(index, 1);
+            }
         }
         renderCart();
+    }
+
+    // --- MALAKING NOTES LOGIC ---
+    async function editItemNote(index) {
+        const item = cart[index];
+        const { value: text } = await Swal.fire({
+            ...swalNeoConfig,
+            title: 'Add Custom Note',
+            input: 'text',
+            inputPlaceholder: 'e.g. No onions, Cut into half, Extra sauce',
+            inputValue: item.notes || '',
+            showCancelButton: true,
+            confirmButtonText: 'Save Note'
+        });
+
+        if (text !== undefined) {
+            item.notes = text;
+            renderCart();
+        }
+    }
+
+    function applyDiscount() {
+        if (cart.length === 0) return Swal.fire({ ...swalNeoConfig, icon: 'warning', title: 'Empty Cart', text: 'Add items first before applying a discount.' });
+
+        let manualOptions = '<option value="" selected disabled>Select Standard Discount...</option>';
+        activePromos.filter(p => p.campaign_type === 'manual' || p.campaign_type === 'seasonal').forEach(p => {
+            let val = p.kind === 'percent' ? `${parseFloat(p.value)}%` : `₱${parseFloat(p.value)}`;
+            manualOptions += `<option value="${p.id}">${p.name} (${val} OFF)</option>`;
+        });
+
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Apply Discount',
+            html: `
+                <div style="text-align: left; font-family: var(--font-main);">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Manual Discounts (e.g. Senior/PWD)</label>
+                    <select id="swal-manual-promo" class="swal2-select swal-neo-input" style="width: 100%; margin: 0 0 16px 0; display: flex; padding: 10px 16px; font-size: 14px;">
+                        ${manualOptions}
+                    </select>
+                    <div style="text-align: center; font-weight: 800; color: var(--text-secondary); margin-bottom: 16px; font-size: 12px;">— OR —</div>
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Voucher Code</label>
+                    <input id="swal-voucher-code" class="swal2-input swal-neo-input" placeholder="Enter code here..." style="width: 100%; margin: 0; padding: 10px 16px; font-size: 14px; text-transform: uppercase;">
+                    <button type="button" onclick="document.getElementById('swal-manual-promo').value=''; document.getElementById('swal-voucher-code').value='';" style="width: 100%; margin-top: 12px; padding: 10px; background: transparent; border: 1px solid var(--status-red); color: var(--status-red); border-radius: 8px; font-weight: 700; cursor: pointer;">Remove Applied Discount</button>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Apply to Cart',
+            preConfirm: () => {
+                const manualId = document.getElementById('swal-manual-promo').value;
+                const code = document.getElementById('swal-voucher-code').value.trim().toUpperCase();
+                let selected = null;
+                if (code) {
+                    selected = activePromos.find(p => p.code && p.code.toUpperCase() === code);
+                    if (!selected) { Swal.showValidationMessage('Invalid Voucher Code!'); return false; }
+                } else if (manualId) {
+                    selected = activePromos.find(p => p.id == manualId);
+                } else { return { clear: true }; }
+                return selected;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (result.value.clear) {
+                    currentPromo = null;
+                    Swal.fire({ ...swalNeoConfig, icon: 'info', title: 'Removed', text: 'Discount has been removed.', timer: 1500, showConfirmButton: false });
+                } else {
+                    currentPromo = result.value;
+                    Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Applied!', text: `${currentPromo.name} applied successfully.`, timer: 1500, showConfirmButton: false });
+                }
+                renderCart();
+            }
+        });
     }
 
     function renderCart() {
@@ -193,37 +270,76 @@
         wrapper.innerHTML = '';
         
         let total = 0;
+        let totalDiscount = 0;
 
         if (cart.length === 0) {
             emptyMsg.style.display = 'flex';
+            currentPromo = null; 
         } else {
             emptyMsg.style.display = 'none';
-            cart.forEach(item => {
-                const subtotal = item.price * item.qty;
-                total += subtotal;
+            cart.forEach((item, index) => {
+                let subtotal = item.price * item.qty;
+                let discountAmount = 0;
+
+                if (currentPromo) {
+                    if (currentPromo.kind === 'percent') discountAmount = subtotal * (parseFloat(currentPromo.value) / 100);
+                    else if (currentPromo.kind === 'fixed') {
+                        discountAmount = parseFloat(currentPromo.value) * item.qty;
+                        if (discountAmount > subtotal) discountAmount = subtotal; 
+                    }
+                }
+                
+                item.discount = discountAmount;
+                let netSubtotal = subtotal - discountAmount;
+                
+                total += netSubtotal;
+                totalDiscount += discountAmount;
+
+                let discountBadge = discountAmount > 0 ? `<div style="font-size: 11px; color: #10B981; font-weight: 800; margin-top: 4px;">-${discountAmount.toFixed(2)} (${currentPromo.name})</div>` : '';
+                
+                // INAYOS NA NOTES BADGE: Malaki, visible, may highlight
+                let notesBadge = item.notes ? `<div style="font-size: 13px; color: #dc2626; font-weight: 800; margin-top: 8px; background: #fee2e2; padding: 6px 10px; border-radius: 8px; display: inline-block;">📌 Note: ${item.notes}</div>` : '';
+
                 wrapper.innerHTML += `
                     <div class="cart-item">
                         <div style="flex: 1;">
-                            <h5 class="cart-item-name">${item.name}</h5>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <h5 class="cart-item-name">${item.name}</h5>
+                                <button onclick="editItemNote(${index})" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px;" title="Add Custom Note">
+                                    <i class="ph ph-pencil-simple" style="font-size: 16px;"></i>
+                                </button>
+                            </div>
                             <div class="cart-item-price">₱${item.price.toFixed(2)}</div>
+                            ${notesBadge}
+                            ${discountBadge}
                         </div>
-                        <div class="qty-controls">
-                            <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
+                        <div class="qty-controls" style="align-self: flex-start; margin-top: 4px;">
+                            <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
                             <input type="text" class="qty-input" value="${item.qty}" readonly>
-                            <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
+                            <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
                         </div>
-                        <div style="margin-left: 16px;">
-                            <span class="item-subtotal">₱${subtotal.toFixed(2)}</span>
+                        <div style="margin-left: 16px; text-align: right; align-self: flex-start; margin-top: 4px;">
+                            <span class="item-subtotal">₱${netSubtotal.toFixed(2)}</span>
+                            ${discountAmount > 0 ? `<br><del style="font-size: 11px; color: var(--text-secondary);">₱${subtotal.toFixed(2)}</del>` : ''}
                         </div>
                     </div>
                 `;
             });
         }
+
+        const summaryDiv = document.getElementById('discount-summary-row');
+        if (totalDiscount > 0) {
+            summaryDiv.style.display = 'flex';
+            document.getElementById('total-discount-amount').innerText = `-₱${totalDiscount.toFixed(2)}`;
+        } else {
+            summaryDiv.style.display = 'none';
+        }
+
         document.getElementById('grand-total').innerText = total.toFixed(2);
     }
 
     function getCartTotal() {
-        return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        return cart.reduce((sum, item) => sum + (item.price * item.qty) - (item.discount || 0), 0);
     }
 
     function confirmVoid() {
@@ -239,6 +355,7 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 cart = [];
+                currentPromo = null;
                 renderCart();
                 Swal.fire({ ...swalNeoConfig, title: 'Order Voided', text: 'The cart has been cleared.', icon: 'success' });
             }
@@ -290,7 +407,6 @@
                 ...swalNeoConfig, title: 'Cash Payment',
                 html: `
                     <div style="font-weight: 800; font-size: 24px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 24px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
-                    <label style="font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 8px;">Amount Received:</label>
                     <input id="cash-amount" type="number" class="swal2-input swal-neo-input" placeholder="0.00" style="display: flex; width: 80%; margin: 0 auto; font-family: 'Inconsolata', monospace; font-size: 28px; text-align: center;">
                 `,
                 confirmButtonText: 'Confirm Payment', showCancelButton: true, cancelButtonText: 'Cancel',
@@ -309,15 +425,12 @@
 
         let payload = {
             items: cart,
-            payment_method: method
+            payment_method: method,
+            applied_promo_id: currentPromo ? currentPromo.id : null
         };
         
-        if (method === 'cash') {
-            payload.tendered = cashGiven;
-        } else if (method === 'ewallet') {
-            payload.provider = providerData.provider;
-            payload.refNum = providerData.refNum;
-        }
+        if (method === 'cash') payload.tendered = cashGiven;
+        else if (method === 'ewallet') { payload.provider = providerData.provider; payload.refNum = providerData.refNum; }
 
         fetch("{% url 'pos:pos_screen' %}", {
             method: 'POST',
@@ -327,17 +440,16 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                generateThermalReceipt(data.order_number, cart, totalAmount, changeAmount, method, providerData);
+                const totalDiscount = cart.reduce((sum, item) => sum + (item.discount || 0), 0);
+                generateThermalReceipt(data.order_number, cart, totalAmount, changeAmount, method, providerData, totalDiscount);
 
                 let messageHTML = `<div style="font-size: 16px; margin-top: 10px;">Order <strong style="color:var(--black); font-family:'Inconsolata',monospace;">${data.order_number}</strong> placed via <strong>${method === 'cash' ? 'Cash' : 'E-Wallet'}</strong>.</div>`;
-                if (method === 'cash') {
-                    messageHTML += `<div style="margin-top: 15px; font-size: 24px; font-weight: 800; color: var(--status-green);">Change: ₱${changeAmount.toFixed(2)}</div>`;
-                } else {
-                    messageHTML += `<div style="margin-top: 15px; font-size: 15px; color: var(--text-secondary);">Provider: <strong>${providerData.provider}</strong><br>Ref No: <strong style="color: var(--black);">${providerData.refNum}</strong></div>`;
-                }
+                if (method === 'cash') messageHTML += `<div style="margin-top: 15px; font-size: 24px; font-weight: 800; color: var(--status-green);">Change: ₱${changeAmount.toFixed(2)}</div>`;
+                else messageHTML += `<div style="margin-top: 15px; font-size: 15px; color: var(--text-secondary);">Provider: <strong>${providerData.provider}</strong><br>Ref No: <strong style="color: var(--black);">${providerData.refNum}</strong></div>`;
 
                 Swal.fire({ ...swalNeoConfig, title: 'Transaction Complete!', html: messageHTML, icon: 'success' }).then(() => {
                     cart = [];
+                    currentPromo = null;
                     renderCart();
                     
                     let currentId = document.getElementById('transaction-id').innerText;
@@ -351,12 +463,11 @@
                 Swal.fire({ ...swalNeoConfig, title: 'Error', text: data.error, icon: 'error' });
             }
         })
-        .catch(error => {
-            Swal.fire({ ...swalNeoConfig, title: 'Server Error', text: 'Could not connect to database.', icon: 'error' });
-        });
+        .catch(error => Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Server Error', text: 'Could not connect to database.' }));
     }
 
-    function generateThermalReceipt(orderNumber, items, total, change, method, providerData) {
+    // --- INAYOS NA TICKET RECEIPT PRINTING PARA MATIBAY SA BROWSER ---
+    function generateThermalReceipt(orderNumber, items, total, change, method, providerData, totalDiscount) {
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         document.body.appendChild(iframe);
@@ -366,9 +477,35 @@
         let kitchenItemsHtml = '';
         
         items.forEach(item => {
-            itemsHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>${item.qty}x ${item.name}</span><span>P${(item.price * item.qty).toFixed(2)}</span></div>`;
-            kitchenItemsHtml += `<div style="font-size: 14px; font-weight: bold; margin-bottom: 6px;">[ ${item.qty}x ] ${item.name}</div>`;
+            // Receipt Note Formats
+            let noteHtml = item.notes ? `<div style="font-style: italic; font-weight: bold; margin-left: 10px; margin-bottom: 6px; font-size: 12px; color: #000;">* NOTE: ${item.notes}</div>` : '';
+            let kitchenNote = item.notes ? `<div style="font-size: 14px; font-weight: bold; margin-left: 10px; padding: 4px 0; margin-bottom: 6px; border-top: 1px dashed #000; border-bottom: 1px dashed #000;">*** NOTE: ${item.notes.toUpperCase()} ***</div>` : '';
+            
+            itemsHtml += `
+                <div class="flex-row" style="margin-bottom: 2px;">
+                    <span>${item.qty}x ${item.name}</span>
+                    <span>P${(item.price * item.qty).toFixed(2)}</span>
+                </div>
+                ${noteHtml}
+            `;
+            kitchenItemsHtml += `
+                <div style="font-size: 14px; font-weight: bold; margin-top: 8px;">
+                    [ ${item.qty}x ] ${item.name}
+                </div>
+                ${kitchenNote}
+            `;
         });
+
+        let discountHtml = '';
+        if (totalDiscount > 0) {
+            discountHtml = `
+                <div class="line"></div>
+                <div class="flex-row bold">
+                    <span>DISCOUNT</span>
+                    <span>-P${totalDiscount.toFixed(2)}</span>
+                </div>
+            `;
+        }
 
         let paymentHtml = `<div style="margin-top: 8px;">Method: ${method === 'cash' ? 'CASH' : 'E-WALLET (' + providerData.provider + ')'}</div>`;
         if (method === 'cash') {
@@ -378,57 +515,79 @@
         }
 
         const receiptTemplate = `
+            <!DOCTYPE html>
             <html>
             <head>
                 <style>
                     @page { margin: 0; } 
-                    
-                    body { font-family: 'Inconsolata', monospace; font-size: 12px; margin: 0; padding: 10px 0; width: 300px; color: #000; }
-                    
-                    .receipt-section { 
-                        page-break-after: always; 
-                        padding-bottom: 10px; 
-                    }
-                    .receipt-section:last-child {
-                        page-break-after: auto;
-                    }
-                    
-                    .header { text-align: center; margin-bottom: 10px; }
+                    body { font-family: 'Inconsolata', monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; max-width: 300px; color: #000; box-sizing: border-box; }
+                    .receipt-section { page-break-after: always; padding-bottom: 10px; border-bottom: 1px dashed #000; margin-bottom: 10px; }
+                    .receipt-section:last-child { page-break-after: auto; border-bottom: none; }
+                    .center { text-align: center; margin-bottom: 10px; }
                     .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
                     .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
                     .details { margin-bottom: 8px; }
-                    .total-line { border-top: 1px dashed #000; margin-top: 8px; padding-top: 8px; font-size: 16px; font-weight: bold; text-align: right; }
+                    .flex-row { display: flex; justify-content: space-between; }
+                    .bold { font-weight: bold; }
+                    .line { border-top: 1px dashed #000; margin: 8px 0; }
                     .footer { text-align: center; margin-top: 15px; font-size: 10px; }
-                    .header { text-align: center; margin-bottom: 15px; }
-                    .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-                    .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
-                    .details { margin-bottom: 10px; }
-                    .total-line { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-size: 16px; font-weight: bold; text-align: right; }
-                    .footer { text-align: center; margin-top: 20px; font-size: 10px; }
                 </style>
             </head>
             <body>
+                <!-- CUSTOMER COPY -->
                 <div class="receipt-section">
-                    <div class="header"><div class="title">FAKE ARAB SHAWARMA</div><div class="copy-type">CUSTOMER COPY</div></div>
-                    <div class="details"><div>Order #: <strong>${orderNumber}</strong></div><div>Date: ${date}</div></div>
-                    <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
+                    <div class="center">
+                        <div class="title">FAKE ARAB SHAWARMA</div>
+                        <div class="copy-type">CUSTOMER COPY</div>
+                    </div>
+                    <div class="details">
+                        <div>Order #: <strong>${orderNumber}</strong></div>
+                        <div>Date: ${date}</div>
+                    </div>
+                    <div class="line"></div>
                     ${itemsHtml}
-                    <div class="total-line">TOTAL: P${total.toFixed(2)}</div>
+                    ${discountHtml}
+                    <div class="line"></div>
+                    <div class="flex-row bold" style="font-size: 16px;">
+                        <span>TOTAL:</span>
+                        <span>P${total.toFixed(2)}</span>
+                    </div>
                     ${paymentHtml}
                     <div class="footer">Thank you for your purchase!</div>
                 </div>
+
+                <!-- CASHIER COPY -->
                 <div class="receipt-section">
-                    <div class="header"><div class="title">FAKE ARAB SHAWARMA</div><div class="copy-type">CASHIER COPY</div></div>
-                    <div class="details"><div>Order #: <strong>${orderNumber}</strong></div><div>Date: ${date}</div></div>
-                    <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
+                    <div class="center">
+                        <div class="title">FAKE ARAB SHAWARMA</div>
+                        <div class="copy-type">CASHIER COPY</div>
+                    </div>
+                    <div class="details">
+                        <div>Order #: <strong>${orderNumber}</strong></div>
+                        <div>Date: ${date}</div>
+                    </div>
+                    <div class="line"></div>
                     ${itemsHtml}
-                    <div class="total-line">TOTAL: P${total.toFixed(2)}</div>
+                    ${discountHtml}
+                    <div class="line"></div>
+                    <div class="flex-row bold" style="font-size: 16px;">
+                        <span>TOTAL:</span>
+                        <span>P${total.toFixed(2)}</span>
+                    </div>
                     ${paymentHtml}
                 </div>
+
+                <!-- KITCHEN COPY -->
                 <div class="receipt-section">
-                    <div class="header"><div class="title">KITCHEN TICKET</div><div class="copy-type">KITCHEN COPY</div></div>
-                    <div class="details"><div style="font-size: 16px;">Order #: <strong>${orderNumber}</strong></div><div>Date: ${date}</div></div>
-                    <div style="border-top: 2px solid #000; margin-bottom: 15px;"></div>
+                    <div class="center">
+                        <div class="title">KITCHEN TICKET</div>
+                        <div class="copy-type">KITCHEN COPY</div>
+                    </div>
+                    <div class="details">
+                        <div style="font-size: 16px;">Order #: <strong>${orderNumber}</strong></div>
+                        <div>Date: ${date}</div>
+                    </div>
+                    <div style="border-top: 2px solid #000; margin-bottom: 10px;"></div>
                     ${kitchenItemsHtml}
                 </div>
             </body>
@@ -438,11 +597,7 @@
         iframe.contentWindow.document.open();
         iframe.contentWindow.document.write(receiptTemplate);
         iframe.contentWindow.document.close();
-
-        setTimeout(() => {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-        }, 500);
+        setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
     }
 </script>
 {% endblock %}

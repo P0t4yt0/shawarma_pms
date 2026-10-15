@@ -28,9 +28,12 @@
     .ticket-time { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
     
     .ticket-items { list-style: none; padding: 0; margin: 0 0 16px 0; }
-    .ticket-items li { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; font-weight: 600; color: var(--text-primary); }
     
-    .ticket-action { width: 100%; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; border: 2px solid var(--black); transition: 0.2s; font-family: var(--font-main); text-transform: uppercase; letter-spacing: 0.5px; }
+    /* INAYOS NA TICKET ITEMS LAYOUT PARA SA NOTES */
+    .ticket-items li { display: flex; flex-direction: column; font-size: 14px; margin-bottom: 8px; font-weight: 600; color: var(--text-primary); border-bottom: 1px dashed var(--border-color); padding-bottom: 10px; }
+    .ticket-items li:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+    
+    .ticket-action { width: 100%; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; border: 2px solid var(--black); transition: 0.2s; font-family: var(--font-main); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 12px; }
     .btn-start { background: var(--yellow); color: var(--black); box-shadow: 2px 2px 0px var(--black); }
     .btn-start:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--black); }
     .btn-ready { background: var(--status-green); color: white; border-color: var(--black); box-shadow: 2px 2px 0px var(--black); }
@@ -58,7 +61,17 @@
                 </div>
                 <ul class="ticket-items">
                     {% for item in order.items.all %}
-                        <li><span>{{ item.quantity }}x {{ item.item_name }}</span></li>
+                        <li>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>{{ item.quantity }}x {{ item.item_name }}</span>
+                            </div>
+                            <!-- KDS HIGHLIGHTED NOTE -->
+                            {% if item.notes %}
+                            <div style="margin-top: 6px; padding: 6px 10px; background: #fee2e2; color: #dc2626; border-radius: 6px; font-size: 13px; font-weight: 800; display: inline-block;">
+                                📌 NOTE: {{ item.notes }}
+                            </div>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                 </ul>
                 <button class="ticket-action btn-start" onclick="updateOrderStatus('{{ order.order_number }}', 'start')">Start Preparing</button>
@@ -87,7 +100,17 @@
                 </div>
                 <ul class="ticket-items">
                     {% for item in order.items.all %}
-                        <li><span>{{ item.quantity }}x {{ item.item_name }}</span></li>
+                        <li>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>{{ item.quantity }}x {{ item.item_name }}</span>
+                            </div>
+                            <!-- KDS HIGHLIGHTED NOTE -->
+                            {% if item.notes %}
+                            <div style="margin-top: 6px; padding: 6px 10px; background: #fee2e2; color: #dc2626; border-radius: 6px; font-size: 13px; font-weight: 800; display: inline-block;">
+                                📌 NOTE: {{ item.notes }}
+                            </div>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                 </ul>
                 <button class="ticket-action btn-ready" onclick="updateOrderStatus('{{ order.order_number }}', 'ready')">Mark as Ready</button>
@@ -101,7 +124,7 @@
     <!-- READY COLUMN -->
     <div class="kds-column">
         <div class="kds-header ready">
-            <span><i class="ph ph-bell-ringing"></i> Ready</span>
+            <span><i class="ph ph-bell-ringing"></i> Ready for Pickup</span>
             <span style="background: var(--status-green); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ ready_orders|length }}</span>
         </div>
         <div class="kds-body">
@@ -113,7 +136,17 @@
                 </div>
                 <ul class="ticket-items">
                     {% for item in order.items.all %}
-                        <li><span>{{ item.quantity }}x {{ item.item_name }}</span></li>
+                        <li>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>{{ item.quantity }}x {{ item.item_name }}</span>
+                            </div>
+                            <!-- KDS HIGHLIGHTED NOTE -->
+                            {% if item.notes %}
+                            <div style="margin-top: 6px; padding: 6px 10px; background: #fee2e2; color: #dc2626; border-radius: 6px; font-size: 13px; font-weight: 800; display: inline-block;">
+                                📌 NOTE: {{ item.notes }}
+                            </div>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                 </ul>
                 <button class="ticket-action btn-complete" onclick="updateOrderStatus('{{ order.order_number }}', 'complete')">Dispatch / Complete</button>
@@ -126,7 +159,6 @@
 </div>
 
 <script>
-    // Live Timer Engine (Tick up every second)
     setInterval(() => {
         document.querySelectorAll('.timer-tick').forEach(el => {
             let seconds = parseInt(el.getAttribute('data-seconds'), 10);
@@ -138,7 +170,6 @@
         });
     }, 1000);
 
-    // Initial format on load
     document.querySelectorAll('.timer-tick').forEach(el => {
         let seconds = parseInt(el.getAttribute('data-seconds'), 10);
         let mins = Math.floor(seconds / 60);
@@ -146,7 +177,6 @@
         el.innerText = `${mins}m ${secs}s`;
     });
 
-    // Send Database Update Request
     function updateOrderStatus(orderNumber, action) {
         fetch("{% url 'pos:kds_update' %}", {
             method: 'POST',
@@ -159,15 +189,9 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // I-refresh agad ang screen para makita ang movement ng ticket
                 window.location.reload();
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error Update',
-                    text: data.error,
-                    confirmButtonColor: 'var(--black)'
-                });
+                Swal.fire({ icon: 'error', title: 'Error Update', text: data.error, confirmButtonColor: 'var(--black)' });
             }
         })
         .catch(error => {
@@ -175,10 +199,7 @@
         });
     }
 
-    // Auto-refresh the KDS board every 15 seconds to fetch new orders from POS
-    setTimeout(() => {
-        window.location.reload();
-    }, 15000);
+    setTimeout(() => { window.location.reload(); }, 15000);
 </script>
 
 {% endblock %}

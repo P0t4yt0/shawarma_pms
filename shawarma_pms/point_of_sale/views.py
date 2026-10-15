@@ -25,6 +25,8 @@ from django.shortcuts import render
 from django.db import transaction
 from .models import Category, MenuVariant, Order, OrderItem, OrderCounter
 from billing_payment.models import PaymentMethod, Payment, Receipt
+from inventory.models import StockMovement
+from promotions.models import Promotion, AppliedDiscount
 
 
 def _json_body(request):
@@ -88,6 +90,7 @@ def pos_screen(request):
         try:
             data = json.loads(request.body)
             cart_items = data.get('items', [])
+            applied_promo_id = data.get('applied_promo_id')
             
             if not cart_items:
                 return JsonResponse({"success": False, "error": "Cart is empty"})
@@ -100,19 +103,43 @@ def pos_screen(request):
                     order_type=Order.Type.WALK_IN
                 )
                 
-                # 2. Add Items
+                # 2. Add Items, Apply Item-Level Discounts, & Deduct Stock
                 for item in cart_items:
                     variant = MenuVariant.objects.get(id=item['id'])
+                    
                     OrderItem.objects.create(
                         order=order,
                         variant=variant,
                         item_name=f"{variant.item.name} ({variant.name})",
                         quantity=item['qty'],
-                        unit_price=variant.price
+                        unit_price=variant.price,
+                        discount_amount=Decimal(str(item.get('discount', 0))),
+                        notes=item.get('notes', '')
                     )
+                    
+                    # Deduct Inventory Stock
+                    for recipe_item in variant.recipe_items.select_related('ingredient').all():
+                        qty_to_deduct = recipe_item.quantity_required * Decimal(str(item['qty']))
+                        recipe_item.ingredient.adjust(
+                            delta=-qty_to_deduct, movement_type=StockMovement.Type.SALE,
+                            user=request.user if request.user.is_authenticated else None,
+                            order=order, note=f"POS Sale: {item['qty']}x {variant.item.name}"
+                        )
+                
+                # I-recalculate ang overall order total (Kasama na ang discount)
                 order.recalculate_totals(save=True)
                 
-                # 3. Create the Payment Record
+                # 3. I-save ang Official Discount Record para sa Analytics Report
+                if applied_promo_id and order.discount_total > 0:
+                    promo = Promotion.objects.get(id=applied_promo_id)
+                    AppliedDiscount.objects.create(
+                        order=order,
+                        promotion=promo,
+                        amount=order.discount_total,
+                        applied_by=request.user if request.user.is_authenticated else None
+                    )
+                
+                # 4. Create the Payment Record
                 pay_method = data.get('payment_method')
                 tendered = Decimal(str(data.get('tendered', 0)))
                 provider = data.get('provider', '')
@@ -132,7 +159,7 @@ def pos_screen(request):
                         order=order, method=pm, amount=order.total, reference_number=ref_num, received_by=order.cashier
                     )
 
-                # 4. Create the Official Receipt Snapshot
+                # 5. Create the Official Receipt Snapshot
                 snapshot = {
                     "store": "FAKE ARAB SHAWARMA",
                     "items": [{"name": i.item_name, "quantity": i.quantity, "net": str(i.net)} for i in order.items.all()],
@@ -161,10 +188,13 @@ def pos_screen(request):
     categories = Category.objects.filter(is_active=True)
     variants = MenuVariant.objects.filter(is_active=True).select_related('item__category')
     
+    promos = list(Promotion.objects.filter(is_active=True).values('id', 'name', 'code', 'campaign_type', 'kind', 'value', 'scope'))
+    
     return render(request, 'pos.html', {
         'categories': categories,
         'variants': variants,
-        'next_order_number': next_order_number
+        'next_order_number': next_order_number,
+        'promos_json': json.dumps(promos, default=str)
     })
 
 # ------------------------------------------------------------------ KDS (kitchen) API

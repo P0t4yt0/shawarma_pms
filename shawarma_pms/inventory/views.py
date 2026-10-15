@@ -6,7 +6,7 @@ from django.utils.text import slugify
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 
-from .models import Ingredient, LowStockAlert, Ingredient, StockMovement, Unit
+from .models import Ingredient, LowStockAlert, Ingredient, StockMovement, Unit, Recipe, RecipeLine
 from point_of_sale.models import Category, MenuItem, MenuVariant
 from inventory.models import Ingredient, StockMovement, Unit, RecipeItem
 
@@ -244,4 +244,43 @@ def recipe_management(request):
     return render(request, 'recipe_management.html', {
         'variants_json': json.dumps(variants_data),
         'ingredients': ingredients
+    })
+
+@login_required
+def spoilage_management(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            ingredient = Ingredient.objects.get(id=data['ingredient_id'])
+            qty = Decimal(str(data['quantity']))
+            movement_type = data['movement_type'] # 'spoilage' o 'waste'
+            note = data.get('note', '').strip()
+
+            if qty <= 0:
+                return JsonResponse({"success": False, "error": "Quantity must be greater than zero."})
+
+            with transaction.atomic():
+                # Awtomatikong magbabawas sa stock (kaya negative ang delta) at mag-re-record sa StockMovement
+                ingredient.adjust(
+                    delta=-qty,
+                    movement_type=movement_type,
+                    user=request.user,
+                    note=note
+                )
+            return JsonResponse({"success": True, "message": "Loss reported successfully!"})
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    # Kukunin ang mga active ingredients para sa dropdown form
+    ingredients = Ingredient.objects.filter(is_active=True).order_by('name')
+    
+    # Kukunin ang pinakabagong 100 spoilage at waste logs
+    spoilage_logs = StockMovement.objects.filter(
+        movement_type__in=[StockMovement.Type.SPOILAGE, StockMovement.Type.WASTE]
+    ).select_related('ingredient', 'performed_by').order_by('-created_at')[:100]
+
+    return render(request, 'spoilage_management.html', {
+        'ingredients': ingredients,
+        'spoilage_logs': spoilage_logs
     })

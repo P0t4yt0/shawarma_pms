@@ -1,0 +1,184 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const csrfToken = '{{ csrf_token }}';
+</script>
+
+<style>
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
+    .swal-neo-confirm { background-color: var(--status-red) !important; color: white !important; border: 2px solid var(--black) !important; box-shadow: 3px 3px 0 var(--black) !important; font-weight: 800 !important; border-radius: 8px !important; padding: 14px 28px !important; transition: 0.1s ease; }
+    .swal-neo-confirm:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black) !important; }
+    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; padding: 14px 24px !important; border-radius: 8px !important; }
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; box-shadow: none !important; font-weight: 700 !important; }
+    .swal-neo-input:focus { border-color: var(--status-red) !important; }
+
+    .btn-brutalist-red { background-color: var(--status-red); color: white; border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+    .btn-brutalist-red:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
+    .btn-brutalist-red:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
+</style>
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Expiration & Spoilage</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Log expired raw materials, kitchen waste, and prep losses.</p>
+    </div>
+    
+    <div class="header-actions">
+        <button class="btn-brutalist-red" onclick="reportSpoilage()">
+            <i class="ph ph-warning-octagon" style="font-size: 20px;"></i> Report Loss
+        </button>
+    </div>
+</div>
+
+<div class="panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div class="search-bar" style="width: 350px; background: var(--bg-main);">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="log-search" placeholder="Search ingredient or notes..." oninput="filterLogs()">
+        </div>
+    </div>
+
+    <table class="modern-table">
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Ingredient</th>
+                <th>Loss Type</th>
+                <th>Qty Lost</th>
+                <th>Reported By</th>
+                <th style="width: 30%;">Notes / Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in spoilage_logs %}
+            <tr class="log-row">
+                <td style="font-size: 13px;">{{ log.created_at|date:"M d, Y h:i A" }}</td>
+                <td style="font-weight: 800; color: var(--black);">{{ log.ingredient.name }}</td>
+                <td>
+                    {% if log.movement_type == 'spoilage' %}
+                        <span class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--status-red);">Spoilage / Expired</span>
+                    {% else %}
+                        <span class="status-badge" style="background: var(--yellow-tint); color: #B48600;">Waste / Prep Loss</span>
+                    {% endif %}
+                </td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--status-red);">
+                    {{ log.quantity_change }} {{ log.ingredient.get_unit_display }}
+                </td>
+                <td style="font-weight: 600;">{{ log.performed_by.first_name|default:"Admin" }}</td>
+                <td style="color: var(--text-secondary); font-size: 13px; font-style: italic;">{{ log.note|default:"--" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                    <i class="ph ph-trash" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                    No spoilage or waste records found. Good job!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Data para sa dropdown ng Ingredients -->
+<script id="ingredients-data" type="application/json">
+    [
+        {% for ing in ingredients %}
+            {"id": "{{ ing.id }}", "name": "{{ ing.name|escapejs }}", "unit": "{{ ing.get_unit_display }}"}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+</script>
+
+<script>
+    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel' }, buttonsStyling: false };
+    const ingredientsList = JSON.parse(document.getElementById('ingredients-data').textContent);
+
+    function filterLogs() {
+        const searchInput = document.getElementById('log-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.log-row');
+
+        rows.forEach(row => {
+            const rowText = row.innerText.toLowerCase();
+            row.style.display = rowText.includes(searchInput) ? '' : 'none';
+        });
+    }
+
+    function reportSpoilage() {
+        let optionsHtml = '<option value="" disabled selected>Select Raw Material...</option>';
+        ingredientsList.forEach(ing => {
+            optionsHtml += `<option value="${ing.id}" data-unit="${ing.unit}">${ing.name}</option>`;
+        });
+
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Report Spoilage / Waste',
+            html: `
+                <div style="text-align: left; font-family: var(--font-main);">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); margin-left: 7.5%; display: block; margin-bottom: 4px;">Ingredient</label>
+                    <select id="swal-ing" class="swal2-select swal-neo-input" style="width: 85%; margin: 0 auto 16px auto; display: flex; padding: 10px 16px; font-size: 14px; height: 48px;" onchange="document.getElementById('unit-label').innerText = this.options[this.selectedIndex].getAttribute('data-unit');">
+                        ${optionsHtml}
+                    </select>
+
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); margin-left: 7.5%; display: block; margin-bottom: 4px;">Loss Type</label>
+                    <select id="swal-type" class="swal2-select swal-neo-input" style="width: 85%; margin: 0 auto 16px auto; display: flex; padding: 10px 16px; font-size: 14px; height: 48px;">
+                        <option value="spoilage">Spoilage / Expired (Napanis)</option>
+                        <option value="waste">Waste / Prep Loss (Natapon/Nasira)</option>
+                    </select>
+
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); margin-left: 7.5%; display: block; margin-bottom: 4px;">Quantity Lost</label>
+                    <div style="display: flex; width: 85%; margin: 0 auto 16px auto; height: 48px;">
+                        <input id="swal-qty" type="number" step="0.001" min="0.001" class="swal2-input swal-neo-input" style="margin: 0 !important; flex: 1; font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 18px; border-radius: 8px 0 0 8px; border-right: none; padding: 0 16px; height: 100%; box-sizing: border-box;">
+                        <div style="background: #f8fafc; padding: 0 16px; border: 2px solid var(--border-color); border-left: none; border-radius: 0 8px 8px 0; display: flex; align-items: center; justify-content: center; height: 100%; box-sizing: border-box;">
+                            <span id="unit-label" style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Unit</span>
+                        </div>
+                    </div>
+
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); margin-left: 7.5%; display: block; margin-bottom: 4px;">Reason / Notes</label>
+                    <input id="swal-note" class="swal2-input swal-neo-input" placeholder="e.g. Nahulog sa sahig" style="width: 85%; margin: 0 auto 8px auto; display: flex; padding: 10px 16px; font-size: 14px; height: 48px;">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Deduct from Stock',
+            preConfirm: () => {
+                const ingId = document.getElementById('swal-ing').value;
+                const type = document.getElementById('swal-type').value;
+                const qty = document.getElementById('swal-qty').value;
+                const note = document.getElementById('swal-note').value;
+
+                if (!ingId || !qty || qty <= 0) {
+                    Swal.showValidationMessage('Please select an ingredient and enter a valid quantity.');
+                    return false;
+                }
+                return { ingredient_id: ingId, movement_type: type, quantity: parseFloat(qty), note: note };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ ...swalNeoConfig, title: 'Processing...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+                
+                fetch("{% url 'inventory:spoilage' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(result.value)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Recorded!', text: data.message, confirmButtonColor: 'var(--black)' }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: data.error, confirmButtonColor: 'var(--black)' });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'System Error', text: 'Could not connect to database.', confirmButtonColor: 'var(--black)' });
+                });
+            }
+        });
+    }
+</script>
+
+{% endblock %}

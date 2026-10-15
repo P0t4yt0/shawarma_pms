@@ -199,18 +199,24 @@
         <a href="{% url 'inventory:recipe_management' %}" class="nav-item {% if 'recipes' in request.path %}active{% endif %}">
             <i class="ph ph-book-open"></i> Recipe Management
         </a>
-        <a href="#" class="nav-item"><i class="ph ph-truck"></i> Supplier List</a>
-        <a href="#" class="nav-item"><i class="ph ph-warning-octagon"></i> Expiration & Spoilage</a>
+        <a href="{% url 'inventory:spoilage' %}" class="nav-item {% if request.resolver_match.url_name == 'spoilage' %}active{% endif %}">
+            <i class="ph ph-warning-octagon"></i> Expiration & Spoilage
+        </a>
 
         <!-- 4. Promotions & Discounts -->
         <div class="nav-category">Promotions & Discounts</div>
-        <a href="#" class="nav-item"><i class="ph ph-tag"></i> Promotions</a>
-        <a href="#" class="nav-item"><i class="ph ph-percent"></i> Discounts</a>
-        <a href="#" class="nav-item"><i class="ph ph-clock-counter-clockwise"></i> Promotion History</a>
+        <a href="{% url 'promotions:list' %}" class="nav-item {% if request.resolver_match.url_name == 'list' and 'promotions' in request.path %}active{% endif %}">
+            <i class="ph ph-tag"></i> Promotions & Discounts
+        </a>
+        <a href="{% url 'promotions:history' %}" class="nav-item {% if request.resolver_match.url_name == 'history' and 'promotions' in request.path %}active{% endif %}">
+            <i class="ph ph-clock-counter-clockwise"></i> Usage History
+        </a>
 
         <!-- 5. Reports -->
         <div class="nav-category">Reports</div>
-        <a href="#" class="nav-item"><i class="ph ph-chart-bar"></i> Sales Reports</a>
+        <a href="{% url 'reports_analytics:sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_report' and 'reports' in request.path %}active{% endif %}">
+            <i class="ph ph-chart-bar"></i> Sales Reports
+        </a>
         <a href="#" class="nav-item"><i class="ph ph-trend-up"></i> Product Sales</a>
         <a href="#" class="nav-item"><i class="ph ph-clipboard-data"></i> Inventory Reports</a>
         <a href="#" class="nav-item"><i class="ph ph-chart-line-up"></i> Sales Forecast</a>

@@ -1,0 +1,220 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const csrfToken = '{{ csrf_token }}';
+    const categoriesList = JSON.parse('{{ categories_json|escapejs }}');
+    const variantsList = JSON.parse('{{ variants_json|escapejs }}');
+</script>
+
+<style>
+    /* Ibinalik sa Standard Popup Styling na kapantay ng ibang tabs */
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; width: 500px !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; transition: background 0.2s ease; }
+    .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
+    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; font-family: var(--font-main) !important; padding: 14px 24px !important; border-radius: 8px !important; }
+    
+    /* Inayos ang Inputs para hindi masyadong chunky pero may tamang spacing */
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; box-shadow: none !important; font-weight: 600 !important; font-size: 14px !important; width: 100% !important; margin: 4px 0 16px 0 !important; padding: 10px 14px !important; box-sizing: border-box; }
+    .swal-neo-input:focus { border-color: var(--yellow) !important; }
+    
+    .btn-brutalist { background-color: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+    .btn-brutalist:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
+    .btn-brutalist:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
+</style>
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Promotions and Discounts</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Manage discounts, vouchers, BOGO offers, and Happy Hour campaigns.</p>
+    </div>
+    
+    <div class="header-actions">
+        <button class="btn-brutalist" onclick="addPromotion()">
+            <i class="ph ph-tag" style="font-size: 20px;"></i> Create Promotion
+        </button>
+    </div>
+</div>
+
+<div class="panel">
+    <table class="modern-table">
+        <thead>
+            <tr>
+                <th>Promotion Name</th>
+                <th>Type / Kind</th>
+                <th>Discount Value</th>
+                <th>Scope</th>
+                <th>Validity Date</th>
+                <th>Status</th>
+                <th style="text-align: right;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for promo in promos %}
+            <tr>
+                <td style="font-weight: 800; color: var(--black); font-size: 15px;">
+                    {{ promo.name }}
+                    {% if promo.code %}<div style="font-size: 12px; color: var(--text-secondary); font-family: 'Inconsolata', monospace; margin-top: 2px;">Code: {{ promo.code }}</div>{% endif %}
+                </td>
+                <td style="text-transform: capitalize; color: var(--text-secondary); font-weight: 600; font-size: 13px;">
+                    {{ promo.get_campaign_type_display }} <br>
+                    <span style="font-size: 12px; color: var(--black);">{{ promo.get_kind_display }}</span>
+                </td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--yellow); font-size: 16px;">
+                    {% if promo.kind == 'percent' %}{{ promo.value }}% OFF
+                    {% elif promo.kind == 'fixed' %}₱{{ promo.value }} OFF
+                    {% elif promo.kind == 'bogo' %}Buy {{ promo.buy_quantity }} Get {{ promo.get_quantity }}{% endif %}
+                </td>
+                <td style="text-transform: capitalize; font-weight: 600; color: var(--text-secondary); font-size: 13px;">{{ promo.scope }}</td>
+                <td style="font-size: 13px; color: var(--black); font-weight: 500;">
+                    {% if promo.start_date %}{{ promo.start_date|date:"M d, Y" }} - {{ promo.end_date|date:"M d, Y"|default:"Indefinite" }}{% else %}Anytime{% endif %}
+                </td>
+                <td>
+                    {% if promo.is_active %}
+                        <span class="status-badge" style="background: rgba(34, 197, 94, 0.1); color: var(--status-green);">Active</span>
+                    {% else %}
+                        <span class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--status-red);">Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <button class="btn btn-secondary" onclick="toggleStatus('{{ promo.id }}')" style="padding: 6px 12px; font-size: 12px;">
+                        <i class="ph ph-power"></i> Toggle Status
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                    <i class="ph ph-tag" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                    No promotions found. Create one now!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel' }, buttonsStyling: false };
+
+    function renderScopeTargets(scope) {
+        let html = '';
+        if (scope === 'categories') {
+            html += `<select id="swal-target" class="swal2-select swal-neo-input">`;
+            categoriesList.forEach(c => html += `<option value="${c.id}">${c.name}</option>`);
+            html += `</select>`;
+        } else if (scope === 'variants') {
+            html += `<select id="swal-target" class="swal2-select swal-neo-input">`;
+            variantsList.forEach(v => html += `<option value="${v.id}">${v.item__name} (${v.name})</option>`);
+            html += `</select>`;
+        } else {
+            html += `<input id="swal-target" type="hidden" value=""> <span style="font-size: 13px; color: var(--status-green); font-weight: 700; display: block; margin-bottom: 16px;">Applies to all menu items</span>`;
+        }
+        document.getElementById('scope-target-container').innerHTML = html;
+    }
+
+    function addPromotion() {
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Create Promotion',
+            html: `
+                <div style="text-align: left;">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Promotion Name</label>
+                    <input id="swal-name" class="swal2-input swal-neo-input" placeholder="e.g. Senior Citizen, Summer Sale">
+                    
+                    <div style="display: flex; gap: 16px;">
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Campaign Type</label>
+                            <select id="swal-campaign" class="swal2-select swal-neo-input">
+                                <option value="manual">Manual (Cashier Applied)</option>
+                                <option value="seasonal">Seasonal / Holiday</option>
+                                <option value="happy_hour">Happy Hour</option>
+                                <option value="bogo">Buy One Get One</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Discount Kind</label>
+                            <select id="swal-kind" class="swal2-select swal-neo-input">
+                                <option value="percent">Percentage (%)</option>
+                                <option value="fixed">Fixed Amount (₱)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Discount Value (% or ₱)</label>
+                    <input id="swal-value" type="number" step="0.01" class="swal2-input swal-neo-input" placeholder="e.g. 20 for 20% off">
+
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Apply To (Scope)</label>
+                    <select id="swal-scope" class="swal2-select swal-neo-input" onchange="renderScopeTargets(this.value)">
+                        <option value="all">Entire Menu</option>
+                        <option value="categories">Specific Category</option>
+                        <option value="variants">Specific Product Variant</option>
+                    </select>
+                    
+                    <div id="scope-target-container"></div>
+
+                    <div style="display: flex; gap: 16px; margin-top: 4px;">
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Start Date (Optional)</label>
+                            <input id="swal-start" type="date" class="swal2-input swal-neo-input">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">End Date (Optional)</label>
+                            <input id="swal-end" type="date" class="swal2-input swal-neo-input">
+                        </div>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Save Promotion',
+            didOpen: () => renderScopeTargets('all'),
+            preConfirm: () => {
+                const name = document.getElementById('swal-name').value;
+                const value = document.getElementById('swal-value').value;
+                if (!name || !value) { Swal.showValidationMessage('Name and Value are required!'); return false; }
+
+                return {
+                    action: 'add',
+                    name: name,
+                    campaign_type: document.getElementById('swal-campaign').value,
+                    kind: document.getElementById('swal-kind').value,
+                    value: parseFloat(value),
+                    scope: document.getElementById('swal-scope').value,
+                    target_id: document.getElementById('swal-target') ? document.getElementById('swal-target').value : null,
+                    start_date: document.getElementById('swal-start').value,
+                    end_date: document.getElementById('swal-end').value
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitData(result.value);
+        });
+    }
+
+    function toggleStatus(id) {
+        submitData({ action: 'toggle_status', promo_id: id });
+    }
+
+    function submitData(payload) {
+        Swal.fire({ ...swalNeoConfig, title: 'Processing...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        
+        fetch("{% url 'promotions:list' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Success!', text: data.message }).then(() => window.location.reload());
+            } else {
+                Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: data.error });
+            }
+        })
+        .catch(err => Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: 'Server connection failed.' }));
+    }
+</script>
+
+{% endblock %}
