@@ -1,6 +1,15 @@
 {% extends 'dashboard.html' %}
 {% block content %}
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    /* Neo-Brutalist Popup Styling */
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    .swal-neo-confirm { background-color: var(--black) !important; color: var(--white) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; box-shadow: none !important; transition: background 0.2s ease; }
+    .swal-neo-confirm:hover { background-color: var(--ink) !important; }
+</style>
+
 <div class="welcome-header">
     <div>
         <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Receipts</h1>
@@ -12,11 +21,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div class="search-bar" style="width: 350px; background: var(--bg-main);">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="text" placeholder="Search Receipt Number...">
-        </div>
-        
-        <div style="display: flex; gap: 12px;">
-            <input type="date" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
+            <input type="text" id="receipt-search" placeholder="Search Receipt Number..." oninput="filterReceipts()">
         </div>
     </div>
 
@@ -31,44 +36,163 @@
                 <th style="text-align: right;">Action</th>
             </tr>
         </thead>
-        <tbody>
-            <!-- Sample Dummy Data -->
-            <tr>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--black);">#RCT-880921</td>
-                <td>#ORD-1001</td>
-                <td>Oct 14, 2026 10:45 AM</td>
-                <td>Ana Cruz</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱350.00</td>
+        <tbody id="receipt-tbody">
+            {% for receipt in receipts %}
+            <tr class="receipt-row">
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--black);">{{ receipt.receipt_number }}</td>
+                <td style="color: var(--text-secondary); font-family: 'Inconsolata', monospace; font-weight: 700;">#{{ receipt.order.order_number }}</td>
+                <td style="font-size: 13px;">{{ receipt.issued_at|date:"M d, Y h:i A" }}</td>
+                <td style="font-weight: 600;">{{ receipt.issued_by.first_name|default:"Admin" }}</td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--yellow);">₱{{ receipt.snapshot.total }}</td>
                 <td style="text-align: right;">
+                    <!-- Ligtas na ipapasa ang JSON snapshot sa script sa ibaba -->
+                    {{ receipt.snapshot|json_script:receipt.receipt_number }}
+                    
                     <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" title="View & Download">
+                        <button class="btn btn-secondary" onclick="viewReceipt('{{ receipt.receipt_number }}')" style="padding: 6px 12px; font-size: 12px;" title="View Details">
                             <i class="ph ph-eye"></i> View
                         </button>
-                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--black); box-shadow: none;" title="Reprint">
+                        <button class="btn btn-primary" onclick="printReceipt('{{ receipt.receipt_number }}', '{{ receipt.issued_at|date:'M d, Y h:i A' }}')" style="padding: 6px 12px; font-size: 12px; background: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 2px 2px 0px var(--black);" title="Reprint">
                             <i class="ph ph-printer"></i> Print
                         </button>
                     </div>
                 </td>
             </tr>
+            {% empty %}
             <tr>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--black);">#RCT-880922</td>
-                <td>#ORD-1002</td>
-                <td>Oct 14, 2026 11:10 AM</td>
-                <td>Ana Cruz</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱180.00</td>
-                <td style="text-align: right;">
-                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" title="View & Download">
-                            <i class="ph ph-eye"></i> View
-                        </button>
-                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--black); box-shadow: none;" title="Reprint">
-                            <i class="ph ph-printer"></i> Print
-                        </button>
-                    </div>
+                <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                    <i class="ph ph-ticket" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                    No official receipts generated yet.
                 </td>
             </tr>
+            {% endfor %}
         </tbody>
     </table>
 </div>
+
+<script>
+    // --- Search Filter Logic ---
+    function filterReceipts() {
+        const searchInput = document.getElementById('receipt-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.receipt-row');
+
+        rows.forEach(row => {
+            const rowText = row.innerText.toLowerCase();
+            row.style.display = rowText.includes(searchInput) ? '' : 'none';
+        });
+    }
+
+    // --- View Receipt Detail Popup ---
+    function viewReceipt(receiptNumber) {
+        // Kukunin natin yung json data na itinago gamit ang json_script tag ni Django
+        const snapshot = JSON.parse(document.getElementById(receiptNumber).textContent);
+        
+        let itemsHtml = '';
+        snapshot.items.forEach(i => {
+            itemsHtml += `
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                    <span style="font-weight: 600; font-size: 14px; color: var(--black);">${i.quantity}x ${i.name}</span>
+                    <span style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--black);">₱${i.net}</span>
+                </div>
+            `;
+        });
+
+        const payment = snapshot.payments[0] ? snapshot.payments[0].method : 'Unknown';
+
+        Swal.fire({
+            customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm' },
+            title: `${receiptNumber}`,
+            html: `
+                <div style="text-align: left; margin-top: 16px; font-family: var(--font-main);">
+                    <div style="background: var(--bg-main); padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+                        <div style="font-weight: 800; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Items Purchased</div>
+                        ${itemsHtml}
+                        <div style="display: flex; justify-content: space-between; margin-top: 16px;">
+                            <span style="font-weight: 800; color: var(--text-secondary);">Total</span>
+                            <span style="font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; color: var(--yellow);">₱${snapshot.total}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary); font-weight: 600;">Payment Method</span>
+                        <span style="font-weight: 800; color: var(--black); text-transform: uppercase;">${payment}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary); font-weight: 600;">Change Given</span>
+                        <span style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--status-green);">₱${snapshot.change}</span>
+                    </div>
+                </div>
+            `,
+            icon: 'success',
+            iconColor: 'var(--yellow)',
+            confirmButtonText: 'Close'
+        });
+    }
+
+    // --- Thermal Printer Logic para sa Reprint ---
+    function printReceipt(receiptNumber, dateStr) {
+        const snapshot = JSON.parse(document.getElementById(receiptNumber).textContent);
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        
+        let itemsHtml = '';
+        snapshot.items.forEach(item => {
+            itemsHtml += `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>${item.quantity}x ${item.name}</span>
+                    <span>P${parseFloat(item.net).toFixed(2)}</span>
+                </div>
+            `;
+        });
+
+        const payment = snapshot.payments[0] ? snapshot.payments[0].method : 'CASH';
+
+        // Isang kopya na lamang ang ipi-print natin bilang REPRINT dahil nakapag-print na ng 3 copies dati
+        const receiptTemplate = `
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Inconsolata', monospace; font-size: 12px; margin: 0; padding: 0; width: 300px; color: #000; }
+                    .receipt-section { border-bottom: 2px dashed #000; padding-bottom: 30px; margin-bottom: 30px; }
+                    .header { text-align: center; margin-bottom: 15px; }
+                    .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+                    .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
+                    .details { margin-bottom: 10px; }
+                    .total-line { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-size: 16px; font-weight: bold; text-align: right; }
+                    .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="receipt-section">
+                    <div class="header">
+                        <div class="title">${snapshot.store}</div>
+                        <div class="copy-type">REPRINT COPY</div>
+                    </div>
+                    <div class="details">
+                        <div>Receipt #: <strong>${receiptNumber}</strong></div>
+                        <div>Date: ${dateStr}</div>
+                    </div>
+                    <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
+                    ${itemsHtml}
+                    <div class="total-line">TOTAL: P${snapshot.total}</div>
+                    <div style="margin-top: 8px;">Method: ${payment.toUpperCase()}</div>
+                    <div>Change: P${snapshot.change || '0.00'}</div>
+                    <div class="footer">Thank you for your purchase!</div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(receiptTemplate);
+        iframe.contentWindow.document.close();
+
+        // 500ms delay para mag-load ang font
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 500);
+    }
+</script>
 
 {% endblock %}

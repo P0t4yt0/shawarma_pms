@@ -1,6 +1,27 @@
 {% extends 'dashboard.html' %}
 {% block content %}
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const csrfToken = '{{ csrf_token }}';
+</script>
+
+<style>
+    /* Neo-Brutalist Popup Styling */
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; transition: background 0.2s ease; }
+    .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
+    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; font-family: var(--font-main) !important; padding: 14px 24px !important; border-radius: 8px !important; }
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; box-shadow: none !important; font-weight: 700 !important; }
+    .swal-neo-input:focus { border-color: var(--yellow) !important; }
+    
+    .btn-brutalist { background-color: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+    .btn-brutalist:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
+    .btn-brutalist:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
+</style>
+
 <div class="welcome-header">
     <div>
         <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Product Management</h1>
@@ -8,8 +29,8 @@
     </div>
     
     <div class="header-actions">
-        <button class="btn btn-primary" style="background: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 0 4px 0 var(--black);">
-            <i class="ph ph-plus-circle"></i> Add New Product
+        <button class="btn-brutalist" onclick="addProduct()">
+            <i class="ph ph-plus-circle" style="font-size: 20px;"></i> Add New Product
         </button>
     </div>
 </div>
@@ -18,15 +39,15 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div class="search-bar" style="width: 350px; background: var(--bg-main);">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="text" placeholder="Search menu items...">
+            <input type="text" id="product-search" placeholder="Search product name or SKU..." oninput="filterProducts()">
         </div>
         
         <div style="display: flex; gap: 12px;">
-            <select style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
+            <select id="category-filter" onchange="filterProducts()" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
                 <option value="all">All Categories</option>
-                <option value="wraps">Wraps</option>
-                <option value="rice">Rice Meals</option>
-                <option value="drinks">Drinks</option>
+                {% for category in categories %}
+                    <option value="{{ category.name }}">{{ category.name }}</option>
+                {% endfor %}
             </select>
         </div>
     </div>
@@ -34,7 +55,9 @@
     <table class="modern-table">
         <thead>
             <tr>
+                <th>SKU</th>
                 <th>Product Name</th>
+                <th>Variant Name</th>
                 <th>Category</th>
                 <th>Selling Price</th>
                 <th>Status</th>
@@ -42,54 +65,220 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Sample Dummy Data -->
-            <tr>
+            {% for variant in variants %}
+            <tr class="product-row" data-category="{{ variant.item.category.name }}">
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--text-secondary);">{{ variant.sku }}</td>
+                <td style="font-weight: 800; color: var(--black);">{{ variant.item.name }}</td>
+                <td style="font-weight: 600;">{{ variant.name }}</td>
+                <td style="color: var(--text-secondary);">{{ variant.item.category.name }}</td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--yellow);">₱{{ variant.price }}</td>
                 <td>
-                    <div style="font-weight: 700; color: var(--black);">Classic Beef Shawarma</div>
+                    {% if variant.is_active %}
+                        <span class="status-badge" style="background: rgba(34, 197, 94, 0.1); color: var(--status-green);">Active</span>
+                    {% else %}
+                        <span class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--status-red);">Inactive</span>
+                    {% endif %}
                 </td>
-                <td>Wraps</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱85.00</td>
-                <td><span class="status-badge status-completed">Active</span></td>
                 <td style="text-align: right;">
-                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" title="Edit">
-                            <i class="ph ph-pencil-simple"></i> Edit
-                        </button>
-                    </div>
+                    <button class="btn btn-secondary" 
+                            onclick="editProduct(
+                                '{{ variant.id }}', 
+                                '{{ variant.item.name|escapejs }}', 
+                                '{{ variant.name|escapejs }}', 
+                                '{{ variant.item.category.id }}', 
+                                '{{ variant.sku|escapejs }}', 
+                                '{{ variant.price }}', 
+                                {{ variant.is_active|yesno:'true,false' }}
+                            )" 
+                            style="padding: 6px 12px; font-size: 12px;">
+                        <i class="ph ph-pencil-simple"></i> Edit
+                    </button>
                 </td>
             </tr>
+            {% empty %}
             <tr>
-                <td>
-                    <div style="font-weight: 700; color: var(--black);">All-Meat Shawarma Rice</div>
-                </td>
-                <td>Rice Meals</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱120.00</td>
-                <td><span class="status-badge status-completed">Active</span></td>
-                <td style="text-align: right;">
-                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" title="Edit">
-                            <i class="ph ph-pencil-simple"></i> Edit
-                        </button>
-                    </div>
+                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                    <i class="ph ph-hamburger" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                    No products found in the database.
                 </td>
             </tr>
-            <tr>
-                <td>
-                    <div style="font-weight: 700; color: var(--text-secondary);">Spicy Chicken Wrap (Promo)</div>
-                </td>
-                <td>Wraps</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--text-secondary);">₱90.00</td>
-                <td><span class="status-badge" style="background: var(--border-color); color: var(--text-secondary);">Inactive</span></td>
-                <td style="text-align: right;">
-                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" title="Edit">
-                            <i class="ph ph-pencil-simple"></i> Edit
-                        </button>
-                    </div>
-                </td>
-            </tr>
+            {% endfor %}
         </tbody>
     </table>
 </div>
+
+<!-- Option data para sa Javascript SweetAlert Dropdowns -->
+<script id="categories-data" type="application/json">
+    [
+        {% for category in categories %}
+            {"id": "{{ category.id }}", "name": "{{ category.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+</script>
+
+<script>
+    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel' }, buttonsStyling: false };
+    const categoriesData = JSON.parse(document.getElementById('categories-data').textContent);
+
+    function filterProducts() {
+        const searchInput = document.getElementById('product-search').value.toLowerCase();
+        const categoryFilter = document.getElementById('category-filter').value;
+        const rows = document.querySelectorAll('.product-row');
+
+        rows.forEach(row => {
+            const category = row.getAttribute('data-category');
+            const rowText = row.innerText.toLowerCase();
+            
+            const matchesSearch = rowText.includes(searchInput);
+            const matchesCategory = (categoryFilter === 'all' || category === categoryFilter);
+
+            row.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
+        });
+    }
+
+    // Bumuo ng dropdown HTML options para sa Categories
+    function getCategoryOptions(selectedId = null) {
+        let options = '<option value="" disabled selected>Select Category</option>';
+        categoriesData.forEach(c => {
+            const isSelected = selectedId == c.id ? 'selected' : '';
+            options += `<option value="${c.id}" ${isSelected}>${c.name}</option>`;
+        });
+        return options;
+    }
+
+    function addProduct() {
+        if (categoriesData.length === 0) {
+            Swal.fire({ ...swalNeoConfig, icon: 'warning', title: 'No Categories', text: 'Please create a Category first before adding a product.' });
+            return;
+        }
+
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Add New Product',
+            html: `
+                <div style="text-align: left; font-family: var(--font-main);">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Item Name (e.g. Beef Shawarma)</label>
+                    <input id="swal-item-name" class="swal2-input swal-neo-input" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                    
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Variant Name (e.g. Standard, Large)</label>
+                    <input id="swal-variant-name" class="swal2-input swal-neo-input" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                    
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Category</label>
+                    <select id="swal-category" class="swal2-select swal-neo-input" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                        ${getCategoryOptions()}
+                    </select>
+
+                    <div style="display: flex; gap: 16px; width: 85%; margin: 0 auto;">
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">SKU Code</label>
+                            <input id="swal-sku" class="swal2-input swal-neo-input" style="width: 100%; margin: 4px 0 0 0;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Price (₱)</label>
+                            <input id="swal-price" type="number" step="0.01" class="swal2-input swal-neo-input" style="width: 100%; margin: 4px 0 0 0; font-family: 'Inconsolata', monospace; font-weight: 800;">
+                        </div>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Save Product',
+            preConfirm: () => {
+                const itemName = document.getElementById('swal-item-name').value;
+                const variantName = document.getElementById('swal-variant-name').value;
+                const categoryId = document.getElementById('swal-category').value;
+                const sku = document.getElementById('swal-sku').value;
+                const price = document.getElementById('swal-price').value;
+
+                if (!itemName || !variantName || !categoryId || !sku || !price) {
+                    Swal.showValidationMessage('All fields are required!');
+                    return false;
+                }
+                return { action: 'add', item_name: itemName, variant_name: variantName, category_id: categoryId, sku: sku, price: parseFloat(price) };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitProductData(result.value);
+        });
+    }
+
+    function editProduct(id, itemName, variantName, categoryId, sku, price, isActive) {
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Edit Product',
+            html: `
+                <div style="text-align: left; font-family: var(--font-main);">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Item Name</label>
+                    <input id="swal-item-name" class="swal2-input swal-neo-input" value="${itemName}" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                    
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Variant Name</label>
+                    <input id="swal-variant-name" class="swal2-input swal-neo-input" value="${variantName}" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                    
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Category</label>
+                    <select id="swal-category" class="swal2-select swal-neo-input" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                        ${getCategoryOptions(categoryId)}
+                    </select>
+
+                    <div style="display: flex; gap: 16px; width: 85%; margin: 0 auto 16px auto;">
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">SKU Code</label>
+                            <input id="swal-sku" class="swal2-input swal-neo-input" value="${sku}" style="width: 100%; margin: 4px 0 0 0;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Price (₱)</label>
+                            <input id="swal-price" type="number" step="0.01" value="${price}" class="swal2-input swal-neo-input" style="width: 100%; margin: 4px 0 0 0; font-family: 'Inconsolata', monospace; font-weight: 800;">
+                        </div>
+                    </div>
+
+                    <div style="width: 85%; margin: 0 auto;">
+                        <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="swal-is-active" ${isActive ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
+                            Product is Active (Visible in POS)
+                        </label>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Update Product',
+            preConfirm: () => {
+                const updatedItemName = document.getElementById('swal-item-name').value;
+                const updatedVariantName = document.getElementById('swal-variant-name').value;
+                const updatedCategoryId = document.getElementById('swal-category').value;
+                const updatedSku = document.getElementById('swal-sku').value;
+                const updatedPrice = document.getElementById('swal-price').value;
+                const updatedIsActive = document.getElementById('swal-is-active').checked;
+
+                if (!updatedItemName || !updatedVariantName || !updatedCategoryId || !updatedSku || !updatedPrice) {
+                    Swal.showValidationMessage('All fields are required!');
+                    return false;
+                }
+                return { action: 'edit', variant_id: id, item_name: updatedItemName, variant_name: updatedVariantName, category_id: updatedCategoryId, sku: updatedSku, price: parseFloat(updatedPrice), is_active: updatedIsActive };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitProductData(result.value);
+        });
+    }
+
+    function submitProductData(payload) {
+        Swal.fire({ ...swalNeoConfig, title: 'Saving...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        
+        fetch("{% url 'inventory:products' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Success!', text: data.message }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: data.error });
+            }
+        })
+        .catch(error => {
+            Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'System Error', text: 'Could not communicate with the database.' });
+        });
+    }
+</script>
 
 {% endblock %}

@@ -1,6 +1,8 @@
 {% extends 'dashboard.html' %}
 {% block content %}
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <div class="welcome-header">
     <div>
         <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Kitchen Orders</h1>
@@ -23,18 +25,18 @@
     .ticket:hover { transform: translateY(-2px); border-color: var(--black); }
     .ticket-header { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; }
     .ticket-id { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 16px; color: var(--black); }
-    .ticket-time { font-size: 12px; color: var(--text-secondary); font-weight: 700; }
+    .ticket-time { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
     
     .ticket-items { list-style: none; padding: 0; margin: 0 0 16px 0; }
     .ticket-items li { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; font-weight: 600; color: var(--text-primary); }
     
-    .ticket-action { width: 100%; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; border: 2px solid var(--black); transition: 0.2s; font-family: var(--font-main); }
-    .btn-start { background: var(--yellow); color: var(--black); }
-    .btn-start:hover { background: var(--yellow-hover); }
-    .btn-ready { background: var(--status-green); color: white; border-color: var(--status-green); }
-    .btn-ready:hover { background: #16a34a; border-color: #16a34a; }
-    .btn-complete { background: var(--bg-main); color: var(--text-secondary); border-color: var(--border-color); }
-    .btn-complete:hover { background: var(--border-color); color: var(--black); }
+    .ticket-action { width: 100%; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; border: 2px solid var(--black); transition: 0.2s; font-family: var(--font-main); text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn-start { background: var(--yellow); color: var(--black); box-shadow: 2px 2px 0px var(--black); }
+    .btn-start:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--black); }
+    .btn-ready { background: var(--status-green); color: white; border-color: var(--black); box-shadow: 2px 2px 0px var(--black); }
+    .btn-ready:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--black); }
+    .btn-complete { background: var(--black); color: white; border-color: var(--black); box-shadow: 2px 2px 0px var(--border-color); }
+    .btn-complete:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0px var(--border-color); background: var(--ink); }
 </style>
 
 <div class="kds-board">
@@ -42,21 +44,28 @@
     <div class="kds-column">
         <div class="kds-header pending">
             <span><i class="ph ph-clock"></i> Pending</span>
-            <span style="background: var(--status-red); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">1</span>
+            <span style="background: var(--status-red); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ pending_orders|length }}</span>
         </div>
         <div class="kds-body">
-            <!-- Sample Ticket -->
+            {% for order in pending_orders %}
             <div class="ticket">
                 <div class="ticket-header">
-                    <span class="ticket-id">#ORD-1003</span>
-                    <span class="ticket-time" style="color: var(--status-red);"><i class="ph ph-warning-circle"></i> 5 mins waiting</span>
+                    <span class="ticket-id">#{{ order.order_number }}</span>
+                    <span class="ticket-time" style="color: var(--status-red);">
+                        <i class="ph ph-warning-circle"></i> 
+                        <span class="timer-tick" data-seconds="{{ order.elapsed_seconds }}">0m 0s</span> waiting
+                    </span>
                 </div>
                 <ul class="ticket-items">
-                    <li><span>2x Classic Beef Wrap</span></li>
-                    <li><span>1x Cheese Fries</span></li>
+                    {% for item in order.items.all %}
+                        <li><span>{{ item.quantity }}x {{ item.item_name }}</span></li>
+                    {% endfor %}
                 </ul>
-                <button class="ticket-action btn-start">Start Preparing</button>
+                <button class="ticket-action btn-start" onclick="updateOrderStatus('{{ order.order_number }}', 'start')">Start Preparing</button>
             </div>
+            {% empty %}
+            <div style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No pending orders.</div>
+            {% endfor %}
         </div>
     </div>
 
@@ -64,44 +73,112 @@
     <div class="kds-column">
         <div class="kds-header preparing">
             <span><i class="ph ph-fire"></i> Preparing</span>
-            <span style="background: var(--yellow); color: var(--black); padding: 2px 8px; border-radius: 12px; font-size: 12px;">1</span>
+            <span style="background: var(--yellow); color: var(--black); padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ preparing_orders|length }}</span>
         </div>
         <div class="kds-body">
-            <!-- Sample Ticket -->
+            {% for order in preparing_orders %}
             <div class="ticket">
                 <div class="ticket-header">
-                    <span class="ticket-id">#ORD-1001</span>
-                    <span class="ticket-time">Preparing...</span>
+                    <span class="ticket-id">#{{ order.order_number }}</span>
+                    <span class="ticket-time" style="color: #B48600;">
+                        <i class="ph ph-fire"></i> 
+                        <span class="timer-tick" data-seconds="{{ order.elapsed_seconds }}">0m 0s</span> elapsed
+                    </span>
                 </div>
                 <ul class="ticket-items">
-                    <li><span>1x Chicken Rice Meal</span></li>
-                    <li><span>1x Extra Pita</span></li>
+                    {% for item in order.items.all %}
+                        <li><span>{{ item.quantity }}x {{ item.item_name }}</span></li>
+                    {% endfor %}
                 </ul>
-                <button class="ticket-action btn-ready">Mark as Ready</button>
+                <button class="ticket-action btn-ready" onclick="updateOrderStatus('{{ order.order_number }}', 'ready')">Mark as Ready</button>
             </div>
+            {% empty %}
+            <div style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No orders being prepared.</div>
+            {% endfor %}
         </div>
     </div>
 
     <!-- READY COLUMN -->
     <div class="kds-column">
         <div class="kds-header ready">
-            <span><i class="ph ph-bell-ringing"></i> Ready for Pickup</span>
-            <span style="background: var(--status-green); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">1</span>
+            <span><i class="ph ph-bell-ringing"></i> Ready</span>
+            <span style="background: var(--status-green); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">{{ ready_orders|length }}</span>
         </div>
         <div class="kds-body">
-            <!-- Sample Ticket -->
+            {% for order in ready_orders %}
             <div class="ticket" style="border-color: var(--status-green);">
                 <div class="ticket-header">
-                    <span class="ticket-id" style="color: var(--status-green);">#ORD-1002</span>
-                    <span class="ticket-time">Ready</span>
+                    <span class="ticket-id" style="color: var(--status-green);">#{{ order.order_number }}</span>
+                    <span class="ticket-time" style="color: var(--status-green);"><i class="ph ph-check-circle"></i> Ready</span>
                 </div>
                 <ul class="ticket-items">
-                    <li><span>3x All-Meat Shawarma</span></li>
+                    {% for item in order.items.all %}
+                        <li><span>{{ item.quantity }}x {{ item.item_name }}</span></li>
+                    {% endfor %}
                 </ul>
-                <button class="ticket-action btn-complete">Dispatch / Complete</button>
+                <button class="ticket-action btn-complete" onclick="updateOrderStatus('{{ order.order_number }}', 'complete')">Dispatch / Complete</button>
             </div>
+            {% empty %}
+            <div style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No orders waiting for pickup.</div>
+            {% endfor %}
         </div>
     </div>
 </div>
+
+<script>
+    // Live Timer Engine (Tick up every second)
+    setInterval(() => {
+        document.querySelectorAll('.timer-tick').forEach(el => {
+            let seconds = parseInt(el.getAttribute('data-seconds'), 10);
+            seconds++;
+            el.setAttribute('data-seconds', seconds);
+            let mins = Math.floor(seconds / 60);
+            let secs = seconds % 60;
+            el.innerText = `${mins}m ${secs}s`;
+        });
+    }, 1000);
+
+    // Initial format on load
+    document.querySelectorAll('.timer-tick').forEach(el => {
+        let seconds = parseInt(el.getAttribute('data-seconds'), 10);
+        let mins = Math.floor(seconds / 60);
+        let secs = seconds % 60;
+        el.innerText = `${mins}m ${secs}s`;
+    });
+
+    // Send Database Update Request
+    function updateOrderStatus(orderNumber, action) {
+        fetch("{% url 'pos:kds_update' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ order_number: orderNumber, action: action })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // I-refresh agad ang screen para makita ang movement ng ticket
+                window.location.reload();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Update',
+                    text: data.error,
+                    confirmButtonColor: 'var(--black)'
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({ icon: 'error', title: 'Server Error', text: 'Could not communicate with the database.', confirmButtonColor: 'var(--black)' });
+        });
+    }
+
+    // Auto-refresh the KDS board every 15 seconds to fetch new orders from POS
+    setTimeout(() => {
+        window.location.reload();
+    }, 15000);
+</script>
 
 {% endblock %}

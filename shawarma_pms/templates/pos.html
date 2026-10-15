@@ -4,20 +4,41 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const csrfToken = '{{ csrf_token }}';
+    
+    (function() {
+        const savedCat = sessionStorage.getItem('activeCategory');
+        if (savedCat && savedCat !== 'All') {
+            const style = document.createElement('style');
+            style.id = 'anti-flicker-style';
+            const safeCat = savedCat.replace(/"/g, '\\"');
+            
+            style.innerHTML = `
+                .product-card:not([data-category="${safeCat}"]) { display: none !important; }
+                .category-tabs .tab { background: rgba(255, 255, 255, 0.7) !important; color: var(--text-secondary) !important; border-color: var(--border-color) !important; box-shadow: none !important; }
+                .category-tabs .tab[data-name="${safeCat}"] { background: var(--black) !important; color: var(--white) !important; border-color: var(--black) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important; }
+            `;
+            document.head.appendChild(style);
+        }
+    })();
 </script>
 
 <style>
-    .swal-neo { border: 3px solid var(--black) !important; border-radius: 16px !important; box-shadow: 8px 8px 0px var(--black) !important; padding: 24px !important; }
-    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; }
-    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: 2px solid var(--black) !important; box-shadow: 4px 4px 0px var(--black) !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; text-transform: uppercase !important; transition: all 0.1s ease; }
-    .swal-neo-confirm:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black) !important; background-color: var(--yellow-hover) !important; }
-    .swal-neo-cancel { background-color: var(--bg-main) !important; color: var(--text-secondary) !important; border: 2px solid var(--border-color) !important; font-weight: 700 !important; border-radius: 8px !important; font-family: var(--font-main) !important; transition: all 0.1s ease; }
-    .swal-neo-cancel:hover { background-color: var(--border-color) !important; color: var(--black) !important; }
-    .swal-neo-input { border: 2px solid var(--black) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: box-shadow 0.2s ease; }
-    .swal-neo-input:focus { box-shadow: 0 0 0 4px var(--yellow-tint) !important; }
+    /* Clean Neo-Brutalist Popup Styling */
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    
+    div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; box-shadow: none !important; transition: background 0.2s ease; }
+    .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
+    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; font-family: var(--font-main) !important; padding: 14px 24px !important; border-radius: 8px !important; }
+    
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; box-shadow: none !important; font-weight: 700 !important; }
+    .swal-neo-input:focus { border-color: var(--yellow) !important; }
 
+    /* POS Layout Styles */
     .pos-container { display: flex; height: calc(100vh - 120px); gap: 24px; overflow: hidden; max-width: 1600px; margin: 0 auto; }
     .inventory-section { flex: 2.2; display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; }
+    
     .search-header { display: flex; gap: 16px; margin-bottom: 20px; flex-shrink: 0; }
     .search-input-group { position: relative; flex: 1; }
     .search-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--text-secondary); }
@@ -36,13 +57,15 @@
     .product-card .name { font-weight: 800; color: var(--text-primary); font-size: 14px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .product-card .price { color: var(--yellow); font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; margin-top: auto; }
 
+    /* Cart Section */
     .order-section { flex: 1.1; background: var(--bg-card); border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04); border: 1px solid var(--border-color); overflow: hidden; min-width: 400px; height: 100%; }
     .order-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .order-header h3 { margin: 0; font-size: 18px; color: var(--black); font-weight: 800; }
-    .order-header .ref-number { font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 14px; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 8px; }
+    .order-header h3 { margin: 0; font-size: 18px; color: var(--black); font-weight: 800; font-family: 'Inconsolata', monospace; }
+    .order-header .badge-new { font-weight: 700; font-size: 12px; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 8px; text-transform: uppercase; border: 1px solid var(--border-color); }
     
     .cart-container { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; display: flex; flex-direction: column; }
     .empty-cart { margin: auto; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    
     .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
     .cart-item-name { margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: var(--black); }
     .cart-item-price { color: var(--text-secondary); font-size: 13px; font-family: 'Inconsolata', monospace; font-weight: 600; }
@@ -53,16 +76,16 @@
     .item-subtotal { font-weight: 800; font-family: 'Inconsolata', monospace; font-size: 16px; color: var(--black); }
 
     .order-summary { padding: 24px; background: #FFFFFF; border-top: 1px solid var(--border-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.02); flex-shrink: 0; }
-    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
     .total-label { font-weight: 800; font-size: 20px; color: var(--yellow); }
     .total-amount { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 36px; color: var(--yellow); letter-spacing: -1px; }
 
-    .btn-action-group { display: flex; gap: 12px; width: 100%; margin-bottom: 12px; }
-    .btn-void { flex: 1; padding: 14px; border-radius: 10px; border: 2px solid var(--status-red); background: transparent; color: var(--status-red); font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-    .btn-void:hover { background: rgba(239, 68, 68, 0.1); }
-    .btn-brutalist { width: 100%; padding: 18px; border-radius: 12px; border: 3px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 5px 5px 0px var(--black); transition: all 0.15s ease-in-out; text-transform: uppercase; letter-spacing: 1px; }
-    .btn-brutalist:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0px var(--black); background: var(--yellow-hover); }
-    .btn-brutalist:active { transform: translate(5px, 5px); box-shadow: 0px 0px 0px var(--black); }
+    .btn-void { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--status-red); background: transparent; color: var(--status-red); font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; margin-bottom: 12px; }
+    .btn-void:hover { background: rgba(239, 68, 68, 0.05); }
+
+    .btn-brutalist { width: 100%; padding: 18px; border-radius: 12px; border: 3px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 4px 4px 0px var(--black); transition: all 0.15s ease-in-out; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-brutalist:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black); background: var(--yellow-hover); }
+    .btn-brutalist:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px var(--black); }
 </style>
 
 <div class="pos-container">
@@ -82,7 +105,6 @@
         </div>
 
         <div class="product-grid" id="product-list">
-            <!-- Dynamic Database Loop -->
             {% for variant in variants %}
             <div class="product-card" data-category="{{ variant.item.category.name }}" onclick="addToCart({{ variant.id }}, '{{ variant.item.name }} ({{ variant.name }})', {{ variant.price }})">
                 <div class="pid">SKU: {{ variant.sku }}</div>
@@ -99,9 +121,8 @@
 
     <div class="order-section">
         <div class="order-header">
-            <h3>Order Details</h3>
-            <!-- Pinalitan nating NEW ORDER imbes na dynamic ID -->
-            <span class="ref-number" style="text-transform: uppercase;">New Order</span>
+            <h3 id="transaction-id" style="color: var(--black);">{{ next_order_number }}</h3>
+            <span class="badge-new">New Order</span>
         </div>
 
         <div class="cart-container">
@@ -118,11 +139,9 @@
                 <span class="total-amount">₱<span id="grand-total">0.00</span></span>
             </div>
 
-            <div class="btn-action-group">
-                <button type="button" class="btn-void" onclick="confirmVoid()">
-                    <i class="ph ph-x-circle"></i> Void Order
-                </button>
-            </div>
+            <button type="button" class="btn-void" onclick="confirmVoid()">
+                <i class="ph ph-x-circle"></i> Void Order
+            </button>
 
             <button class="btn-brutalist" onclick="processPayment()">
                 PAY NOW
@@ -212,7 +231,7 @@
 
         Swal.fire({
             ...swalNeoConfig, title: 'Manager Override', text: 'Please enter the Manager PIN to void this order.', input: 'password', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Authorize Void',
+            showCancelButton: true, confirmButtonText: 'Authorize Void', cancelButtonText: 'Cancel',
             preConfirm: (pin) => {
                 if (pin !== '1234') { Swal.showValidationMessage('Incorrect Manager PIN!'); }
                 return pin === '1234';
@@ -239,17 +258,20 @@
 
         let providerData = null;
         let changeAmount = 0;
+        let cashGiven = 0;
 
         if (method === 'ewallet') {
             const { value: ewalletData } = await Swal.fire({
-                ...swalNeoConfig, title: 'E-Wallet Details',
+                ...swalNeoConfig, title: 'E-Wallet Payment',
                 html: `
-                    <div style="font-weight: 800; font-size: 28px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 20px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
+                    <div style="font-weight: 800; font-size: 24px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 24px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
+                    <label style="font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 8px;">Select Provider:</label>
                     <select id="ewallet-provider" class="swal2-select swal-neo-input" style="display: flex; width: 80%; margin: 0 auto 15px auto;" onchange="document.getElementById('ewallet-custom').style.display = this.value === 'Other' ? 'block' : 'none'">
-                        <option value="" disabled selected>Select Platform</option><option value="GCash">GCash</option><option value="Maya">Maya</option><option value="GrabPay">GrabPay</option><option value="Other">Other (Specify)</option>
+                        <option value="" disabled selected>Select Platform...</option><option value="GCash">GCash</option><option value="Maya">Maya</option><option value="GrabPay">GrabPay</option><option value="Other">Other (Specify)</option>
                     </select>
                     <input id="ewallet-custom" class="swal2-input swal-neo-input" placeholder="Type Provider Name" style="display: none; width: 80%; margin: 0 auto 15px auto;">
-                    <input id="ewallet-ref" class="swal2-input swal-neo-input" placeholder="Enter Reference No." style="display: flex; width: 80%; margin: 0 auto;">
+                    <label style="font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 8px; margin-top: 16px;">Reference Number:</label>
+                    <input id="ewallet-ref" class="swal2-input swal-neo-input" placeholder="0000 000 000" style="display: flex; width: 80%; margin: 0 auto;">
                 `,
                 confirmButtonText: 'Confirm Payment', showCancelButton: true,
                 preConfirm: () => {
@@ -264,41 +286,52 @@
             if (!ewalletData) return;
             providerData = ewalletData;
         } else {
-            const { value: cashGiven } = await Swal.fire({
+            const { value: amountGiven } = await Swal.fire({
                 ...swalNeoConfig, title: 'Cash Payment',
                 html: `
-                    <div style="font-weight: 800; font-size: 28px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 20px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
-                    <label style="font-weight: 700; color: var(--text-secondary);">Amount Received:</label>
-                    <input id="cash-amount" type="number" class="swal2-input swal-neo-input" placeholder="0.00" style="display: flex; width: 80%; margin: 10px auto; font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 24px; text-align: center;">
+                    <div style="font-weight: 800; font-size: 24px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 24px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
+                    <label style="font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 8px;">Amount Received:</label>
+                    <input id="cash-amount" type="number" class="swal2-input swal-neo-input" placeholder="0.00" style="display: flex; width: 80%; margin: 0 auto; font-family: 'Inconsolata', monospace; font-size: 28px; text-align: center;">
                 `,
-                confirmButtonText: 'Confirm Payment', showCancelButton: true,
+                confirmButtonText: 'Confirm Payment', showCancelButton: true, cancelButtonText: 'Cancel',
                 preConfirm: () => {
                     const amount = parseFloat(document.getElementById('cash-amount').value);
                     if (!amount || amount < totalAmount) { Swal.showValidationMessage('Insufficient cash amount!'); return false; }
                     return amount;
                 }
             });
-            if (!cashGiven) return;
+            if (!amountGiven) return;
+            cashGiven = amountGiven;
             changeAmount = cashGiven - totalAmount;
         }
 
-        // POST TO DATABASE
         Swal.fire({ ...swalNeoConfig, title: 'Processing...', text: 'Saving order to database...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        let payload = {
+            items: cart,
+            payment_method: method
+        };
+        
+        if (method === 'cash') {
+            payload.tendered = cashGiven;
+        } else if (method === 'ewallet') {
+            payload.provider = providerData.provider;
+            payload.refNum = providerData.refNum;
+        }
 
         fetch("{% url 'pos:pos_screen' %}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-            body: JSON.stringify({ items: cart, payment_method: method })
+            body: JSON.stringify(payload)
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // TAWAGIN ANG 3-COPY PRINT RECEIPT FUNCTION
                 generateThermalReceipt(data.order_number, cart, totalAmount, changeAmount, method, providerData);
 
-                let messageHTML = `<div style="font-size: 16px; margin-top: 10px;">Order <strong style="color:var(--black); font-family:'Inconsolata',monospace;">#${data.order_number}</strong> placed via <strong>${method === 'cash' ? 'Cash' : 'E-Wallet'}</strong>.</div>`;
+                let messageHTML = `<div style="font-size: 16px; margin-top: 10px;">Order <strong style="color:var(--black); font-family:'Inconsolata',monospace;">${data.order_number}</strong> placed via <strong>${method === 'cash' ? 'Cash' : 'E-Wallet'}</strong>.</div>`;
                 if (method === 'cash') {
-                    messageHTML += `<div style="margin-top: 15px; font-size: 20px; font-weight: 800; color: var(--status-green);">Change: ₱${changeAmount.toFixed(2)}</div>`;
+                    messageHTML += `<div style="margin-top: 15px; font-size: 24px; font-weight: 800; color: var(--status-green);">Change: ₱${changeAmount.toFixed(2)}</div>`;
                 } else {
                     messageHTML += `<div style="margin-top: 15px; font-size: 15px; color: var(--text-secondary);">Provider: <strong>${providerData.provider}</strong><br>Ref No: <strong style="color: var(--black);">${providerData.refNum}</strong></div>`;
                 }
@@ -306,6 +339,13 @@
                 Swal.fire({ ...swalNeoConfig, title: 'Transaction Complete!', html: messageHTML, icon: 'success' }).then(() => {
                     cart = [];
                     renderCart();
+                    
+                    let currentId = document.getElementById('transaction-id').innerText;
+                    let parts = currentId.split('-');
+                    if (parts.length === 2) {
+                        let nextNum = parseInt(parts[1], 10) + 1;
+                        document.getElementById('transaction-id').innerText = parts[0] + '-' + nextNum.toString().padStart(4, '0');
+                    }
                 });
             } else {
                 Swal.fire({ ...swalNeoConfig, title: 'Error', text: data.error, icon: 'error' });
@@ -316,37 +356,23 @@
         });
     }
 
-    // --- RECEIPT PRINTING LOGIC ---
     function generateThermalReceipt(orderNumber, items, total, change, method, providerData) {
-        // Gumawa ng invisible iframe para mai-print nang hindi nasisira ang pos page
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         document.body.appendChild(iframe);
 
         const date = new Date().toLocaleString();
-        
         let itemsHtml = '';
         let kitchenItemsHtml = '';
         
         items.forEach(item => {
-            itemsHtml += `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span>${item.qty}x ${item.name}</span>
-                    <span>P${(item.price * item.qty).toFixed(2)}</span>
-                </div>
-            `;
-            // Ang sa kitchen ay walang presyo
-            kitchenItemsHtml += `
-                <div style="font-size: 14px; font-weight: bold; margin-bottom: 6px;">
-                    [ ${item.qty}x ] ${item.name}
-                </div>
-            `;
+            itemsHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>${item.qty}x ${item.name}</span><span>P${(item.price * item.qty).toFixed(2)}</span></div>`;
+            kitchenItemsHtml += `<div style="font-size: 14px; font-weight: bold; margin-bottom: 6px;">[ ${item.qty}x ] ${item.name}</div>`;
         });
 
         let paymentHtml = `<div style="margin-top: 8px;">Method: ${method === 'cash' ? 'CASH' : 'E-WALLET (' + providerData.provider + ')'}</div>`;
         if (method === 'cash') {
-            paymentHtml += `<div>Amount Paid: P${(total + change).toFixed(2)}</div>`;
-            paymentHtml += `<div>Change: P${change.toFixed(2)}</div>`;
+            paymentHtml += `<div>Amount Paid: P${(total + change).toFixed(2)}</div><div>Change: P${change.toFixed(2)}</div>`;
         } else {
             paymentHtml += `<div>Ref No: ${providerData.refNum}</div>`;
         }
@@ -355,8 +381,24 @@
             <html>
             <head>
                 <style>
-                    body { font-family: 'Inconsolata', monospace; font-size: 12px; margin: 0; padding: 0; width: 300px; color: #000; }
-                    .receipt-section { border-bottom: 2px dashed #000; padding-bottom: 30px; margin-bottom: 30px; }
+                    @page { margin: 0; } 
+                    
+                    body { font-family: 'Inconsolata', monospace; font-size: 12px; margin: 0; padding: 10px 0; width: 300px; color: #000; }
+                    
+                    .receipt-section { 
+                        page-break-after: always; 
+                        padding-bottom: 10px; 
+                    }
+                    .receipt-section:last-child {
+                        page-break-after: auto;
+                    }
+                    
+                    .header { text-align: center; margin-bottom: 10px; }
+                    .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+                    .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
+                    .details { margin-bottom: 8px; }
+                    .total-line { border-top: 1px dashed #000; margin-top: 8px; padding-top: 8px; font-size: 16px; font-weight: bold; text-align: right; }
+                    .footer { text-align: center; margin-top: 15px; font-size: 10px; }
                     .header { text-align: center; margin-bottom: 15px; }
                     .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
                     .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
@@ -366,49 +408,26 @@
                 </style>
             </head>
             <body>
-                <!-- CUSTOMER COPY -->
                 <div class="receipt-section">
-                    <div class="header">
-                        <div class="title">FAKE ARAB SHAWARMA</div>
-                        <div class="copy-type">CUSTOMER COPY</div>
-                    </div>
-                    <div class="details">
-                        <div>Order #: <strong>${orderNumber}</strong></div>
-                        <div>Date: ${date}</div>
-                    </div>
+                    <div class="header"><div class="title">FAKE ARAB SHAWARMA</div><div class="copy-type">CUSTOMER COPY</div></div>
+                    <div class="details"><div>Order #: <strong>${orderNumber}</strong></div><div>Date: ${date}</div></div>
                     <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
                     ${itemsHtml}
                     <div class="total-line">TOTAL: P${total.toFixed(2)}</div>
                     ${paymentHtml}
                     <div class="footer">Thank you for your purchase!</div>
                 </div>
-
-                <!-- CASHIER COPY -->
                 <div class="receipt-section">
-                    <div class="header">
-                        <div class="title">FAKE ARAB SHAWARMA</div>
-                        <div class="copy-type">CASHIER COPY</div>
-                    </div>
-                    <div class="details">
-                        <div>Order #: <strong>${orderNumber}</strong></div>
-                        <div>Date: ${date}</div>
-                    </div>
+                    <div class="header"><div class="title">FAKE ARAB SHAWARMA</div><div class="copy-type">CASHIER COPY</div></div>
+                    <div class="details"><div>Order #: <strong>${orderNumber}</strong></div><div>Date: ${date}</div></div>
                     <div style="border-top: 1px solid #000; margin-bottom: 10px;"></div>
                     ${itemsHtml}
                     <div class="total-line">TOTAL: P${total.toFixed(2)}</div>
                     ${paymentHtml}
                 </div>
-
-                <!-- KITCHEN COPY -->
                 <div class="receipt-section">
-                    <div class="header">
-                        <div class="title">KITCHEN TICKET</div>
-                        <div class="copy-type">KITCHEN COPY</div>
-                    </div>
-                    <div class="details">
-                        <div style="font-size: 16px;">Order #: <strong>${orderNumber}</strong></div>
-                        <div>Date: ${date}</div>
-                    </div>
+                    <div class="header"><div class="title">KITCHEN TICKET</div><div class="copy-type">KITCHEN COPY</div></div>
+                    <div class="details"><div style="font-size: 16px;">Order #: <strong>${orderNumber}</strong></div><div>Date: ${date}</div></div>
                     <div style="border-top: 2px solid #000; margin-bottom: 15px;"></div>
                     ${kitchenItemsHtml}
                 </div>
@@ -420,13 +439,10 @@
         iframe.contentWindow.document.write(receiptTemplate);
         iframe.contentWindow.document.close();
 
-        // Bigyan ng konting delay para mag-load ang Inconsolata font bago i-print
         setTimeout(() => {
             iframe.contentWindow.focus();
             iframe.contentWindow.print();
-            // Optional: document.body.removeChild(iframe); 
         }, 500);
     }
 </script>
-
 {% endblock %}

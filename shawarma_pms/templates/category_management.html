@@ -1,0 +1,226 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const csrfToken = '{{ csrf_token }}';
+</script>
+
+<style>
+    /* Neo-Brutalist Popup Styling */
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; transition: background 0.2s ease; }
+    .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
+    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; font-family: var(--font-main) !important; padding: 14px 24px !important; border-radius: 8px !important; }
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; box-shadow: none !important; font-weight: 700 !important; }
+    .swal-neo-input:focus { border-color: var(--yellow) !important; }
+    
+    .btn-brutalist { background-color: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+    .btn-brutalist:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
+    .btn-brutalist:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
+</style>
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Category Management</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Organize your menu items into groups for the POS system.</p>
+    </div>
+    
+    <div class="header-actions">
+        <button class="btn-brutalist" onclick="addCategory()">
+            <i class="ph ph-plus-circle" style="font-size: 20px;"></i> Add New Category
+        </button>
+    </div>
+</div>
+
+<div class="panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div class="search-bar" style="width: 350px; background: var(--bg-main);">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="category-search" placeholder="Search category name..." oninput="filterCategories()">
+        </div>
+    </div>
+
+    <table class="modern-table">
+        <thead>
+            <tr>
+                <th>Category Name</th>
+                <th>Status</th>
+                <th>Items Linked</th>
+                <th style="text-align: right;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for category in categories %}
+            <tr class="category-row">
+                <td style="font-weight: 800; color: var(--black); font-size: 15px; vertical-align: middle;">{{ category.name }}</td>
+                <td style="vertical-align: middle;">
+                    {% if category.is_active %}
+                        <span class="status-badge" style="background: rgba(34, 197, 94, 0.1); color: var(--status-green);">Active</span>
+                    {% else %}
+                        <span class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--status-red);">Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="color: var(--text-secondary); font-weight: 600; vertical-align: middle;">{{ category.items.count }} items</td>
+                <td style="text-align: right; vertical-align: middle;">
+                    <!-- Itinago natin ang listahan ng items gamit ang json_script para mabasa sa JavaScript -->
+                    {{ category.items.all|json_script:category.id }}
+                    
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <button class="btn btn-secondary" 
+                                onclick="viewCategoryItems('{{ category.name|escapejs }}', '{{ category.id }}')" 
+                                style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;" title="View Products">
+                            <i class="ph ph-eye" style="font-size: 14px;"></i> View
+                        </button>
+                        <button class="btn btn-secondary" 
+                                onclick="editCategory(
+                                    '{{ category.id }}', 
+                                    '{{ category.name|escapejs }}', 
+                                    {{ category.is_active|yesno:'true,false' }}
+                                )" 
+                                style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;" title="Edit Category">
+                            <i class="ph ph-pencil-simple" style="font-size: 14px;"></i> Edit
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                    <i class="ph ph-folders" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                    No categories found. Start by adding one!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel' }, buttonsStyling: false };
+
+    function filterCategories() {
+        const searchInput = document.getElementById('category-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.category-row');
+
+        rows.forEach(row => {
+            const rowText = row.innerText.toLowerCase();
+            row.style.display = rowText.includes(searchInput) ? '' : 'none';
+        });
+    }
+
+    // Function para ipakita ang mga produkto sa loob ng kategorya gamit ang SweetAlert popup
+    function viewCategoryItems(categoryName, categoryId) {
+        const items = JSON.parse(document.getElementById(categoryId).textContent);
+        
+        let itemsHtml = '';
+        if (items.length === 0) {
+            itemsHtml = `<div style="text-align: center; color: var(--text-secondary); padding: 20px; font-style: italic;">No products linked to this category yet.</div>`;
+        } else {
+            itemsHtml = `<ul style="list-style: none; padding: 0; margin: 0; text-align: left; max-height: 250px; overflow-y: auto;">`;
+            items.forEach(item => {
+                itemsHtml += `
+                    <li style="padding: 10px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 8px; font-weight: 700; color: var(--black); display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="ph ph-hamburger" style="margin-right: 8px; color: var(--yellow);"></i> ${item.name}</span>
+                        <span style="font-size: 12px; color: var(--text-secondary);">${item.is_active ? 'Active' : 'Inactive'}</span>
+                    </li>
+                `;
+            });
+            itemsHtml += `</ul>`;
+        }
+
+        Swal.fire({
+            ...swalNeoConfig,
+            title: `${categoryName} Products`,
+            html: `<div style="margin-top: 10px;">${itemsHtml}</div>`,
+            icon: 'info',
+            confirmButtonText: 'Close'
+        });
+    }
+
+    function addCategory() {
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Add New Category',
+            html: `
+                <div style="text-align: left; font-family: var(--font-main);">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Category Name (e.g. Wraps, Rice Meals)</label>
+                    <input id="swal-category-name" class="swal2-input swal-neo-input" placeholder="Enter category name" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Save Category',
+            preConfirm: () => {
+                const name = document.getElementById('swal-category-name').value;
+                if (!name || name.trim() === '') {
+                    Swal.showValidationMessage('Category name is required!');
+                    return false;
+                }
+                return { action: 'add', name: name };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitCategoryData(result.value);
+        });
+    }
+
+    function editCategory(id, name, isActive) {
+        Swal.fire({
+            ...swalNeoConfig,
+            title: 'Edit Category',
+            html: `
+                <div style="text-align: left; font-family: var(--font-main);">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Category Name</label>
+                    <input id="swal-category-name" class="swal2-input swal-neo-input" value="${name}" style="width: 85%; margin: 4px auto 16px auto; display: flex;">
+                    
+                    <div style="width: 85%; margin: 0 auto;">
+                        <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="swal-is-active" ${isActive ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
+                            Category is Active
+                        </label>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Update Category',
+            preConfirm: () => {
+                const updatedName = document.getElementById('swal-category-name').value;
+                const updatedIsActive = document.getElementById('swal-is-active').checked;
+
+                if (!updatedName || updatedName.trim() === '') {
+                    Swal.showValidationMessage('Category name is required!');
+                    return false;
+                }
+                return { action: 'edit', category_id: id, name: updatedName, is_active: updatedIsActive };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitCategoryData(result.value);
+        });
+    }
+
+    function submitCategoryData(payload) {
+        Swal.fire({ ...swalNeoConfig, title: 'Saving...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        
+        fetch("{% url 'inventory:categories' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Success!', text: data.message }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: data.error });
+            }
+        })
+        .catch(error => {
+            Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'System Error', text: 'Could not communicate with the database.' });
+        });
+    }
+</script>
+
+{% endblock %}

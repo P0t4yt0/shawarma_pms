@@ -1,6 +1,14 @@
 {% extends 'dashboard.html' %}
 {% block content %}
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    .swal-neo { border: 3px solid var(--black) !important; border-radius: 16px !important; box-shadow: 8px 8px 0px var(--black) !important; padding: 24px !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: 2px solid var(--black) !important; box-shadow: 4px 4px 0px var(--black) !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; text-transform: uppercase !important; transition: all 0.1s ease; }
+    .swal-neo-confirm:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black) !important; background-color: var(--yellow-hover) !important; }
+</style>
+
 <div class="welcome-header">
     <div>
         <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Order List</h1>
@@ -8,7 +16,7 @@
     </div>
     
     <div class="header-actions">
-        <a href="{% url 'pos:pos_screen' %}" class="btn btn-primary">
+        <a href="{% url 'pos:pos_screen' %}" class="btn btn-primary" style="background: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 0 4px 0 var(--black);">
             <i class="ph ph-plus"></i> New Sale
         </a>
     </div>
@@ -18,16 +26,17 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div class="search-bar" style="width: 350px; background: var(--bg-main);">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="text" placeholder="Search Order ID or Reference...">
+            <input type="text" id="order-search" placeholder="Search Order ID or Items..." oninput="filterOrders()">
         </div>
         
         <div style="display: flex; gap: 12px;">
-            <select style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
+            <select id="status-filter" onchange="filterOrders()" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600; cursor: pointer;">
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
                 <option value="preparing">Preparing</option>
-                <option value="ready">Ready</option>
+                <option value="ready_to_serve">Ready</option>
                 <option value="completed">Completed</option>
+                <option value="cancelled">Voided</option>
             </select>
         </div>
     </div>
@@ -37,45 +46,106 @@
             <tr>
                 <th>Order ID</th>
                 <th>Time</th>
-                <th>Reference / Platform</th>
+                <th>Type</th>
                 <th>Items</th>
                 <th>Total</th>
                 <th>Status</th>
                 <th style="text-align: right;">Action</th>
             </tr>
         </thead>
-        <tbody>
-            <!-- Sample Dummy Data -->
-            <tr>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#ORD-1001</td>
-                <td>10:45 AM</td>
-                <td>Walk-in</td>
-                <td>2x Beef Wrap, 1x Fries</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱350.00</td>
-                <td><span class="status-badge status-pending">Preparing</span></td>
+        <tbody id="order-table-body">
+            {% for order in orders %}
+            <tr class="order-row" data-status="{{ order.status }}">
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--black);">#{{ order.order_number }}</td>
+                <td style="font-size: 13px;">{{ order.created_at|date:"M d, Y h:i A" }}</td>
+                <td style="font-weight: 600;">{{ order.get_order_type_display }}</td>
+                <td style="font-size: 13px; color: var(--text-secondary); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {% for item in order.items.all %}
+                        {{ item.quantity }}x {{ item.item_name }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                        No items
+                    {% endfor %}
+                </td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--black);">₱{{ order.total }}</td>
+                <td>
+                    {% if order.status == 'pending' %}
+                        <span class="status-badge" style="background: var(--yellow-tint); color: #B48600;"><i class="ph ph-clock"></i> Pending</span>
+                    {% elif order.status == 'preparing' %}
+                        <span class="status-badge" style="background: var(--yellow); color: var(--black);"><i class="ph ph-fire"></i> Preparing</span>
+                    {% elif order.status == 'ready_to_serve' %}
+                        <span class="status-badge" style="background: rgba(34, 197, 94, 0.1); color: var(--status-green);"><i class="ph ph-bell-ringing"></i> Ready</span>
+                    {% elif order.status == 'completed' %}
+                        <span class="status-badge status-completed"><i class="ph ph-check-circle"></i> Completed</span>
+                    {% elif order.status == 'cancelled' %}
+                        <span class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--status-red);"><i class="ph ph-x-circle"></i> Voided</span>
+                    {% endif %}
+                </td>
                 <td style="text-align: right;">
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; display: inline-flex;">View</button>
+                    <button onclick="viewOrderDetails('{{ order.order_number }}', '{{ order.get_status_display }}', '{{ order.total }}', '{{ order.created_at|date:"M d, Y h:i A" }}')" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; display: inline-flex;">
+                        <i class="ph ph-eye"></i> View
+                    </button>
                 </td>
             </tr>
+            {% empty %}
             <tr>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#ORD-1002</td>
-                <td>11:10 AM</td>
-                <td>GrabFood</td>
-                <td>1x Chicken Rice Meal</td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱180.00</td>
-                <td><span class="status-badge status-completed">Completed</span></td>
-                <td style="text-align: right;">
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; display: inline-flex;">View</button>
+                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                    <i class="ph ph-receipt" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                    No orders found in the database.
                 </td>
             </tr>
-            <!-- Ito ang lalabas kapag walang order -->
-            <!-- 
-            <tr>
-                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 32px 16px;">No orders found.</td>
-            </tr> 
-            -->
+            {% endfor %}
         </tbody>
     </table>
 </div>
+
+<script>
+    // Dynamic Filter & Search Logic
+    function filterOrders() {
+        const searchInput = document.getElementById('order-search').value.toLowerCase();
+        const statusFilter = document.getElementById('status-filter').value;
+        const rows = document.querySelectorAll('.order-row');
+
+        rows.forEach(row => {
+            const status = row.getAttribute('data-status');
+            const rowText = row.innerText.toLowerCase();
+            
+            const matchesSearch = rowText.includes(searchInput);
+            const matchesStatus = (statusFilter === 'all' || status === statusFilter);
+
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Dynamic View Button Logic (Neo-Brutalist Popup)
+    function viewOrderDetails(orderNumber, status, total, date) {
+        Swal.fire({
+            customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm' },
+            title: `Order #${orderNumber}`,
+            html: `
+                <div style="text-align: left; margin-top: 16px; font-family: var(--font-main);">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                        <span style="color: var(--text-secondary); font-weight: 600;">Status</span>
+                        <span style="font-weight: 800; color: var(--black);">${status}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                        <span style="color: var(--text-secondary); font-weight: 600;">Date & Time</span>
+                        <span style="font-weight: 700; color: var(--black); font-size: 14px;">${date}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 12px;">
+                        <span style="color: var(--text-secondary); font-weight: 600;">Total Amount</span>
+                        <span style="font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; color: var(--yellow);">₱${total}</span>
+                    </div>
+                </div>
+            `,
+            icon: 'info',
+            confirmButtonText: 'Close',
+            confirmButtonColor: 'var(--black)'
+        });
+    }
+</script>
 
 {% endblock %}
