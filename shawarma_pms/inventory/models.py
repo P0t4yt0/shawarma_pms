@@ -1,15 +1,12 @@
-"""inventory app: raw ingredients, stock ledger, recipes (BOM) and low-stock alerts.
-
-Design rules
-  * Ingredient.current_stock is a cached balance; StockMovement is the source of truth (append-only ledger).
-  * Every stock change goes through Ingredient.adjust() -> row lock + ledger row + alert check.
-  * Recipe.deduct_stock() is the ONLY place that turns "1 Beef Shawarma Wrap" into raw-material usage.
-"""
+"""inventory app: raw ingredients, stock ledger, recipes (BOM) and low-stock alerts."""
 from decimal import Decimal
 
 from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.crypto import get_random_string
+
+from point_of_sale.models import MenuVariant
 
 
 class Unit(models.TextChoices):
@@ -32,16 +29,29 @@ class InsufficientStock(Exception):
         super().__init__("Insufficient stock: " + ", ".join(f"{i.name} (need {n}, have {a})" for i, n, a in shortages))
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+    
+
 class Ingredient(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    sku = models.CharField(max_length=30, unique=True)
-    category = models.CharField(max_length=20, choices=IngredientCategory.choices)
+    
+    # Ang blank=True ay ibig sabihin pwede itong iwang walang laman sa form.
+    sku = models.CharField(max_length=30, unique=True, blank=True)
+    
+    category = models.ForeignKey('point_of_sale.Category', on_delete=models.PROTECT, related_name="inventory_items", null=True, blank=True)
     unit = models.CharField(max_length=5, choices=Unit.choices)
     current_stock = models.DecimalField(max_digits=12, decimal_places=3, default=0)
-    reorder_level = models.DecimalField(max_digits=12, decimal_places=3, default=0,
-                                        help_text="Low-stock alert fires when stock <= this")
-    par_level = models.DecimalField(max_digits=12, decimal_places=3, default=0,
-                                    help_text="Target stock after replenishment")
+    reorder_level = models.DecimalField(max_digits=12, decimal_places=3, default=0, help_text="Low-stock alert fires when stock <= this")
+    par_level = models.DecimalField(max_digits=12, decimal_places=3, default=0, help_text="Target stock after replenishment")
     cost_per_unit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_perishable = models.BooleanField(default=False)
     shelf_life_days = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -54,6 +64,27 @@ class Ingredient(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.current_stock} {self.unit})"
+
+    # =========================================================
+    # AUTOMATIC SKU GENERATOR (Nangyayari pag kinlick ang Save)
+    # =========================================================
+    def save(self, *args, **kwargs):
+        # Kapag walang inilagay na SKU ang user...
+        if not self.sku:
+            is_unique = False
+            
+            # Paulit-ulit itong gagawa ng code hanggang sa makahanap ng code na walang kaparehas (Unique)
+            while not is_unique:
+                # Gagawa ng random code, halimbawa: "SKU-A1B2C3D4"
+                new_sku = 'SKU-' + get_random_string(8).upper()
+                
+                # Iche-check sa database kung may nakagamit na nito
+                if not Ingredient.objects.filter(sku=new_sku).exists():
+                    self.sku = new_sku  # Kung wala pang gumagamit, ito na ang magiging SKU niya!
+                    is_unique = True    # Ipapahinto na ang pag-loop
+                    
+        # I-save na sa database nang tuluyan
+        super().save(*args, **kwargs)
 
     @property
     def is_low_stock(self):
@@ -134,15 +165,6 @@ class Recipe(models.Model):
 
     @transaction.atomic
     def deduct_stock(self, quantity=1, order=None, user=None):
-        """
-        Automatic stock deduction. Example - 1 x "Beef Shawarma Wrap (Standard)":
-            Pita Bread (Standard)   -1      pcs
-            Marinated Beef Slices   -0.100  kg
-            Cucumbers/Tomatoes/White Onions/Shredded Cabbage  -0.050 kg combined (mixed vegetables)
-            Garlic Sauce (Toum)     -0.020  L
-            Shawarma Foil Wrapper   -1      pcs
-        Returns list[(ingredient, quantity_deducted)].
-        """
         if getattr(settings, "INVENTORY_BLOCK_ON_INSUFFICIENT", False):
             short = self.shortages(quantity)
             if short:
@@ -204,3 +226,14 @@ class LowStockAlert(models.Model):
                 cls.objects.create(ingredient=ingredient, stock_at_trigger=ingredient.current_stock)
         else:
             open_alerts.update(status=cls.Status.RESOLVED, resolved_at=timezone.now())
+
+class RecipeItem(models.Model):
+    variant = models.ForeignKey(MenuVariant, on_delete=models.CASCADE, related_name='recipe_items')
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
+    quantity_required = models.DecimalField(max_digits=10, decimal_places=3, help_text="Gaano karami ang kailangan per serving?")
+
+    class Meta:
+        unique_together = ('variant', 'ingredient') # Para hindi ma-doble ang ingredient sa isang product
+
+    def __str__(self):
+        return f"{self.quantity_required} {self.ingredient.unit} of {self.ingredient.name} for {self.variant.name}"

@@ -1,0 +1,290 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const csrfToken = '{{ csrf_token }}';
+    // Ang data mula sa backend
+    const variantsData = JSON.parse('{{ variants_json|escapejs }}');
+    let selectedVariantId = null;
+</script>
+
+<style>
+    .btn-brutalist { background-color: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+    .btn-brutalist:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
+    .btn-brutalist:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
+    
+    .recipe-layout { display: flex; gap: 24px; align-items: flex-start; margin-top: 24px; }
+    
+    /* Left Side: Product List */
+    .product-list-card { flex: 0 0 350px; background: white; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+    .product-list-header { background: #f8fafc; padding: 16px; border-bottom: 1px solid var(--border-color); font-weight: 800; color: var(--color-main-navy); }
+    .product-item { padding: 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .product-item:hover { background: #f8fafc; }
+    .product-item.active { background: var(--color-main-navy); color: white; }
+    .product-item.active .text-muted { color: #cbd5e1 !important; }
+    
+    /* Right Side: Recipe Details */
+    .recipe-details-card { flex: 1; background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; min-height: 400px; display: flex; flex-direction: column; }
+    
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-align: center; margin: auto; padding: 40px; }
+    
+    .btn-remove { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .btn-remove:hover { background: #fca5a5; }
+
+    /* Neo-Brutalist Popup Styling */
+    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
+    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; padding: 14px 28px !important; }
+    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; padding: 14px 24px !important; border-radius: 8px !important; }
+    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; box-shadow: none !important; font-weight: 700 !important; width: 85% !important; margin: 8px auto 16px auto !important; display: flex !important;}
+</style>
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px; font-family: var(--font-heading);">Recipe Management</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Link ingredients to menu products for automatic stock deduction upon sales.</p>
+    </div>
+</div>
+
+<div class="recipe-layout">
+    <!-- LEFT: PRODUCT LIST -->
+    <div class="product-list-card">
+        <div class="product-list-header">
+            Select Menu Product
+        </div>
+        <div style="max-height: 600px; overflow-y: auto;" id="product-list-container">
+            <!-- JS WILL POPULATE THIS -->
+        </div>
+    </div>
+
+    <!-- RIGHT: RECIPE DETAILS -->
+    <div class="recipe-details-card" id="recipe-details-container">
+        <div class="empty-state">
+            <i class="ph ph-hand-pointing" style="font-size: 48px; color: var(--border-color); margin-bottom: 16px;"></i>
+            <h3 style="margin: 0; font-family: var(--font-heading); color: var(--black);">No Product Selected</h3>
+            <p style="margin: 8px 0 0 0;">Please select a menu product from the left to view or edit its recipe.</p>
+        </div>
+    </div>
+</div>
+
+<!-- INGREDIENTS DATA FOR DROPDOWN -->
+<script id="ingredients-data" type="application/json">
+    [
+        {% for ing in ingredients %}
+            {"id": "{{ ing.id }}", "name": "{{ ing.name|escapejs }}", "unit": "{{ ing.unit }}"}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+</script>
+
+<script>
+    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel' }, buttonsStyling: false };
+    const ingredientsList = JSON.parse(document.getElementById('ingredients-data').textContent);
+
+    function init() {
+        renderProductList();
+        
+        // I-CHECK KUNG MAY NAKA-SAVE NA PREVIOUSLY SELECTED ID BAGO NAG-REFRESH
+        const savedId = sessionStorage.getItem('selectedRecipeVariantId');
+        if (savedId) {
+            const variantId = parseInt(savedId);
+            // I-load agad ang recipe kung nag-eexist pa yung product
+            if (variantsData.find(v => v.id === variantId)) {
+                selectVariant(variantId);
+            }
+        }
+    }
+
+    function renderProductList() {
+        const container = document.getElementById('product-list-container');
+        container.innerHTML = '';
+
+        variantsData.forEach(v => {
+            const itemCount = v.recipe.length;
+            const div = document.createElement('div');
+            div.className = `product-item ${selectedVariantId === v.id ? 'active' : ''}`;
+            div.onclick = () => selectVariant(v.id);
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight: 700; font-size: 15px;">${v.name}</div>
+                    <div class="text-muted" style="font-size: 12px; margin-top: 4px; color: #64748b;">Selling Price: ₱${v.price.toFixed(2)}</div>
+                </div>
+                <div style="background: ${itemCount > 0 ? '#dcfce7' : '#fee2e2'}; color: ${itemCount > 0 ? '#166534' : '#991b1b'}; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800;">
+                    ${itemCount} Items
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function selectVariant(id) {
+        selectedVariantId = id;
+        sessionStorage.setItem('selectedRecipeVariantId', id);
+        renderProductList(); // Update active class
+        renderRecipeDetails();
+    }
+
+    function renderRecipeDetails() {
+        const container = document.getElementById('recipe-details-container');
+        const variant = variantsData.find(v => v.id === selectedVariantId);
+
+        if (!variant) return;
+
+        // Computation for Profit Margin based on Recipe Cost
+        const profit = variant.price - variant.total_cost;
+        const margin = variant.price > 0 ? ((profit / variant.price) * 100).toFixed(1) : 0;
+        const marginColor = margin > 30 ? 'var(--status-green)' : (margin > 0 ? 'var(--status-orange)' : 'var(--status-red)');
+
+        let html = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                <div>
+                    <h2 style="margin: 0; font-family: var(--font-heading); color: var(--black); font-size: 24px;">${variant.name}</h2>
+                    <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Define the exact raw materials consumed per 1 order.</p>
+                </div>
+                <button class="btn-brutalist" onclick="addIngredientToRecipe()">
+                    <i class="ph ph-plus-circle"></i> Add Ingredient
+                </button>
+            </div>
+
+            <!-- Recipe Summary Cards -->
+            <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); flex: 1;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Selling Price</div>
+                    <div style="font-family: 'Inconsolata', monospace; font-size: 24px; font-weight: 800; color: var(--color-main-navy);">₱${variant.price.toFixed(2)}</div>
+                </div>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); flex: 1;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Est. Recipe Cost</div>
+                    <div style="font-family: 'Inconsolata', monospace; font-size: 24px; font-weight: 800; color: #b91c1c;">₱${variant.total_cost.toFixed(2)}</div>
+                </div>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); flex: 1;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Profit Margin</div>
+                    <div style="font-family: 'Inconsolata', monospace; font-size: 24px; font-weight: 800; color: ${marginColor};">${margin}%</div>
+                </div>
+            </div>
+
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Ingredient</th>
+                        <th>Required Quantity</th>
+                        <th>Cost per Unit</th>
+                        <th>Estimated Cost</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        if (variant.recipe.length === 0) {
+            html += `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">No ingredients linked to this product yet.</td></tr>`;
+        } else {
+            variant.recipe.forEach(item => {
+                html += `
+                    <tr>
+                        <td style="font-weight: 800; color: var(--black);">${item.ingredient_name}</td>
+                        <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--color-main-navy); font-size: 15px;">
+                            ${parseFloat(item.quantity_required.toFixed(3))} ${item.unit}
+                        </td>
+                        <td style="font-family: 'Inconsolata', monospace;">₱${item.cost_per_unit.toFixed(2)} / ${item.unit}</td>
+                        <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: #b91c1c;">₱${item.cost.toFixed(2)}</td>
+                        <td style="text-align: right;">
+                            <button class="btn-remove" onclick="removeIngredient('${item.id}', '${item.ingredient_name}')">
+                                <i class="ph ph-trash"></i> Remove
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function addIngredientToRecipe() {
+        if (!selectedVariantId) return;
+        const variant = variantsData.find(v => v.id === selectedVariantId);
+
+        let optionsHtml = '<option value="" disabled selected>Select an ingredient...</option>';
+        ingredientsList.forEach(ing => {
+            optionsHtml += `<option value="${ing.id}" data-unit="${ing.unit}">${ing.name}</option>`;
+        });
+
+        Swal.fire({
+            ...swalNeoConfig,
+            title: `Add to ${variant.name}`,
+            html: `
+                <div style="text-align: left;">
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); margin-left: 7.5%;">Raw Material / Ingredient</label>
+                    <select id="swal-ing" class="swal2-select swal-neo-input" onchange="document.getElementById('unit-label').innerText = this.options[this.selectedIndex].getAttribute('data-unit');">
+                        ${optionsHtml}
+                    </select>
+
+                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); margin-left: 7.5%;">Quantity Required per 1 Order</label>
+                    <div style="display: flex; align-items: center; width: 85%; margin: 8px auto;">
+                        <input id="swal-qty" type="number" step="0.001" min="0.001" placeholder="e.g. 0.5" class="swal2-input swal-neo-input" style="margin: 0 !important; flex: 1;">
+                        <span id="unit-label" style="background: #f1f5f9; padding: 14px 16px; border: 2px solid var(--border-color); border-left: none; border-radius: 0 8px 8px 0; font-weight: 800; color: var(--text-secondary);">Unit</span>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Save to Recipe',
+            preConfirm: () => {
+                const ingId = document.getElementById('swal-ing').value;
+                const qty = document.getElementById('swal-qty').value;
+
+                if (!ingId || !qty || qty <= 0) {
+                    Swal.showValidationMessage('Please select an ingredient and enter a valid quantity.');
+                    return false;
+                }
+                return { action: 'add_item', variant_id: selectedVariantId, ingredient_id: ingId, quantity: qty };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) submitData(result.value);
+        });
+    }
+
+    function removeIngredient(recipeItemId, ingName) {
+        Swal.fire({
+            ...swalNeoConfig,
+            icon: 'warning',
+            title: 'Remove Ingredient?',
+            text: `Are you sure you want to remove ${ingName} from the recipe?`,
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Remove it',
+            confirmButtonColor: '#dc2626'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                submitData({ action: 'remove_item', recipe_item_id: recipeItemId });
+            }
+        });
+    }
+
+    function submitData(payload) {
+        Swal.fire({ ...swalNeoConfig, title: 'Processing...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        
+        fetch(window.location.href, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Success!', text: data.message }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: data.error });
+            }
+        })
+        .catch(error => {
+            Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'System Error', text: 'Could not communicate with the database.' });
+        });
+    }
+
+    // Initialize the view
+    init();
+</script>
+
+{% endblock %}

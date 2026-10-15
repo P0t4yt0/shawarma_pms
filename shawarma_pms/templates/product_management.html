@@ -39,7 +39,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div class="search-bar" style="width: 350px; background: var(--bg-main);">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="text" id="product-search" placeholder="Search product name or SKU..." oninput="filterProducts()">
+            <input type="text" id="product-search" placeholder="Search product name or ID..." oninput="filterProducts()">
         </div>
         
         <div style="display: flex; gap: 12px;">
@@ -55,7 +55,7 @@
     <table class="modern-table">
         <thead>
             <tr>
-                <th>SKU</th>
+                <th>Product ID</th>
                 <th>Product Name</th>
                 <th>Variant Name</th>
                 <th>Category</th>
@@ -67,7 +67,13 @@
         <tbody>
             {% for variant in variants %}
             <tr class="product-row" data-category="{{ variant.item.category.name }}">
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--text-secondary);">{{ variant.sku }}</td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 700; color: var(--text-secondary);">
+                    {% if variant.sku %}
+                        {{ variant.sku }}
+                    {% else %}
+                        PRD-{{ variant.id }}
+                    {% endif %}
+                </td>
                 <td style="font-weight: 800; color: var(--black);">{{ variant.item.name }}</td>
                 <td style="font-weight: 600;">{{ variant.name }}</td>
                 <td style="color: var(--text-secondary);">{{ variant.item.category.name }}</td>
@@ -80,19 +86,21 @@
                     {% endif %}
                 </td>
                 <td style="text-align: right;">
-                    <button class="btn btn-secondary" 
-                            onclick="editProduct(
-                                '{{ variant.id }}', 
-                                '{{ variant.item.name|escapejs }}', 
-                                '{{ variant.name|escapejs }}', 
-                                '{{ variant.item.category.id }}', 
-                                '{{ variant.sku|escapejs }}', 
-                                '{{ variant.price }}', 
-                                {{ variant.is_active|yesno:'true,false' }}
-                            )" 
-                            style="padding: 6px 12px; font-size: 12px;">
-                        <i class="ph ph-pencil-simple"></i> Edit
-                    </button>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button class="btn btn-secondary" 
+                                onclick="editProduct(
+                                    '{{ variant.id }}', 
+                                    '{{ variant.item.name|escapejs }}', 
+                                    '{{ variant.name|escapejs }}', 
+                                    '{{ variant.item.category.id }}', 
+                                    '{% if variant.sku %}{{ variant.sku|escapejs }}{% else %}PRD-{{ variant.id }}{% endif %}', 
+                                    '{{ variant.price }}', 
+                                    {{ variant.is_active|yesno:'true,false' }}
+                                )" 
+                                style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="ph ph-pencil-simple"></i> Edit
+                        </button>
+                    </div>
                 </td>
             </tr>
             {% empty %}
@@ -107,7 +115,6 @@
     </table>
 </div>
 
-<!-- Option data para sa Javascript SweetAlert Dropdowns -->
 <script id="categories-data" type="application/json">
     [
         {% for category in categories %}
@@ -136,7 +143,6 @@
         });
     }
 
-    // Bumuo ng dropdown HTML options para sa Categories
     function getCategoryOptions(selectedId = null) {
         let options = '<option value="" disabled selected>Select Category</option>';
         categoriesData.forEach(c => {
@@ -170,8 +176,8 @@
 
                     <div style="display: flex; gap: 16px; width: 85%; margin: 0 auto;">
                         <div style="flex: 1;">
-                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">SKU Code</label>
-                            <input id="swal-sku" class="swal2-input swal-neo-input" style="width: 100%; margin: 4px 0 0 0;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Product ID</label>
+                            <input id="swal-sku" class="swal2-input swal-neo-input" placeholder="Auto-generated" readonly style="width: 100%; margin: 4px 0 0 0; background-color: #f1f5f9; cursor: not-allowed; border-color: #e2e8f0; color: #94a3b8;">
                         </div>
                         <div style="flex: 1;">
                             <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Price (₱)</label>
@@ -186,14 +192,14 @@
                 const itemName = document.getElementById('swal-item-name').value;
                 const variantName = document.getElementById('swal-variant-name').value;
                 const categoryId = document.getElementById('swal-category').value;
-                const sku = document.getElementById('swal-sku').value;
                 const price = document.getElementById('swal-price').value;
 
-                if (!itemName || !variantName || !categoryId || !sku || !price) {
-                    Swal.showValidationMessage('All fields are required!');
+                if (!itemName || !variantName || !categoryId || !price) {
+                    Swal.showValidationMessage('All editable fields are required!');
                     return false;
                 }
-                return { action: 'add', item_name: itemName, variant_name: variantName, category_id: categoryId, sku: sku, price: parseFloat(price) };
+                
+                return { action: 'add', item_name: itemName, variant_name: variantName, category_id: categoryId, sku: "", price: parseFloat(price) };
             }
         }).then((result) => {
             if (result.isConfirmed) submitProductData(result.value);
@@ -219,8 +225,8 @@
 
                     <div style="display: flex; gap: 16px; width: 85%; margin: 0 auto 16px auto;">
                         <div style="flex: 1;">
-                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">SKU Code</label>
-                            <input id="swal-sku" class="swal2-input swal-neo-input" value="${sku}" style="width: 100%; margin: 4px 0 0 0;">
+                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Product ID</label>
+                            <input id="swal-sku" class="swal2-input swal-neo-input" value="${sku}" readonly style="width: 100%; margin: 4px 0 0 0; background-color: #f1f5f9; cursor: not-allowed; border-color: #e2e8f0; color: #94a3b8;">
                         </div>
                         <div style="flex: 1;">
                             <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary);">Price (₱)</label>
@@ -246,8 +252,8 @@
                 const updatedPrice = document.getElementById('swal-price').value;
                 const updatedIsActive = document.getElementById('swal-is-active').checked;
 
-                if (!updatedItemName || !updatedVariantName || !updatedCategoryId || !updatedSku || !updatedPrice) {
-                    Swal.showValidationMessage('All fields are required!');
+                if (!updatedItemName || !updatedVariantName || !updatedCategoryId || !updatedPrice) {
+                    Swal.showValidationMessage('All editable fields are required!');
                     return false;
                 }
                 return { action: 'edit', variant_id: id, item_name: updatedItemName, variant_name: updatedVariantName, category_id: updatedCategoryId, sku: updatedSku, price: parseFloat(updatedPrice), is_active: updatedIsActive };

@@ -193,8 +193,12 @@
         <a href="{% url 'inventory:list' %}" class="nav-item {% if 'ingredients' in request.path %}active{% endif %}">
             <i class="ph ph-carrot"></i> Ingredient Stock
         </a>
-        <a href="#" class="nav-item"><i class="ph ph-arrows-left-right"></i> Stock In / Stock Out</a>
-        <a href="#" class="nav-item"><i class="ph ph-book-open"></i> Recipe Management</a>
+        <a href="{% url 'inventory:stock_movements' %}" class="nav-item {% if 'movements' in request.path %}active{% endif %}">
+            <i class="ph ph-arrows-left-right"></i> Stock In / Out
+        </a>
+        <a href="{% url 'inventory:recipe_management' %}" class="nav-item {% if 'recipes' in request.path %}active{% endif %}">
+            <i class="ph ph-book-open"></i> Recipe Management
+        </a>
         <a href="#" class="nav-item"><i class="ph ph-truck"></i> Supplier List</a>
         <a href="#" class="nav-item"><i class="ph ph-warning-octagon"></i> Expiration & Spoilage</a>
 

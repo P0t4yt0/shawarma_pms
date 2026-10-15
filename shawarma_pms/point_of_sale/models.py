@@ -14,8 +14,10 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 from .signals import order_status_changed
+
 
 TWO = Decimal("0.01")
 
@@ -48,19 +50,31 @@ class MenuItem(models.Model):
 
 
 class MenuVariant(models.Model):
-    """The sellable unit (e.g. Beef Shawarma Wrap - Large). Recipes, prices and analytics hang off this."""
-    item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name="variants")
-    name = models.CharField(max_length=50, help_text="Standard / Large / Regular ...")
-    sku = models.CharField(max_length=30, unique=True)
-    price = models.DecimalField(max_digits=9, decimal_places=2)
+    # Ibinalik natin ang mga original na fields na kailangan ng system mo
+    item = models.ForeignKey('MenuItem', on_delete=models.CASCADE, related_name='variants')
+    name = models.CharField(max_length=100)
+    
+    # Ang ating auto-generating SKU field
+    sku = models.CharField(max_length=50, unique=True, blank=True)
+    
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True)
 
-    class Meta:
-        unique_together = [("item", "name")]
-        ordering = ["item__name", "price"]
-
     def __str__(self):
-        return f"{self.item.name} ({self.name})"
+        return f"{self.item.name} - {self.name}"
+
+    # Ang ating Automatic Product ID / SKU Generator
+    def save(self, *args, **kwargs):
+        if not self.sku:
+            is_unique = False
+            while not is_unique:
+                # Gagamit tayo ng PRD- prefix para sa mga Products
+                new_sku = 'PRD-' + get_random_string(8).upper()
+                if not MenuVariant.objects.filter(sku=new_sku).exists():
+                    self.sku = new_sku
+                    is_unique = True
+                    
+        super().save(*args, **kwargs)
 
 
 # --------------------------------------------------------------------------- orders
