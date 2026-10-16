@@ -154,10 +154,11 @@
 </head>
 <body>
 
-    <aside class="sidebar">
-        <a href="{% url 'security:dashboard' %}" class="logo-container">
-            <div class="logo-placeholder">LOGO PLACEHOLDER</div>
-        </a>
+    <!-- Palitan ng ganito: -->
+        <aside class="sidebar">
+            <a href="{% url 'security:dashboard' %}" class="logo-container">
+                <img src="{% static 'images/logo.jpg' %}" alt="Shawarma POS" style="max-width: 100%; max-height: 56px; object-fit: contain;">
+            </a>
         
         <!-- 1. Dashboard -->
         <a href="{% url 'security:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
@@ -217,10 +218,18 @@
         <a href="{% url 'reports_analytics:sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_report' and 'reports' in request.path %}active{% endif %}">
             <i class="ph ph-chart-bar"></i> Sales Reports
         </a>
-        <a href="#" class="nav-item"><i class="ph ph-trend-up"></i> Product Sales</a>
-        <a href="#" class="nav-item"><i class="ph ph-clipboard-data"></i> Inventory Reports</a>
-        <a href="#" class="nav-item"><i class="ph ph-chart-line-up"></i> Sales Forecast</a>
-        <a href="#" class="nav-item"><i class="ph ph-trash"></i> Stock & Spoilage Reports</a>
+        <a href="{% url 'reports_analytics:product_sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'product_sales_report' %}active{% endif %}">
+            <i class="ph ph-trend-up"></i> Product Sales
+        </a>
+        <a href="{% url 'reports_analytics:inventory_report' %}" class="nav-item {% if request.resolver_match.url_name == 'inventory_report' %}active{% endif %}">
+            <i class="ph ph-clipboard-data"></i> Inventory Reports
+        </a>
+        <a href="{% url 'reports_analytics:sales_forecast_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_forecast_report' %}active{% endif %}">
+            <i class="ph ph-chart-line-up"></i> Sales Forecast
+        </a>
+        <a href="{% url 'reports_analytics:stock_spoilage_report' %}" class="nav-item {% if request.resolver_match.url_name == 'stock_spoilage_report' %}active{% endif %}">
+            <i class="ph ph-trash"></i> Stock & Spoilage Reports
+        </a>
 
         <!-- 6. Employees -->
         <div class="nav-category">Employees</div>

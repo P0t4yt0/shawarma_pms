@@ -54,7 +54,10 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Manila"
 USE_TZ = True
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 LOGIN_URL = "/security/login/"
 LOGIN_REDIRECT_URL = "/security/home/"
 

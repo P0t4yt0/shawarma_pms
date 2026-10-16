@@ -1,0 +1,209 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+    :root {
+        --font-heading: 'Inter', sans-serif;
+        --font-body: 'Inter', sans-serif;
+        --font-mono: 'Inconsolata', monospace; 
+        --color-main-navy: #2F3F7B;
+        --color-accent-green: #22C55E;  
+        --text-main: #212529;
+        --text-muted: #6B7280;
+        --border-color: #E5E7EB;
+        --bg-card: #FFFFFF;
+    }
+
+    .action-btn { background: white; border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; font-family: var(--font-body); }
+    .action-btn:hover { background: #F3F4F6; }
+    .action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .pdf-export-wrapper { background: white !important; padding: 20px 30px !important; font-family: 'DM Sans', sans-serif !important; color: #1a1a2e !important; }
+    .pdf-export-wrapper .panel { border: none !important; box-shadow: none !important; margin-bottom: 24px !important; width: 100% !important; padding: 0 !important; background: transparent !important; }
+    
+    .pdf-export-wrapper table { width: 100% !important; border-collapse: collapse !important; border-left: 1px solid #e8e8f0 !important; border-right: 1px solid #e8e8f0 !important; border-bottom: 1px solid #e8e8f0 !important; }
+    .pdf-export-wrapper thead { display: table-header-group !important; }
+    .pdf-export-wrapper thead th { background: #092c4c !important; color: #fff !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; padding: 10px 14px !important; text-align: left !important; border: none !important; font-family: 'DM Sans', sans-serif !important; }
+    .pdf-export-wrapper tbody tr { page-break-inside: avoid !important; border-bottom: 1px solid #eef0f6 !important; }
+    .pdf-export-wrapper tbody tr:nth-child(even) { background: #fafbfd !important; }
+    .pdf-export-wrapper tbody td { padding: 10px 14px !important; font-size: 12.5px !important; color: #2a2a3e !important; border: none !important; vertical-align: top !important; font-family: 'DM Sans', sans-serif !important; }
+</style>
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); font-family: var(--font-heading);">Stock & Spoilage</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Records of stock movements, damages, and spoilage costs.</p>
+    </div>
+    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body);">Export Target</label>
+            <select id="export-scope" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; color: var(--color-main-navy); outline: none; cursor: pointer; background-color: #F8FAFC;">
+                <option value="all">All Product Records</option>
+            </select>
+        </div>
+        <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 4px;"></div>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button id="btn-pdf-export" onclick="processExport('pdf')" class="action-btn" style="color: #EF4444; border-color: #FCA5A5; height: 36px;">
+                <i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF
+            </button>
+            <button id="btn-csv-export" onclick="processExport('csv')" class="action-btn" style="color: var(--color-accent-green); border-color: #86efac; height: 36px;">
+                <i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Export CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;">
+    <div class="kpi-card" style="padding: 20px;">
+        <div class="kpi-title-wrapper">
+            <div class="icon-bg" style="width: 32px; height: 32px;"><i class="ph ph-trash"></i></div>
+            <div class="kpi-title">Total Spoilage Cost</div>
+        </div>
+        <div class="kpi-value" style="font-size: 24px; margin-top: 12px; color: #EF4444;">₱{{ total_spoilage_cost|default:"0.00" }}</div>
+    </div>
+    <div class="kpi-card" style="padding: 20px;">
+        <div class="kpi-title-wrapper">
+            <div class="icon-bg" style="width: 32px; height: 32px;"><i class="ph ph-warning-circle"></i></div>
+            <div class="kpi-title">Items Spoiled</div>
+        </div>
+        <div class="kpi-value" style="font-size: 24px; margin-top: 12px;">{{ items_spoiled_count|default:"0" }}</div>
+    </div>
+</div>
+
+<div class="panel" id="printable-area">
+    <div data-html2canvas-ignore="true" class="no-print" style="margin-bottom: 24px;">
+        <div class="search-bar" style="width: 350px;">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="sales-search" placeholder="Search Item or Reason..." oninput="filterSales()">
+        </div>
+    </div>
+
+    <table class="modern-table" id="sales-table">
+        <thead>
+            <tr>
+                <th>Date Recorded</th>
+                <th>Item / Ingredient</th>
+                <th>Type</th>
+                <th>Qty Lost</th>
+                <th>Reason / Note</th>
+                <th>Reported By</th>
+                <th>Est. Cost Loss</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in spoilage_records %}
+            <tr class="sales-row">
+                <td style="font-size: 13px;">{{ record.date_recorded|date:"M d, Y h:i A" }}</td>
+                <td style="font-weight: 600; color: var(--black);">{{ record.item_name }}</td>
+                <td><span style="font-size: 12px; font-weight: 700; color: #EF4444;">{{ record.type }}</span></td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: #EF4444;">-{{ record.quantity }} {{ record.unit }}</td>
+                <td style="color: var(--text-secondary); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ record.reason }}</td>
+                <td style="font-weight: 600;">{{ record.reported_by }}</td>
+                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; color: #EF4444;">₱{{ record.cost_loss }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align: center; padding: 40px;">No spoilage records for this period.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+    function filterSales() {
+        const searchInput = document.getElementById('sales-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.sales-row');
+        rows.forEach(row => {
+            const rowText = row.innerText.toLowerCase();
+            row.style.display = rowText.includes(searchInput) ? '' : 'none';
+        });
+    }
+
+    async function processExport(format) {
+        const pdfBtn = document.getElementById('btn-pdf-export');
+        const csvBtn = document.getElementById('btn-csv-export');
+        pdfBtn.disabled = true; csvBtn.disabled = true;
+        pdfBtn.innerHTML = "Processing..."; csvBtn.innerHTML = "Processing...";
+
+        try {
+            if (format === 'pdf') await generateUnpaginatedPDF();
+            else if (format === 'csv') generateUnpaginatedCSV();
+        } catch (error) {
+            console.error("Export Error: ", error);
+        } finally {
+            pdfBtn.disabled = false; csvBtn.disabled = false;
+            pdfBtn.innerHTML = '<i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF';
+            csvBtn.innerHTML = '<i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Export CSV';
+        }
+    }
+
+    async function generateUnpaginatedPDF() {
+        const dateStamp = new Date().toISOString().split('T')[0];
+        const pdfContainer = document.createElement('div');
+        pdfContainer.className = 'pdf-export-wrapper';
+        const currentUser = "{{ request.user.username|default:'Administrator'|title }}";
+
+        const headerDiv = document.createElement('div');
+        headerDiv.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1.5px solid #e8e8f0; font-family: 'DM Sans', sans-serif;">
+                <div style="flex: 1;">
+                    <div style="font-size: 18px; font-weight: 800; color: #092c4c; margin-bottom: 4px;">FakeArab Shawarma Station</div>
+                    <div style="font-size: 11px; color: #7a7a9a;">Generated by: <strong style="color: #092c4c;">${currentUser}</strong></div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 22px; font-weight: 600; color: #092c4c; text-transform: uppercase;">Product Sales Report</div>
+                    <div style="font-size: 11px; color: #7a7a9a;">Print Date: <span style="color: #1a1a2e;">${dateStamp}</span></div>
+                </div>
+            </div>
+        `;
+        pdfContainer.appendChild(headerDiv);
+
+        const originalArea = document.getElementById('printable-area');
+        const clone = originalArea.cloneNode(true);
+        const actions = clone.querySelector('.no-print'); 
+        if(actions) actions.remove();
+
+        const rows = clone.querySelectorAll('.sales-row');
+        rows.forEach(row => { if (row.style.display === 'none') row.remove(); });
+
+        pdfContainer.appendChild(clone);
+
+        const opt = { 
+            margin: 0.5, 
+            filename: `Product_Sales_${dateStamp}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true }, 
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(pdfContainer).save();
+    }
+
+    function generateUnpaginatedCSV() {
+        const dateStamp = new Date().toISOString().split('T')[0];
+        let csv = [];
+        csv.push(`"PRODUCT SALES REPORT"`);
+        csv.push(`"Generated Date: ${dateStamp}"\n`);
+
+        const table = document.getElementById('sales-table');
+        let rows = table.querySelectorAll("tr");
+        for (let i = 0; i < rows.length; i++) {
+            let tr = rows[i];
+            if (tr.classList.contains('sales-row') && tr.style.display === 'none') continue;
+            let row = [], cols = tr.querySelectorAll("td, th");
+            if (cols.length === 0) continue;
+            for (let j = 0; j < cols.length; j++) {
+                row.push('"' + cols[j].innerText.replace(/\n/g, ' ').replace(/"/g, '""').trim() + '"');
+            }
+            csv.push(row.join(","));
+        }
+        let csvBlob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+        let link = document.createElement("a");
+        link.download = `Product_Sales_${dateStamp}.csv`;
+        link.href = window.URL.createObjectURL(csvBlob);
+        link.click();
+    }
+</script>
+{% endblock %}
