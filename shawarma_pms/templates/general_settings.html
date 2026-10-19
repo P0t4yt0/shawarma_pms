@@ -1,0 +1,890 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* ==============================
+       GENERAL SETTINGS PAGE
+    ============================== */
+
+    .gs-page {
+        width: 100%;
+        min-width: 0;
+        color: var(--black);
+    }
+
+    .gs-page,
+    .gs-page * {
+        box-sizing: border-box;
+    }
+
+    .gs-page button,
+    .gs-page input,
+    .gs-page select,
+    .gs-page textarea {
+        font-family: var(--font-main);
+    }
+
+    /* ==============================
+       PAGE HEADER
+    ============================== */
+
+    .gs-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+    }
+
+    .gs-heading h1 {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: clamp(26px, 3vw, 34px);
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: -1px;
+        color: var(--black);
+    }
+
+    .gs-heading p {
+        margin: 8px 0 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+        max-width: 620px;
+    }
+
+    .gs-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: var(--yellow-tint);
+        color: var(--black);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .7px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .gs-tag i {
+        font-size: 17px;
+    }
+
+    /* ==============================
+       LAYOUT
+    ============================== */
+
+    .gs-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+        gap: 24px;
+        align-items: start;
+    }
+
+    .gs-main,
+    .gs-side {
+        min-width: 0;
+    }
+
+    .gs-main {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .gs-side {
+        position: sticky;
+        top: 24px;
+    }
+
+    /* ==============================
+       CARDS
+    ============================== */
+
+    .gs-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-subtle);
+        overflow: hidden;
+    }
+
+    .gs-card-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .gs-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: var(--yellow-tint);
+        color: var(--black);
+        flex-shrink: 0;
+    }
+
+    .gs-card-head .gs-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .gs-card-title {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .gs-card-sub {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .gs-card-body {
+        padding: 22px 24px;
+    }
+
+    /* ==============================
+       FIELDS
+    ============================== */
+
+    .gs-field {
+        margin-bottom: 18px;
+    }
+
+    .gs-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .gs-label {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .gs-input {
+        width: 100%;
+        padding: 11px 13px;
+        border: 2px solid var(--border-color);
+        border-radius: 9px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--black);
+        background: #fff;
+        outline: none;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .gs-input:focus {
+        border-color: var(--black);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, .06);
+    }
+
+    textarea.gs-input {
+        resize: vertical;
+        min-height: 78px;
+    }
+
+    .gs-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .gs-row-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .gs-help {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+    }
+
+    .gs-suffix {
+        position: relative;
+    }
+
+    .gs-suffix .gs-input {
+        padding-right: 38px;
+    }
+
+    .gs-suffix span {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+
+    /* ==============================
+       TOGGLE SWITCH
+    ============================== */
+
+    .gs-switch {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        cursor: pointer;
+        user-select: none;
+        margin-bottom: 18px;
+    }
+
+    .gs-switch:last-child {
+        margin-bottom: 0;
+    }
+
+    .gs-switch input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .gs-switch-track {
+        position: relative;
+        flex-shrink: 0;
+        width: 46px;
+        height: 26px;
+        margin-top: 1px;
+        border: 2px solid var(--black);
+        border-radius: 999px;
+        background: var(--border-color);
+        transition: background .15s ease;
+    }
+
+    .gs-switch-track::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        border: 1.5px solid var(--black);
+        transition: transform .15s ease;
+    }
+
+    .gs-switch input:checked + .gs-switch-track {
+        background: var(--yellow);
+    }
+
+    .gs-switch input:checked + .gs-switch-track::after {
+        transform: translateX(20px);
+    }
+
+    .gs-switch input:focus-visible + .gs-switch-track {
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, .12);
+    }
+
+    .gs-switch-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding-top: 1px;
+    }
+
+    .gs-switch-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .gs-switch-desc {
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+    }
+
+    /* ==============================
+       SUMMARY / SAVE CARD
+    ============================== */
+
+    .gs-summary-store {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 18px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .gs-summary-name {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--black);
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    .gs-summary-branch {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .gs-summary-list {
+        list-style: none;
+        margin: 0 0 20px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .gs-summary-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 13px;
+    }
+
+    .gs-summary-list span {
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+
+    .gs-summary-list strong {
+        font-family: 'Inconsolata', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--black);
+        text-align: right;
+    }
+
+    .gs-save {
+        width: 100%;
+    }
+
+    .gs-note {
+        display: flex;
+        gap: 9px;
+        margin: 16px 0 0;
+        padding: 13px 15px;
+        background: var(--bg-main);
+        border: 1px dashed var(--border-color);
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-secondary);
+    }
+
+    .gs-note i {
+        font-size: 16px;
+        color: var(--black);
+        flex-shrink: 0;
+    }
+
+    /* ==============================
+       SWEETALERT STYLING
+    ============================== */
+
+    .swal-neo {
+        border-radius: 16px !important;
+        padding: 24px !important;
+        font-family: var(--font-main) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, .12) !important;
+    }
+
+    .swal-neo-title {
+        font-family: var(--font-heading) !important;
+        font-weight: 800 !important;
+        color: var(--black) !important;
+        font-size: 25px !important;
+    }
+
+    .swal-neo-confirm {
+        background: var(--yellow) !important;
+        color: var(--black) !important;
+        border: 2px solid var(--black) !important;
+        box-shadow: 2px 2px 0 var(--black) !important;
+        font-weight: 800 !important;
+        border-radius: 8px !important;
+        padding: 12px 20px !important;
+    }
+
+    /* ==============================
+       RESPONSIVE
+    ============================== */
+
+    @media (max-width: 1024px) {
+        .gs-layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .gs-side {
+            position: static;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .gs-row,
+        .gs-row-3 {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+</style>
+
+<div class="gs-page">
+
+    <!-- PAGE HEADER -->
+    <div class="gs-heading">
+        <div>
+            <h1>General Settings</h1>
+            <p>
+                Configure the store profile, operating hours, tax rates,
+                receipt details, and kitchen preferences for Fake Arab
+                Shawarma Station.
+            </p>
+        </div>
+
+        <div class="gs-tag">
+            <i class="ph ph-gear-six"></i>
+            Store Configuration
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'security:general_settings' %}" autocomplete="off">
+        {% csrf_token %}
+
+        <div class="gs-layout">
+
+            <!-- MAIN SETTINGS COLUMN -->
+            <div class="gs-main">
+
+                <!-- STORE PROFILE -->
+                <section class="gs-card">
+                    <div class="gs-card-head">
+                        <span class="gs-icon"><i class="ph ph-storefront"></i></span>
+                        <div>
+                            <h2 class="gs-card-title">Store Profile</h2>
+                            <p class="gs-card-sub">Identity and contact details of this outlet.</p>
+                        </div>
+                    </div>
+
+                    <div class="gs-card-body">
+                        <div class="gs-field">
+                            <label class="gs-label" for="gs-store-name">Store Name</label>
+                            <input
+                                type="text"
+                                id="gs-store-name"
+                                name="store_name"
+                                class="gs-input"
+                                value="{{ store.store_name }}"
+                                maxlength="120"
+                                required
+                            >
+                        </div>
+
+                        <div class="gs-row">
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-branch">Branch / Outlet</label>
+                                <input
+                                    type="text"
+                                    id="gs-branch"
+                                    name="branch_name"
+                                    class="gs-input"
+                                    value="{{ store.branch_name }}"
+                                    maxlength="120"
+                                    placeholder="e.g. Main Station"
+                                >
+                            </div>
+
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-contact">Contact Number</label>
+                                <input
+                                    type="text"
+                                    id="gs-contact"
+                                    name="contact_number"
+                                    class="gs-input"
+                                    value="{{ store.contact_number }}"
+                                    maxlength="40"
+                                    placeholder="e.g. 09XX-XXX-XXXX"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="gs-field">
+                            <label class="gs-label" for="gs-address">Store Address</label>
+                            <input
+                                type="text"
+                                id="gs-address"
+                                name="address"
+                                class="gs-input"
+                                value="{{ store.address }}"
+                                maxlength="255"
+                                placeholder="Street, city, province"
+                            >
+                        </div>
+
+                        <div class="gs-field">
+                            <label class="gs-label" for="gs-email">Email Address</label>
+                            <input
+                                type="email"
+                                id="gs-email"
+                                name="email"
+                                class="gs-input"
+                                value="{{ store.email }}"
+                                maxlength="254"
+                                placeholder="store@example.com"
+                            >
+                        </div>
+                    </div>
+                </section>
+
+                <!-- OPERATING HOURS -->
+                <section class="gs-card">
+                    <div class="gs-card-head">
+                        <span class="gs-icon"><i class="ph ph-clock"></i></span>
+                        <div>
+                            <h2 class="gs-card-title">Operating Hours</h2>
+                            <p class="gs-card-sub">Trading window for this shawarma station.</p>
+                        </div>
+                    </div>
+
+                    <div class="gs-card-body">
+                        <div class="gs-row">
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-opening">Opening Time</label>
+                                <input
+                                    type="time"
+                                    id="gs-opening"
+                                    name="opening_time"
+                                    class="gs-input"
+                                    value="{{ store.opening_time|time:'H:i' }}"
+                                    required
+                                >
+                            </div>
+
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-closing">Closing Time</label>
+                                <input
+                                    type="time"
+                                    id="gs-closing"
+                                    name="closing_time"
+                                    class="gs-input"
+                                    value="{{ store.closing_time|time:'H:i' }}"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <span class="gs-help">
+                            A closing time earlier than the opening time is treated as
+                            an overnight schedule.
+                        </span>
+                    </div>
+                </section>
+
+                <!-- SALES & TAX -->
+                <section class="gs-card">
+                    <div class="gs-card-head">
+                        <span class="gs-icon"><i class="ph ph-receipt"></i></span>
+                        <div>
+                            <h2 class="gs-card-title">Sales &amp; Tax</h2>
+                            <p class="gs-card-sub">Currency and rates applied to store sales.</p>
+                        </div>
+                    </div>
+
+                    <div class="gs-card-body">
+                        <div class="gs-row-3">
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-currency">Currency</label>
+                                <input
+                                    type="text"
+                                    id="gs-currency"
+                                    name="currency_symbol"
+                                    class="gs-input"
+                                    value="{{ store.currency_symbol }}"
+                                    maxlength="8"
+                                    required
+                                >
+                            </div>
+
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-vat">VAT Rate</label>
+                                <div class="gs-suffix">
+                                    <input
+                                        type="number"
+                                        id="gs-vat"
+                                        name="vat_percent"
+                                        class="gs-input"
+                                        value="{{ store.vat_percent|floatformat:2 }}"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
+                                        required
+                                    >
+                                    <span>%</span>
+                                </div>
+                            </div>
+
+                            <div class="gs-field">
+                                <label class="gs-label" for="gs-service">Service Charge</label>
+                                <div class="gs-suffix">
+                                    <input
+                                        type="number"
+                                        id="gs-service"
+                                        name="service_charge_percent"
+                                        class="gs-input"
+                                        value="{{ store.service_charge_percent|floatformat:2 }}"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
+                                        required
+                                    >
+                                    <span>%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <span class="gs-help">
+                            Prices are VAT-inclusive. Set the VAT rate to 0 if the store
+                            is not VAT-registered.
+                        </span>
+                    </div>
+                </section>
+
+                <!-- RECEIPT & BRANDING -->
+                <section class="gs-card">
+                    <div class="gs-card-head">
+                        <span class="gs-icon"><i class="ph ph-printer"></i></span>
+                        <div>
+                            <h2 class="gs-card-title">Receipt &amp; Branding</h2>
+                            <p class="gs-card-sub">What customers see on printed receipts.</p>
+                        </div>
+                    </div>
+
+                    <div class="gs-card-body">
+                        <div class="gs-field">
+                            <label class="gs-label" for="gs-footer">Receipt Footer</label>
+                            <textarea
+                                id="gs-footer"
+                                name="receipt_footer"
+                                class="gs-input"
+                                maxlength="200"
+                                placeholder="e.g. Thank you! Come again."
+                            >{{ store.receipt_footer }}</textarea>
+                            <span class="gs-help">
+                                Short closing message printed at the bottom of each receipt.
+                            </span>
+                        </div>
+
+                        <label class="gs-switch">
+                            <input
+                                type="checkbox"
+                                name="show_vat_on_receipt"
+                                {% if store.show_vat_on_receipt %}checked{% endif %}
+                            >
+                            <span class="gs-switch-track"></span>
+                            <span class="gs-switch-text">
+                                <span class="gs-switch-title">Show VAT line on receipts</span>
+                                <span class="gs-switch-desc">
+                                    Print the VAT-inclusive tax amount on customer receipts.
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- INVENTORY & KITCHEN -->
+                <section class="gs-card">
+                    <div class="gs-card-head">
+                        <span class="gs-icon"><i class="ph ph-cooking-pot"></i></span>
+                        <div>
+                            <h2 class="gs-card-title">Inventory &amp; Kitchen</h2>
+                            <p class="gs-card-sub">Stock policy and kitchen service targets.</p>
+                        </div>
+                    </div>
+
+                    <div class="gs-card-body">
+                        <label class="gs-switch">
+                            <input
+                                type="checkbox"
+                                name="block_sales_on_insufficient_stock"
+                                {% if store.block_sales_on_insufficient_stock %}checked{% endif %}
+                            >
+                            <span class="gs-switch-track"></span>
+                            <span class="gs-switch-text">
+                                <span class="gs-switch-title">Block sales when stock is insufficient</span>
+                                <span class="gs-switch-desc">
+                                    Prevent checkout when an ingredient would drop below zero.
+                                </span>
+                            </span>
+                        </label>
+
+                        <div class="gs-field" style="margin-top: 18px;">
+                            <label class="gs-label" for="gs-kds-target">Kitchen Target Time</label>
+                            <div class="gs-suffix">
+                                <input
+                                    type="number"
+                                    id="gs-kds-target"
+                                    name="kds_target_minutes"
+                                    class="gs-input"
+                                    value="{{ store.kds_target_minutes }}"
+                                    min="1"
+                                    max="120"
+                                    step="1"
+                                    required
+                                >
+                                <span>min</span>
+                            </div>
+                            <span class="gs-help">
+                                Orders exceeding this preparation time are flagged as late
+                                on the kitchen display.
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECURITY -->
+                <section class="gs-card">
+                    <div class="gs-card-head">
+                        <span class="gs-icon"><i class="ph ph-lock-key"></i></span>
+                        <div>
+                            <h2 class="gs-card-title">Security</h2>
+                            <p class="gs-card-sub">Authorization used for manager-only actions.</p>
+                        </div>
+                    </div>
+
+                    <div class="gs-card-body">
+                        <div class="gs-field">
+                            <label class="gs-label" for="gs-pin">Manager Override PIN</label>
+                            <input
+                                type="text"
+                                id="gs-pin"
+                                name="manager_override_pin"
+                                class="gs-input"
+                                value="{{ store.manager_override_pin }}"
+                                inputmode="numeric"
+                                pattern="[0-9]{4,12}"
+                                maxlength="12"
+                                required
+                            >
+                            <span class="gs-help">
+                                Used to authorize voids and other manager overrides at the
+                                point of sale (4&ndash;12 digits).
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- SUMMARY / SAVE -->
+            <aside class="gs-side">
+                <section class="gs-card">
+                    <div class="gs-card-body">
+                        <div class="gs-summary-store">
+                            <span class="gs-icon"><i class="ph ph-storefront"></i></span>
+                            <div>
+                                <h2 class="gs-summary-name">{{ store.store_name }}</h2>
+                                <p class="gs-summary-branch">
+                                    {{ store.branch_name|default:"Main Station" }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <ul class="gs-summary-list">
+                            <li>
+                                <span>Opening</span>
+                                <strong>{{ store.opening_time|time:"g:i A" }}</strong>
+                            </li>
+                            <li>
+                                <span>Closing</span>
+                                <strong>{{ store.closing_time|time:"g:i A" }}</strong>
+                            </li>
+                            <li>
+                                <span>Currency</span>
+                                <strong>{{ store.currency_symbol }}</strong>
+                            </li>
+                            <li>
+                                <span>VAT</span>
+                                <strong>{{ store.vat_percent|floatformat:2 }}%</strong>
+                            </li>
+                            <li>
+                                <span>Service charge</span>
+                                <strong>{{ store.service_charge_percent|floatformat:2 }}%</strong>
+                            </li>
+                            <li>
+                                <span>Last saved</span>
+                                <strong>{{ store.updated_at|date:"M d, Y g:i A" }}</strong>
+                            </li>
+                        </ul>
+
+                        <button type="submit" class="btn-brutalist gs-save">
+                            <i class="ph ph-floppy-disk"></i>
+                            Save Changes
+                        </button>
+
+                        <p class="gs-note">
+                            <i class="ph ph-info"></i>
+                            <span>
+                                Settings are stored for this store. Review the values
+                                before saving.
+                            </span>
+                        </p>
+                    </div>
+                </section>
+            </aside>
+
+        </div>
+    </form>
+</div>
+
+<script>
+const gsSwalConfig = {
+    customClass: {
+        popup: 'swal-neo',
+        title: 'swal-neo-title',
+        confirmButton: 'swal-neo-confirm'
+    },
+    buttonsStyling: false
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({
+                ...gsSwalConfig,
+                icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}",
+                title: "{% if message.tags == 'error' %}Action Failed{% else %}System Notice{% endif %}",
+                text: "{{ message|escapejs }}",
+                confirmButtonText: 'OK'
+            });
+        {% endfor %}
+    {% endif %}
+});
+</script>
+
+{% endblock %}

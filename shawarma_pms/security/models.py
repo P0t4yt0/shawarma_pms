@@ -6,7 +6,8 @@ Roles are implemented with Django's built-in Groups + Permissions (no custom aut
     Manager  -> everything above + inventory, promotions, reports, employees
 Groups are created by `python manage.py setup_roles`.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -159,3 +160,71 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.employee.user.username} - {self.clock_in.strftime('%Y-%m-%d')}"
+
+
+class StoreSettings(models.Model):
+    """Singleton row holding the store-wide configuration used by the UI.
+
+    Rates are stored as fractions (0.12 = 12%); the settings screen edits them
+    as percentages. Access the one row with ``StoreSettings.load()``.
+    """
+
+    # Store profile
+    store_name = models.CharField(max_length=120, default="Fake Arab Shawarma Station")
+    branch_name = models.CharField(max_length=120, blank=True)
+    address = models.CharField(max_length=255, blank=True)
+    contact_number = models.CharField(max_length=40, blank=True)
+    email = models.EmailField(blank=True)
+
+    # Operations
+    opening_time = models.TimeField(default=time(10, 0))
+    closing_time = models.TimeField(default=time(22, 0))
+    currency_symbol = models.CharField(max_length=8, default="₱")
+
+    # Sales & tax
+    vat_rate = models.DecimalField(
+        max_digits=6, decimal_places=4, default=Decimal("0.12"),
+        help_text="Stored as a fraction (0.12 = 12%).",
+    )
+    service_charge_rate = models.DecimalField(
+        max_digits=6, decimal_places=4, default=Decimal("0"),
+        help_text="Stored as a fraction (0.05 = 5%).",
+    )
+
+    # Receipt
+    receipt_footer = models.CharField(max_length=200, blank=True, default="Thank you! Come again.")
+    show_vat_on_receipt = models.BooleanField(default=True)
+
+    # Inventory & kitchen
+    block_sales_on_insufficient_stock = models.BooleanField(default=False)
+    kds_target_minutes = models.PositiveSmallIntegerField(default=10)
+
+    # Security
+    manager_override_pin = models.CharField(max_length=12, default="1234")
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Store Settings"
+        verbose_name_plural = "Store Settings"
+
+    def __str__(self):
+        return self.store_name
+
+    def save(self, *args, **kwargs):
+        # There is only ever one settings row.
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def vat_percent(self):
+        return (self.vat_rate or Decimal("0")) * 100
+
+    @property
+    def service_charge_percent(self):
+        return (self.service_charge_rate or Decimal("0")) * 100

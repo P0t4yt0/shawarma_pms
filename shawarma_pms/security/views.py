@@ -27,7 +27,10 @@ import random
 
 from django.core.exceptions import PermissionDenied
 from datetime import datetime
-from .models import Shift, Role
+from decimal import Decimal, InvalidOperation
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from .models import Shift, Role, StoreSettings
 
 @require_http_methods(["GET", "POST"])
 def login_view(request):
@@ -534,4 +537,115 @@ def work_schedules_view(request):
         "can_manage": can_manage,
         "role_choices": Role.choices,
     })
+
+
+@login_required
+@require_dynamic_access("security.manage_employees")
+def general_settings_view(request):
+    """General Settings: store profile, operating hours, tax, receipts,
+    inventory/kitchen behaviour and the manager override PIN."""
+    store = StoreSettings.load()
+
+    if request.method == "POST":
+        errors = []
+
+        store_name = (request.POST.get("store_name") or "").strip()
+        branch_name = (request.POST.get("branch_name") or "").strip()
+        address = (request.POST.get("address") or "").strip()
+        contact_number = (request.POST.get("contact_number") or "").strip()
+        email = (request.POST.get("email") or "").strip()
+        currency_symbol = (request.POST.get("currency_symbol") or "").strip()
+        receipt_footer = (request.POST.get("receipt_footer") or "").strip()
+        manager_pin = (request.POST.get("manager_override_pin") or "").strip()
+
+        if not store_name:
+            errors.append("Store name is required.")
+        if not currency_symbol:
+            errors.append("Currency symbol is required.")
+
+        for value, limit, label in (
+            (store_name, 120, "Store name"),
+            (branch_name, 120, "Branch name"),
+            (address, 255, "Address"),
+            (contact_number, 40, "Contact number"),
+            (currency_symbol, 8, "Currency symbol"),
+            (receipt_footer, 200, "Receipt footer"),
+        ):
+            if len(value) > limit:
+                errors.append(f"{label} must be {limit} characters or fewer.")
+
+        if email:
+            if len(email) > 254:
+                errors.append("Email address is too long.")
+            else:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    errors.append("Please enter a valid email address.")
+
+        if not manager_pin.isdigit() or not (4 <= len(manager_pin) <= 12):
+            errors.append("Manager override PIN must be 4-12 digits.")
+
+        def parse_time(field, label):
+            raw = (request.POST.get(field) or "").strip()
+            try:
+                return datetime.strptime(raw, "%H:%M").time()
+            except (TypeError, ValueError):
+                errors.append(f"{label} is invalid.")
+                return None
+
+        opening_time = parse_time("opening_time", "Opening time")
+        closing_time = parse_time("closing_time", "Closing time")
+
+        def parse_percent(field, label):
+            raw = (request.POST.get(field) or "").strip()
+            try:
+                value = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                errors.append(f"{label} must be a number.")
+                return None
+            if value < 0 or value > 100:
+                errors.append(f"{label} must be between 0 and 100.")
+                return None
+            return (value / Decimal("100")).quantize(Decimal("0.0001"))
+
+        vat_rate = parse_percent("vat_percent", "VAT rate")
+        service_charge_rate = parse_percent("service_charge_percent", "Service charge")
+
+        try:
+            kds_target_minutes = int(request.POST.get("kds_target_minutes") or 0)
+        except (TypeError, ValueError):
+            kds_target_minutes = 0
+        if not (1 <= kds_target_minutes <= 120):
+            errors.append("Kitchen target time must be between 1 and 120 minutes.")
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect("security:general_settings")
+
+        store.store_name = store_name
+        store.branch_name = branch_name
+        store.address = address
+        store.contact_number = contact_number
+        store.email = email
+        store.opening_time = opening_time
+        store.closing_time = closing_time
+        store.currency_symbol = currency_symbol
+        store.vat_rate = vat_rate
+        store.service_charge_rate = service_charge_rate
+        store.receipt_footer = receipt_footer
+        store.show_vat_on_receipt = request.POST.get("show_vat_on_receipt") == "on"
+        store.block_sales_on_insufficient_stock = (
+            request.POST.get("block_sales_on_insufficient_stock") == "on"
+        )
+        store.kds_target_minutes = kds_target_minutes
+        store.manager_override_pin = manager_pin
+        store.save()
+
+        log_activity(request.user, "update", "security", store, "Updated general settings")
+        messages.success(request, "General settings saved successfully.")
+        return redirect("security:general_settings")
+
+    return render(request, "general_settings.html", {"store": store})
 

@@ -278,7 +278,7 @@
             <div class="nav-category">Settings</div>
                 {% if request.user|has_dynamic_access:"security.manage_employees" %}
                 <a href="{% url 'security:user_roles' %}" class="nav-item {% if request.resolver_match.url_name == 'user_roles' %}active{% endif %}"><i class="ph ph-shield-check"></i> User Roles & Access</a>
-                <a href="#" class="nav-item"><i class="ph ph-gear"></i> General Settings</a>
+                <a href="{% url 'security:general_settings' %}" class="nav-item {% if request.resolver_match.url_name == 'general_settings' %}active{% endif %}"><i class="ph ph-gear"></i> General Settings</a>
                 
                 {% endif %}
                 
@@ -403,19 +403,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Sample Data -->
-                            <tr>
-                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#ORD-001</td>
-                                <td>10:45 AM</td>
-                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱250.00</td>
-                                <td><span class="status-badge status-completed">Completed</span></td>
-                            </tr>
-                            <tr>
-                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#ORD-002</td>
-                                <td>10:50 AM</td>
-                                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">₱180.00</td>
-                                <td><span class="status-badge status-pending">Preparing</span></td>
-                            </tr>
                             <tr>
                                 <td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 32px 16px;">No recent orders to display.</td>
                             </tr>
