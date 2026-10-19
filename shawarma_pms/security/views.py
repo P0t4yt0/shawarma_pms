@@ -25,6 +25,10 @@ from django.contrib.auth.models import Group
 from .models import Attendance
 import random
 
+from django.core.exceptions import PermissionDenied
+from datetime import datetime
+from .models import Shift, Role
+
 @require_http_methods(["GET", "POST"])
 def login_view(request):
     if request.user.is_authenticated:
@@ -371,4 +375,163 @@ def account_security_view(request):
         return redirect('security:account_security')
 
     return render(request, 'account_security.html')
+
+
+@login_required
+@require_dynamic_access("security.view_shift")
+def work_schedules_view(request):
+    """Work Schedules: plan employee shifts (the `Shift` model).
+
+    Read-only for users with `security.view_shift`; creating and removing
+    shifts additionally requires `security.manage_employees`.
+    """
+    can_manage = request.user.is_superuser or request.user.has_perm("security.manage_employees")
+
+    if request.method == "POST":
+        if not can_manage:
+            raise PermissionDenied("You do not have permission to manage work schedules.")
+
+        action = request.POST.get("action")
+
+        if action == "add_shift":
+            employee = EmployeeProfile.objects.filter(
+                id=request.POST.get("employee")
+            ).select_related("user").first()
+
+            date_raw = (request.POST.get("date") or "").strip()
+            start_raw = (request.POST.get("start_time") or "").strip()
+            end_raw = (request.POST.get("end_time") or "").strip()
+            role = (request.POST.get("role") or "").strip()
+            notes = (request.POST.get("notes") or "").strip()
+
+            errors = []
+            if employee is None:
+                errors.append("Please choose a valid employee.")
+            if not date_raw:
+                errors.append("Please choose a shift date.")
+            if not start_raw or not end_raw:
+                errors.append("Please provide both a start and end time.")
+            elif start_raw == end_raw:
+                errors.append("Start and end time cannot be the same.")
+
+            shift_date = start_time = end_time = None
+            if not errors:
+                try:
+                    shift_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
+                    start_time = datetime.strptime(start_raw, "%H:%M").time()
+                    end_time = datetime.strptime(end_raw, "%H:%M").time()
+                except ValueError:
+                    errors.append("Invalid date or time value.")
+
+            # Block overlapping shifts for the same employee on the same day.
+            if not errors and employee is not None:
+                for existing in Shift.objects.filter(employee=employee, date=shift_date):
+                    if start_time < existing.end_time and existing.start_time < end_time:
+                        errors.append(
+                            f"{employee} already has an overlapping shift on "
+                            f"{shift_date:%b %d, %Y}."
+                        )
+                        break
+
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+                return redirect("security:work_schedules")
+
+            valid_roles = {value for value, _label in Role.choices}
+            if role not in valid_roles:
+                role = employee.role
+
+            shift = Shift.objects.create(
+                employee=employee,
+                date=shift_date,
+                start_time=start_time,
+                end_time=end_time,
+                role=role,
+                notes=notes,
+                created_by=request.user,
+            )
+            log_activity(
+                request.user, "create", "security", shift,
+                f"Scheduled {employee} on {shift_date:%b %d, %Y} "
+                f"{start_time:%H:%M}-{end_time:%H:%M}",
+            )
+            messages.success(request, f"Shift scheduled for {employee}.")
+            return redirect("security:work_schedules")
+
+        if action == "delete_shift":
+            shift = Shift.objects.filter(
+                id=request.POST.get("shift_id")
+            ).select_related("employee__user").first()
+
+            if shift is None:
+                messages.error(request, "That shift could not be found.")
+            else:
+                label = str(shift)
+                shift.delete()
+                log_activity(request.user, "delete", "security", None, f"Removed shift: {label}")
+                messages.success(request, "Shift removed from the schedule.")
+            return redirect("security:work_schedules")
+
+        return redirect("security:work_schedules")
+
+    # ----- GET: filters + list -----
+    period = request.GET.get("period", "this_week")
+    employee_filter = request.GET.get("employee", "")
+
+    today = timezone.localdate()
+    if period == "today":
+        date_from = date_to = today
+    elif period == "next_7":
+        date_from = today
+        date_to = today + timedelta(days=6)
+    elif period == "all":
+        date_from = date_to = None
+    else:
+        period = "this_week"
+        date_from = today - timedelta(days=today.weekday())
+        date_to = date_from + timedelta(days=6)
+
+    shifts_qs = Shift.objects.select_related("employee__user", "created_by")
+    if date_from and date_to:
+        shifts_qs = shifts_qs.filter(date__gte=date_from, date__lte=date_to)
+    if employee_filter:
+        shifts_qs = shifts_qs.filter(employee_id=employee_filter)
+
+    shifts = list(shifts_qs.order_by("date", "start_time"))
+
+    total_hours = 0.0
+    for shift in shifts:
+        start = datetime.combine(shift.date, shift.start_time)
+        end = datetime.combine(shift.date, shift.end_time)
+        if shift.end_time <= shift.start_time:      # overnight shift
+            end += timedelta(days=1)
+        shift.duration_hours = round((end - start).total_seconds() / 3600, 1)
+        total_hours += shift.duration_hours
+
+    stats = {
+        "total_shifts": len(shifts),
+        "today_shifts": sum(1 for s in shifts if s.date == today),
+        "employees": len({s.employee_id for s in shifts}),
+        "hours": round(total_hours, 1),
+    }
+
+    employees = (
+        EmployeeProfile.objects.filter(is_active_employee=True)
+        .select_related("user")
+        .order_by("employee_id")
+    )
+
+    return render(request, "work_schedules.html", {
+        "shifts": shifts,
+        "stats": stats,
+        "employees": employees,
+        "period": period,
+        "employee_filter": employee_filter,
+        "date_from": date_from,
+        "date_to": date_to,
+        "today": today,
+        "can_manage": can_manage,
+        "role_choices": Role.choices,
+    })
 

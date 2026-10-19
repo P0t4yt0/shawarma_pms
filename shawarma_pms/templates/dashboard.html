@@ -37,10 +37,12 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-main); }
         h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 800; }
+        html, body { height: 100%; }
         body { background-color: var(--bg-main); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
 
         /* ----- Sidebar Navigation (Dark) ----- */
-        .sidebar { width: 280px; background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; overflow-y: auto; }
+        /* Locked column: fixed width, own scroll, reserved scrollbar gutter so it never shifts/jumps. */
+        .sidebar { flex: 0 0 280px; width: 280px; height: 100vh; background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; overscroll-behavior: contain; }
         .sidebar::-webkit-scrollbar { width: 6px; }
         .sidebar::-webkit-scrollbar-thumb { background-color: var(--sidebar-border); border-radius: 10px; }
 
@@ -60,7 +62,7 @@
         .btn-logout:hover { background-color: rgba(239, 68, 68, 0.1); color: var(--status-red); }
 
         /* ----- Main Content Area ----- */
-        .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .main-wrapper { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
         /* BLACK HEADER */
         .top-header { height: 70px; background-color: var(--black); border-bottom: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
@@ -78,7 +80,7 @@
         .icon-btn:hover { color: var(--yellow); border-color: var(--yellow); }
 
         /* Scrollable Content (Light) */
-        .content-scroll { flex: 1; overflow-y: auto; padding: 36px 48px; background-color: var(--bg-main); background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1.5px, transparent 1.5px); background-size: 24px 24px; position: relative; }
+        .content-scroll { flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 36px 48px; background-color: var(--bg-main); background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1.5px, transparent 1.5px); background-size: 24px 24px; position: relative; }
         .content-scroll::-webkit-scrollbar { width: 8px; }
         .content-scroll::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; }
 
@@ -268,7 +270,7 @@
                 
                 
                 {% if request.user|has_dynamic_access:"security.view_shift" %}
-                <a href="#" class="nav-item"><i class="ph ph-calendar"></i> Work Schedules</a>
+                <a href="{% url 'security:work_schedules' %}" class="nav-item {% if request.resolver_match.url_name == 'work_schedules' %}active{% endif %}"><i class="ph ph-calendar"></i> Work Schedules</a>
                 {% endif %}
             {% endif %}
             
@@ -459,5 +461,30 @@
             {% endblock %}
         </div>
     </main>
+
+    <script>
+        // Keep the sidebar's own scroll position when navigating between menu items.
+        (function () {
+            var sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+            var KEY = 'shawarma.sidebarScrollTop';
+
+            function restore() {
+                var saved = sessionStorage.getItem(KEY);
+                if (saved !== null) {
+                    sidebar.scrollTop = parseInt(saved, 10) || 0;
+                }
+            }
+
+            restore();
+            document.addEventListener('DOMContentLoaded', restore);
+            window.addEventListener('load', restore);
+            window.addEventListener('pageshow', restore);
+
+            sidebar.addEventListener('scroll', function () {
+                sessionStorage.setItem(KEY, sidebar.scrollTop);
+            }, { passive: true });
+        })();
+    </script>
 </body>
 </html>

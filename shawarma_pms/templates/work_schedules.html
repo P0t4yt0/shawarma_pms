@@ -1,0 +1,981 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* ==============================
+       WORK SCHEDULES PAGE
+    ============================== */
+
+    .ws-page {
+        width: 100%;
+        min-width: 0;
+        color: var(--black);
+    }
+
+    .ws-page,
+    .ws-page * {
+        box-sizing: border-box;
+    }
+
+    .ws-page button,
+    .ws-page input,
+    .ws-page select,
+    .ws-page textarea {
+        font-family: var(--font-main);
+    }
+
+    /* ==============================
+       PAGE HEADER
+    ============================== */
+
+    .ws-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+    }
+
+    .ws-heading h1 {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: clamp(26px, 3vw, 34px);
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: -1px;
+        color: var(--black);
+    }
+
+    .ws-heading p {
+        margin: 8px 0 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+        max-width: 620px;
+    }
+
+    .ws-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: var(--yellow-tint);
+        color: var(--black);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .7px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .ws-tag i {
+        font-size: 17px;
+    }
+
+    /* ==============================
+       STAT CARDS
+    ============================== */
+
+    .ws-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .ws-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 22px 24px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-subtle);
+    }
+
+    .ws-stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: var(--yellow-tint);
+        color: var(--black);
+    }
+
+    .ws-stat-value {
+        font-family: 'Inconsolata', monospace;
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -1px;
+        color: var(--black);
+    }
+
+    .ws-stat-label {
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--text-secondary);
+    }
+
+    /* ==============================
+       LAYOUT
+    ============================== */
+
+    .ws-layout {
+        display: grid;
+        grid-template-columns: minmax(290px, 360px) minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    .ws-side,
+    .ws-main {
+        min-width: 0;
+    }
+
+    /* ==============================
+       CARDS
+    ============================== */
+
+    .ws-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-subtle);
+        overflow: hidden;
+    }
+
+    .ws-card-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .ws-card-head .ws-stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .ws-card-title {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .ws-card-sub {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .ws-card-body {
+        padding: 22px 24px;
+    }
+
+    /* ==============================
+       FORM
+    ============================== */
+
+    .ws-field {
+        margin-bottom: 16px;
+    }
+
+    .ws-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .ws-label {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .ws-input {
+        width: 100%;
+        padding: 11px 13px;
+        border: 2px solid var(--border-color);
+        border-radius: 9px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--black);
+        background: #fff;
+        outline: none;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .ws-input:focus {
+        border-color: var(--black);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, .06);
+    }
+
+    textarea.ws-input {
+        resize: vertical;
+        min-height: 74px;
+    }
+
+    .ws-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .ws-submit {
+        width: 100%;
+        margin-top: 6px;
+    }
+
+    .ws-note {
+        display: flex;
+        gap: 9px;
+        margin: 18px 0 0;
+        padding: 13px 15px;
+        background: var(--bg-main);
+        border: 1px dashed var(--border-color);
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-secondary);
+    }
+
+    .ws-note i {
+        font-size: 16px;
+        color: var(--black);
+        flex-shrink: 0;
+    }
+
+    /* ==============================
+       FILTERS
+    ============================== */
+
+    .ws-filters {
+        display: flex;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 14px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+    }
+
+    .ws-filters .ws-field {
+        margin: 0;
+    }
+
+    .ws-filter-range {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        padding: 11px 14px;
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        border-radius: 9px;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .ws-filter-range i {
+        font-size: 16px;
+        color: var(--black);
+    }
+
+    /* ==============================
+       TABLE
+    ============================== */
+
+    .ws-table-scroll {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .ws-table {
+        width: 100%;
+        min-width: 880px;
+        border-collapse: collapse;
+    }
+
+    .ws-table th {
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: var(--text-secondary);
+        background: var(--bg-main);
+        padding: 16px;
+        text-align: left;
+    }
+
+    .ws-table td {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .ws-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .ws-table tbody tr {
+        transition: background .15s ease;
+    }
+
+    .ws-table tbody tr:hover {
+        background: rgba(0, 0, 0, .018);
+    }
+
+    .ws-employee {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 150px;
+    }
+
+    .ws-employee-name {
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .ws-employee-id {
+        font-family: 'Inconsolata', monospace;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-secondary);
+    }
+
+    .ws-date {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        white-space: nowrap;
+    }
+
+    .ws-date-day {
+        font-weight: 800;
+        color: var(--black);
+        font-size: 13px;
+    }
+
+    .ws-date-full {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .ws-time {
+        font-family: 'Inconsolata', monospace;
+        font-weight: 700;
+        color: var(--black);
+        white-space: nowrap;
+    }
+
+    .ws-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .ws-badge-role {
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        color: var(--black);
+    }
+
+    .ws-badge-today {
+        background: var(--yellow-tint);
+        border: 1px solid var(--border-color);
+        color: var(--black);
+    }
+
+    .ws-notes {
+        max-width: 220px;
+        color: var(--text-secondary);
+        font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+
+    .ws-hours {
+        font-family: 'Inconsolata', monospace;
+        font-weight: 700;
+        color: var(--black);
+        white-space: nowrap;
+    }
+
+    .ws-mini {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* ==============================
+       ROW ACTIONS
+    ============================== */
+
+    .ws-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .ws-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--status-red);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--status-red);
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .15s ease;
+    }
+
+    .ws-action-btn:hover {
+        background: #fff1f2;
+    }
+
+    .ws-action-btn i {
+        font-size: 15px;
+    }
+
+    /* ==============================
+       EMPTY STATE
+    ============================== */
+
+    .ws-empty {
+        text-align: center;
+        padding: 55px 20px !important;
+        color: var(--text-secondary);
+    }
+
+    .ws-empty i {
+        display: block;
+        font-size: 46px;
+        margin-bottom: 12px;
+        color: var(--border-color);
+    }
+
+    .ws-empty strong {
+        display: block;
+        color: var(--black);
+        font-size: 16px;
+        margin-bottom: 6px;
+    }
+
+    .ws-empty p {
+        margin: 0;
+        font-size: 13px;
+    }
+
+    /* ==============================
+       SWEETALERT STYLING
+    ============================== */
+
+    .swal-neo {
+        border-radius: 16px !important;
+        padding: 24px !important;
+        font-family: var(--font-main) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, .12) !important;
+    }
+
+    .swal-neo-title {
+        font-family: var(--font-heading) !important;
+        font-weight: 800 !important;
+        color: var(--black) !important;
+        font-size: 25px !important;
+    }
+
+    .swal-neo-confirm {
+        background: var(--yellow) !important;
+        color: var(--black) !important;
+        border: 2px solid var(--black) !important;
+        box-shadow: 2px 2px 0 var(--black) !important;
+        font-weight: 800 !important;
+        border-radius: 8px !important;
+        padding: 12px 20px !important;
+    }
+
+    .swal-neo-cancel {
+        background: #fff !important;
+        color: var(--black) !important;
+        border: 1px solid var(--border-color) !important;
+        font-weight: 800 !important;
+        border-radius: 8px !important;
+        padding: 12px 20px !important;
+    }
+
+    /* ==============================
+       RESPONSIVE
+    ============================== */
+
+    @media (max-width: 1180px) {
+        .ws-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 1024px) {
+        .ws-layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .ws-stats {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .ws-row {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .ws-filter-range {
+            margin-left: 0;
+        }
+
+        .ws-table th,
+        .ws-table td {
+            padding: 12px;
+        }
+    }
+</style>
+
+<div class="ws-page">
+
+    <!-- PAGE HEADER -->
+    <div class="ws-heading">
+        <div>
+            <h1>Work Schedules</h1>
+            <p>
+                Plan and manage employee shifts for the shawarma station.
+                Assign dates, coverage hours, and roles so every meal service
+                is fully staffed.
+            </p>
+        </div>
+
+        <div class="ws-tag">
+            <i class="ph ph-calendar-check"></i>
+            Shift Planner
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="ws-stats">
+
+        <div class="ws-stat">
+            <div class="ws-stat-icon"><i class="ph ph-users-three"></i></div>
+            <div class="ws-stat-value">{{ stats.employees }}</div>
+            <div class="ws-stat-label">Employees Scheduled</div>
+        </div>
+
+        <div class="ws-stat">
+            <div class="ws-stat-icon"><i class="ph ph-calendar-blank"></i></div>
+            <div class="ws-stat-value">{{ stats.total_shifts }}</div>
+            <div class="ws-stat-label">Shifts In Range</div>
+        </div>
+
+        <div class="ws-stat">
+            <div class="ws-stat-icon"><i class="ph ph-siren"></i></div>
+            <div class="ws-stat-value">{{ stats.today_shifts }}</div>
+            <div class="ws-stat-label">Shifts Today</div>
+        </div>
+
+        <div class="ws-stat">
+            <div class="ws-stat-icon"><i class="ph ph-clock-user"></i></div>
+            <div class="ws-stat-value">{{ stats.hours }}</div>
+            <div class="ws-stat-label">Total Coverage Hours</div>
+        </div>
+
+    </div>
+
+    <div class="ws-layout">
+
+        <!-- LEFT: CREATE SHIFT -->
+        <aside class="ws-side">
+            {% if can_manage %}
+            <section class="ws-card">
+                <div class="ws-card-head">
+                    <span class="ws-stat-icon"><i class="ph ph-calendar-plus"></i></span>
+                    <div>
+                        <h2 class="ws-card-title">Schedule A Shift</h2>
+                        <p class="ws-card-sub">Assign an employee to a date and time.</p>
+                    </div>
+                </div>
+
+                <div class="ws-card-body">
+                    <form method="POST" action="{% url 'security:work_schedules' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_shift">
+
+                        <div class="ws-field">
+                            <label class="ws-label" for="ws-employee">Employee</label>
+                            <select id="ws-employee" name="employee" class="ws-input" required>
+                                <option value="">Select employee…</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}" data-role="{{ emp.role }}">
+                                    {{ emp.employee_id }} —
+                                    {{ emp.user.get_full_name|default:emp.user.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="ws-field">
+                            <label class="ws-label" for="ws-date">Shift Date</label>
+                            <input
+                                type="date"
+                                id="ws-date"
+                                name="date"
+                                class="ws-input"
+                                value="{{ today|date:'Y-m-d' }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="ws-row">
+                            <div class="ws-field">
+                                <label class="ws-label" for="ws-start">Start</label>
+                                <input
+                                    type="time"
+                                    id="ws-start"
+                                    name="start_time"
+                                    class="ws-input"
+                                    value="09:00"
+                                    required
+                                >
+                            </div>
+
+                            <div class="ws-field">
+                                <label class="ws-label" for="ws-end">End</label>
+                                <input
+                                    type="time"
+                                    id="ws-end"
+                                    name="end_time"
+                                    class="ws-input"
+                                    value="17:00"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="ws-field">
+                            <label class="ws-label" for="ws-role">Station Role</label>
+                            <select id="ws-role" name="role" class="ws-input">
+                                {% for value, label in role_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="ws-field">
+                            <label class="ws-label" for="ws-notes">Notes (Optional)</label>
+                            <textarea
+                                id="ws-notes"
+                                name="notes"
+                                class="ws-input"
+                                maxlength="200"
+                                placeholder="e.g. Grill station — rush hour coverage"
+                            ></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-brutalist ws-submit">
+                            <i class="ph ph-plus-circle"></i>
+                            Add Shift
+                        </button>
+                    </form>
+
+                    <p class="ws-note">
+                        <i class="ph ph-info"></i>
+                        <span>
+                            Overlapping shifts for the same employee are blocked.
+                            Leave after midnight to schedule an overnight shift.
+                        </span>
+                    </p>
+                </div>
+            </section>
+            {% else %}
+            <section class="ws-card">
+                <div class="ws-card-head">
+                    <span class="ws-stat-icon"><i class="ph ph-lock-key"></i></span>
+                    <div>
+                        <h2 class="ws-card-title">Read-only Schedule</h2>
+                        <p class="ws-card-sub">View access only</p>
+                    </div>
+                </div>
+
+                <div class="ws-card-body">
+                    <p class="ws-note" style="margin-top: 0;">
+                        <i class="ph ph-shield-check"></i>
+                        <span>
+                            You can review the schedule but not create or remove
+                            shifts. Ask a manager for scheduling access.
+                        </span>
+                    </p>
+                </div>
+            </section>
+            {% endif %}
+        </aside>
+
+        <!-- RIGHT: SCHEDULE -->
+        <main class="ws-main">
+
+            <!-- FILTERS -->
+            <section class="ws-card ws-filters">
+                <form
+                    method="GET"
+                    action="{% url 'security:work_schedules' %}"
+                    style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; width: 100%;"
+                >
+                    <div class="ws-field">
+                        <label class="ws-label" for="ws-period">Period</label>
+                        <select id="ws-period" name="period" class="ws-input">
+                            <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+                            <option value="this_week" {% if period == 'this_week' %}selected{% endif %}>This Week</option>
+                            <option value="next_7" {% if period == 'next_7' %}selected{% endif %}>Next 7 Days</option>
+                            <option value="all" {% if period == 'all' %}selected{% endif %}>All Dates</option>
+                        </select>
+                    </div>
+
+                    <div class="ws-field">
+                        <label class="ws-label" for="ws-filter-employee">Employee</label>
+                        <select id="ws-filter-employee" name="employee" class="ws-input">
+                            <option value="">All employees</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" {% if employee_filter == emp.id|stringformat:"s" %}selected{% endif %}>
+                                {{ emp.employee_id }} —
+                                {{ emp.user.get_full_name|default:emp.user.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-brutalist">
+                        <i class="ph ph-funnel"></i>
+                        Apply
+                    </button>
+
+                    <div class="ws-filter-range">
+                        <i class="ph ph-calendar-dots"></i>
+                        {% if date_from and date_to %}
+                            {% if date_from == date_to %}
+                                {{ date_from|date:"M d, Y" }}
+                            {% else %}
+                                {{ date_from|date:"M d" }} – {{ date_to|date:"M d, Y" }}
+                            {% endif %}
+                        {% else %}
+                            All dates
+                        {% endif %}
+                    </div>
+                </form>
+            </section>
+
+            <!-- SCHEDULE TABLE -->
+            <section class="ws-card">
+                <div class="ws-table-scroll">
+                    <table class="ws-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Date</th>
+                                <th>Shift</th>
+                                <th>Role</th>
+                                <th>Hours</th>
+                                <th>Notes</th>
+                                <th>Created By</th>
+                                {% if can_manage %}
+                                <th style="text-align: right;">Actions</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for shift in shifts %}
+                            <tr>
+                                <td>
+                                    <div class="ws-employee">
+                                        <span class="ws-employee-name">
+                                            {{ shift.employee.user.get_full_name|default:shift.employee.user.username }}
+                                        </span>
+                                        <span class="ws-employee-id">{{ shift.employee.employee_id }}</span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="ws-date">
+                                        <span class="ws-date-day">{{ shift.date|date:"D" }}</span>
+                                        <span class="ws-date-full">{{ shift.date|date:"M d, Y" }}</span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <span class="ws-time">
+                                        {{ shift.start_time|time:"g:i A" }} – {{ shift.end_time|time:"g:i A" }}
+                                    </span>
+                                    {% if shift.date == today %}
+                                    <span class="ws-badge ws-badge-today" style="margin-left: 8px;">Today</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <span class="ws-badge ws-badge-role">{{ shift.get_role_display }}</span>
+                                </td>
+
+                                <td>
+                                    <span class="ws-hours">{{ shift.duration_hours }} h</span>
+                                </td>
+
+                                <td>
+                                    <span class="ws-notes">{{ shift.notes|default:"—" }}</span>
+                                </td>
+
+                                <td>
+                                    <span class="ws-mini">
+                                        {{ shift.created_by.get_full_name|default:shift.created_by.username|default:"—" }}
+                                    </span>
+                                </td>
+
+                                {% if can_manage %}
+                                <td>
+                                    <div class="ws-actions">
+                                        <form
+                                            method="POST"
+                                            action="{% url 'security:work_schedules' %}"
+                                            style="margin: 0;"
+                                            id="ws-delete-form-{{ shift.id }}"
+                                        >
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_shift">
+                                            <input type="hidden" name="shift_id" value="{{ shift.id }}">
+                                            <button
+                                                type="button"
+                                                class="ws-action-btn"
+                                                data-shift-label="{{ shift.employee.user.get_full_name|default:shift.employee.user.username }}"
+                                                data-shift-when="{{ shift.date|date:'M d, Y' }} {{ shift.start_time|time:'g:i A' }}"
+                                                onclick="confirmShiftDelete(this, '{{ shift.id }}')"
+                                                aria-label="Remove this shift"
+                                            >
+                                                <i class="ph ph-trash"></i>
+                                                Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if can_manage %}8{% else %}7{% endif %}" class="ws-empty">
+                                    <i class="ph ph-calendar-blank"></i>
+                                    <strong>No shifts scheduled in this range</strong>
+                                    <p>
+                                        {% if can_manage %}
+                                            Use the Schedule A Shift form to plan coverage.
+                                        {% else %}
+                                            Nothing has been scheduled for the selected period.
+                                        {% endif %}
+                                    </p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<script>
+const wsSwalConfig = {
+    customClass: {
+        popup: 'swal-neo',
+        title: 'swal-neo-title',
+        confirmButton: 'swal-neo-confirm',
+        cancelButton: 'swal-neo-cancel'
+    },
+    buttonsStyling: false
+};
+
+/* Remove Shift Confirmation */
+function confirmShiftDelete(button, shiftId) {
+    const employee = button.dataset.shiftLabel;
+    const when = button.dataset.shiftWhen;
+
+    Swal.fire({
+        ...wsSwalConfig,
+        title: 'Remove Shift?',
+        text: `Remove ${employee}'s shift on ${when}? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Remove It',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.getElementById(`ws-delete-form-${shiftId}`);
+            if (form) {
+                form.submit();
+            }
+        }
+    });
+}
+
+/* Default the role to the selected employee's role */
+document.addEventListener('DOMContentLoaded', function () {
+    const employeeSelect = document.getElementById('ws-employee');
+    const roleSelect = document.getElementById('ws-role');
+
+    if (employeeSelect && roleSelect) {
+        employeeSelect.addEventListener('change', function () {
+            const option = employeeSelect.options[employeeSelect.selectedIndex];
+            const role = option ? option.dataset.role : '';
+            if (role) {
+                roleSelect.value = role;
+            }
+        });
+    }
+
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({
+                ...wsSwalConfig,
+                icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}",
+                title: "{% if message.tags == 'error' %}Action Failed{% else %}System Notice{% endif %}",
+                text: "{{ message|escapejs }}",
+                confirmButtonText: 'OK'
+            });
+        {% endfor %}
+    {% endif %}
+});
+</script>
+
+{% endblock %}
