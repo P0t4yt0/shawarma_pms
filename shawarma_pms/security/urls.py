@@ -14,4 +14,5 @@ urlpatterns = [
     path('settings/user-roles/', views.user_roles_view, name='user_roles'),
     path('employees/', views.employee_list_view, name='employee_list'),
     path('attendance/', views.attendance_view, name='attendance'),
+    path('settings/account-security/', views.account_security_view, name='account_security'),
 ]

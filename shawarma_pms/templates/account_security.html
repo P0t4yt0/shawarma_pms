@@ -1,0 +1,191 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    .security-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        align-items: start;
+    }
+    @media (max-width: 900px) {
+        .security-layout { grid-template-columns: 1fr; }
+    }
+
+    .form-card {
+        background: var(--bg-card);
+        border: 2px solid var(--border-color);
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: var(--shadow-subtle);
+    }
+    
+    .form-label {
+        font-weight: 800;
+        font-size: 13px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .input-group {
+        position: relative;
+        margin-bottom: 24px;
+    }
+
+    .neo-input {
+        width: 100%;
+        padding: 16px 48px 16px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-family: var(--font-main);
+        font-size: 15px;
+        font-weight: 600;
+        outline: none;
+        background: var(--bg-main);
+        transition: 0.2s;
+        box-sizing: border-box;
+    }
+    .neo-input:focus {
+        border-color: var(--black);
+        background: var(--bg-card);
+    }
+
+    .eye-btn {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+    }
+    .eye-btn:hover { color: var(--black); }
+
+    .btn-brutalist {
+        width: 100%;
+        background-color: var(--yellow);
+        color: var(--black);
+        border: 3px solid var(--black);
+        box-shadow: 4px 4px 0 var(--black);
+        border-radius: 12px;
+        padding: 16px;
+        font-weight: 900;
+        font-size: 16px;
+        font-family: var(--font-main);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        transition: 0.1s ease-in-out;
+    }
+    .btn-brutalist:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--black); background: var(--yellow-hover); }
+    .btn-brutalist:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--black); }
+
+    .swal-neo { border-radius: 16px !important; border: 3px solid var(--black) !important; padding: 32px 24px !important; box-shadow: 8px 8px 0 var(--black) !important; }
+    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 24px !important; margin-bottom: 24px !important; }
+    .swal-neo-confirm { background-color: var(--black) !important; color: var(--white) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; padding: 12px 32px !important; font-size: 15px !important; text-transform: uppercase !important; letter-spacing: 1px !important; margin: 0 !important; }
+</style>
+
+<div class="welcome-header">
+    <div>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Account & Security</h1>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Update your password to keep your Shawarma POS account secure.</p>
+    </div>
+</div>
+
+<div class="security-layout">
+    <div class="form-card">
+        <h3 style="margin: 0 0 24px 0; font-weight: 800; font-size: 20px; color: var(--black); border-bottom: 2px dashed var(--border-color); padding-bottom: 16px;">
+            <i class="ph ph-lock-key" style="margin-right: 8px;"></i> Change Password
+        </h3>
+        
+        <form method="POST" id="password-form">
+            {% csrf_token %}
+            
+            <label class="form-label">Current Password</label>
+            <div class="input-group">
+                <input type="password" name="old_password" id="old_password" class="neo-input" placeholder="Enter current password" required>
+                <button type="button" class="eye-btn" onclick="togglePassword('old_password', this)"><i class="ph ph-eye-closed"></i></button>
+            </div>
+
+            <label class="form-label">New Password</label>
+            <div class="input-group">
+                <input type="password" name="new_password" id="new_password" class="neo-input" placeholder="Min. 8 characters" required>
+                <button type="button" class="eye-btn" onclick="togglePassword('new_password', this)"><i class="ph ph-eye-closed"></i></button>
+            </div>
+
+            <label class="form-label">Confirm New Password</label>
+            <div class="input-group">
+                <input type="password" name="confirm_password" id="confirm_password" class="neo-input" placeholder="Retype new password" required>
+                <button type="button" class="eye-btn" onclick="togglePassword('confirm_password', this)"><i class="ph ph-eye-closed"></i></button>
+            </div>
+
+            <button type="submit" class="btn-brutalist">
+                <i class="ph ph-check-circle"></i> Save Changes
+            </button>
+        </form>
+    </div>
+
+    <!-- Security Tips Sidebar -->
+    <div>
+        <div style="background: var(--black); padding: 32px; border-radius: 16px; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--border-color); color: white;">
+            <i class="ph ph-shield-check" style="font-size: 48px; color: var(--yellow); margin-bottom: 16px;"></i>
+            <h3 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 800; color: white;">Stay Secure</h3>
+            <p style="color: #A1A1AA; font-size: 14px; margin-bottom: 16px; line-height: 1.6;">
+                As an authorized staff member of the Shawarma POS system, keeping your account secure is your responsibility.
+            </p>
+            <ul style="color: #A1A1AA; font-size: 14px; line-height: 1.6; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Do not share your password with other staff members.</li>
+                <li style="margin-bottom: 8px;">Use a combination of letters, numbers, and symbols.</li>
+                <li style="margin-bottom: 8px;">Always log out if you are leaving the terminal unattended.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('ph-eye-closed');
+            icon.classList.add('ph-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('ph-eye');
+            icon.classList.add('ph-eye-closed');
+        }
+    }
+
+    {% if messages %}
+    document.addEventListener("DOMContentLoaded", function() {
+        {% for message in messages %}
+            Swal.fire({
+                icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}",
+                title: "{% if message.tags == 'error' %}Update Failed{% else %}Success{% endif %}",
+                text: "{{ message|escapejs }}",
+                confirmButtonColor: "var(--black)",
+                customClass: { 
+                    popup: 'swal-neo',
+                    title: 'swal-neo-title',
+                    confirmButton: 'swal-neo-confirm'
+                },
+                buttonsStyling: false
+            });
+        {% endfor %}
+    });
+    {% endif %}
+</script>
+{% endblock %}

@@ -339,3 +339,35 @@ def attendance_view(request):
         'logs': logs,
         'is_manager': is_manager
     })
+
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def account_security_view(request):
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+
+        # 1. I-check kung tama ang current password
+        if not request.user.check_password(old_password):
+            messages.error(request, "Incorrect current password.")
+        # 2. I-check kung match ang bagong password
+        elif new_password != confirm_password:
+            messages.error(request, "New passwords do not match.")
+        # 3. I-check ang minimum length para secure
+        elif len(new_password) < 8:
+            messages.error(request, "Password must be at least 8 characters long.")
+        else:
+            # I-save ang bagong password
+            request.user.set_password(new_password)
+            request.user.save()
+            
+            # I-update ang session para hindi ma-logout ang user
+            update_session_auth_hash(request, request.user)
+            messages.success(request, "Your password has been updated successfully!")
+            
+        return redirect('security:account_security')
+
+    return render(request, 'account_security.html')

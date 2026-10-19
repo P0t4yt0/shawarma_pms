@@ -277,7 +277,7 @@
                 {% if request.user|has_dynamic_access:"security.manage_employees" %}
                 <a href="{% url 'security:user_roles' %}" class="nav-item {% if request.resolver_match.url_name == 'user_roles' %}active{% endif %}"><i class="ph ph-shield-check"></i> User Roles & Access</a>
                 <a href="#" class="nav-item"><i class="ph ph-gear"></i> General Settings</a>
-                <a href="#" class="nav-item"><i class="ph ph-lock-key"></i> Account & Security</a>
+                
                 {% endif %}
                 
                 {% if request.user|has_dynamic_access:"activity_log.view_activitylog" %}
@@ -286,12 +286,17 @@
             {% endif %}
         {% endif %}
 
-        <form action="{% url 'security:logout' %}" method="POST" class="logout-form">
-            {% csrf_token %}
-            <button type="submit" class="nav-item btn-logout">
-                <i class="ph ph-sign-out"></i> Logout
-            </button>
-        </form>
+        <div class="nav-category">My Profile</div>
+            <a href="{% url 'security:account_security' %}" class="nav-item {% if request.resolver_match.url_name == 'account_security' %}active{% endif %}">
+                <i class="ph ph-lock-key"></i> Account & Security
+            </a>
+
+            <form action="{% url 'security:logout' %}" method="POST" class="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-item btn-logout">
+                    <i class="ph ph-sign-out"></i> Logout
+                </button>
+            </form>
     </aside>
 
     <main class="main-wrapper">
