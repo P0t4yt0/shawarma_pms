@@ -281,7 +281,9 @@
                 {% endif %}
                 
                 {% if request.user|has_dynamic_access:"activity_log.view_activitylog" %}
-                <a href="#" class="nav-item"><i class="ph ph-list-magnifying-glass"></i> Activity Logs</a>
+                <a href="{% url 'activity_log:logs' %}" class="nav-item {% if request.resolver_match.url_name == 'logs' and 'activity' in request.path %}active{% endif %}">
+                    <i class="ph ph-list-magnifying-glass"></i> Activity Logs
+                </a>
                 {% endif %}
             {% endif %}
         {% endif %}

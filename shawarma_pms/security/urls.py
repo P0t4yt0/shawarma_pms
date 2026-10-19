@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from . import access, views
 
 app_name = "security"
@@ -15,4 +15,6 @@ urlpatterns = [
     path('employees/', views.employee_list_view, name='employee_list'),
     path('attendance/', views.attendance_view, name='attendance'),
     path('settings/account-security/', views.account_security_view, name='account_security'),
+    path('activity/', include('activity_log.urls')),    
+    
 ]

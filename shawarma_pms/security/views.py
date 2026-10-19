@@ -371,3 +371,4 @@ def account_security_view(request):
         return redirect('security:account_security')
 
     return render(request, 'account_security.html')
+
