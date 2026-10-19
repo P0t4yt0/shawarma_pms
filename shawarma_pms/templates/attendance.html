@@ -1,0 +1,1227 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* ==============================
+       ATTENDANCE PAGE
+    ============================== */
+
+    .attendance-page {
+        width: 100%;
+        min-width: 0;
+        color: var(--black);
+    }
+
+    .attendance-page,
+    .attendance-page * {
+        box-sizing: border-box;
+    }
+
+    .attendance-page button,
+    .attendance-page input {
+        font-family: var(--font-main);
+    }
+
+    .attendance-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+
+    .attendance-heading h1 {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: clamp(26px, 3vw, 34px);
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: -1px;
+        color: var(--black);
+    }
+
+    .attendance-heading p {
+        margin: 8px 0 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+        max-width: 600px;
+    }
+
+    .attendance-heading-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: var(--yellow-tint);
+        color: var(--black);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .7px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .attendance-heading-tag i {
+        font-size: 17px;
+    }
+
+    /* ==============================
+       MAIN GRID
+    ============================== */
+
+    .attendance-layout {
+        display: grid;
+        grid-template-columns: minmax(290px, 350px) minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    .attendance-sidebar,
+    .attendance-main {
+        min-width: 0;
+    }
+
+    /* ==============================
+       CLOCK CARD
+    ============================== */
+
+    .clock-widget {
+        position: relative;
+        overflow: hidden;
+        padding: 28px 24px 26px;
+        background: var(--black);
+        border: 2px solid var(--black);
+        border-radius: 16px;
+        box-shadow: 5px 5px 0 var(--border-color);
+        color: var(--white);
+    }
+
+    .clock-widget::before {
+        content: "";
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 150px;
+        height: 150px;
+        border: 24px solid rgba(255, 255, 255, .045);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .clock-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 32px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .clock-label {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: #D4D4D8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+    }
+
+    .clock-label i {
+        font-size: 20px;
+        color: var(--yellow);
+    }
+
+    .clock-live {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border: 1px solid rgba(255, 255, 255, .15);
+        border-radius: 6px;
+        color: #D4D4D8;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .7px;
+    }
+
+    .clock-live-dot {
+        width: 7px;
+        height: 7px;
+        background: #4ADE80;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(74, 222, 128, .12);
+    }
+
+    .clock-time {
+        position: relative;
+        z-index: 1;
+        color: var(--yellow);
+        font-family: 'Inconsolata', monospace;
+        font-size: clamp(43px, 4vw, 57px);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -2px;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .clock-date {
+        margin-top: 12px;
+        color: #A1A1AA;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.6;
+    }
+
+    .clock-divider {
+        height: 1px;
+        margin: 26px 0 22px;
+        background: rgba(255, 255, 255, .13);
+    }
+
+    .clock-action-label {
+        margin-bottom: 12px;
+        color: #D4D4D8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .btn-kiosk {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 11px;
+        width: 100%;
+        min-height: 58px;
+        padding: 16px;
+        background: var(--yellow);
+        color: var(--black);
+        border: 2px solid var(--yellow);
+        border-radius: 9px;
+        box-shadow: 3px 3px 0 rgba(255, 255, 255, .15);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .15s ease,
+                    background .15s ease;
+    }
+
+    .btn-kiosk i {
+        font-size: 23px;
+    }
+
+    .btn-kiosk:hover {
+        background: var(--yellow-hover);
+        transform: translate(1px, 1px);
+        box-shadow: 2px 2px 0 rgba(255, 255, 255, .15);
+    }
+
+    .btn-kiosk:active {
+        transform: translate(3px, 3px);
+        box-shadow: none;
+    }
+
+    .btn-kiosk:focus-visible {
+        outline: 3px solid var(--white);
+        outline-offset: 4px;
+    }
+
+    .clock-helper {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        margin: 18px 0 0;
+        color: #A1A1AA;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .clock-helper i {
+        flex-shrink: 0;
+        margin-top: 2px;
+        color: var(--yellow);
+        font-size: 16px;
+    }
+
+    .clock-security {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 17px;
+        border-top: 1px solid rgba(255, 255, 255, .12);
+        color: #A1A1AA;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .clock-security i {
+        color: #4ADE80;
+        font-size: 16px;
+    }
+
+    /* ==============================
+       ATTENDANCE INFORMATION CARD
+    ============================== */
+
+    .attendance-info-card {
+        margin-top: 20px;
+        padding: 19px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 13px;
+        box-shadow: var(--shadow-subtle);
+    }
+
+    .info-card-heading {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 15px;
+        font-size: 13px;
+        font-weight: 900;
+    }
+
+    .info-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        background: var(--yellow-tint);
+        border-radius: 8px;
+        font-size: 19px;
+    }
+
+    .attendance-info-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 1.8;
+    }
+
+    /* ==============================
+       ATTENDANCE HISTORY
+    ============================== */
+
+    .history-card {
+        overflow: hidden;
+        min-width: 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 15px;
+        box-shadow: var(--shadow-subtle);
+    }
+
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding: 23px 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .history-heading-group {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        min-width: 0;
+    }
+
+    .history-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        background: var(--yellow-tint);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        color: var(--black);
+        font-size: 23px;
+    }
+
+    .history-title {
+        margin: 0;
+        color: var(--black);
+        font-family: var(--font-heading);
+        font-size: 17px;
+        font-weight: 900;
+        line-height: 1.4;
+    }
+
+    .history-subtitle {
+        margin: 4px 0 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .history-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 11px;
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        border-radius: 7px;
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .history-count i {
+        font-size: 16px;
+    }
+
+    .history-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .history-card .modern-table {
+        width: 100%;
+        min-width: 690px;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .history-card .modern-table thead th {
+        padding: 15px 18px;
+        background: var(--bg-main);
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: .8px;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .history-card .modern-table tbody td {
+        padding: 17px 18px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 13px;
+        vertical-align: middle;
+    }
+
+    .history-card .modern-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .history-card .modern-table tbody tr {
+        transition: background .15s ease;
+    }
+
+    .history-card .modern-table tbody tr:hover {
+        background: var(--bg-main);
+    }
+
+    .employee-name {
+        color: var(--black);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.5;
+    }
+
+    .employee-username {
+        display: block;
+        margin-top: 3px;
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .attendance-date {
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .attendance-time {
+        font-family: 'Inconsolata', monospace;
+        font-size: 15px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .attendance-time-in {
+        color: var(--status-green);
+    }
+
+    .attendance-time-out {
+        color: var(--text-primary);
+    }
+
+    .attendance-time-pending {
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-style: italic;
+        font-weight: 600;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .status-badge i {
+        font-size: 13px;
+    }
+
+    .badge-present {
+        background: rgba(34, 197, 94, .10);
+        color: var(--status-green);
+        border-color: rgba(34, 197, 94, .22);
+    }
+
+    .badge-duty {
+        background: var(--yellow-tint);
+        color: #A87900;
+        border-color: rgba(255, 196, 0, .30);
+    }
+
+    .empty-attendance {
+        padding: 56px 20px !important;
+        text-align: center;
+    }
+
+    .empty-attendance-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 17px;
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        color: var(--text-secondary);
+        font-size: 30px;
+    }
+
+    .empty-attendance-title {
+        margin: 0;
+        color: var(--black);
+        font-size: 14px;
+        font-weight: 900;
+    }
+
+    .empty-attendance-text {
+        margin: 7px 0 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .history-footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 20px;
+        background: var(--bg-main);
+        border-top: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .history-footer i {
+        font-size: 15px;
+    }
+
+    /* ==============================
+       SWEETALERT STYLING
+    ============================== */
+
+    .swal-neo {
+        width: min(440px, calc(100vw - 32px)) !important;
+        padding: 28px !important;
+        background: var(--bg-card) !important;
+        border: 2px solid var(--black) !important;
+        border-radius: 15px !important;
+        box-shadow: 7px 7px 0 var(--black) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .swal-neo-title {
+        margin-bottom: 8px !important;
+        color: var(--black) !important;
+        font-family: var(--font-heading) !important;
+        font-size: 23px !important;
+        font-weight: 900 !important;
+        letter-spacing: -.5px !important;
+    }
+
+    .swal-neo-html {
+        margin-top: 14px !important;
+        color: var(--text-secondary) !important;
+        font-family: var(--font-main) !important;
+        font-size: 13px !important;
+        line-height: 1.7 !important;
+    }
+
+    .swal-neo-form {
+        padding: 0 2px;
+        text-align: left;
+    }
+
+    .swal-neo-field {
+        margin-bottom: 17px;
+    }
+
+    .swal-neo-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .swal-neo-label {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--text-primary);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .7px;
+        text-transform: uppercase;
+    }
+
+    .swal-neo-input {
+        display: block;
+        width: 100%;
+        min-height: 47px;
+        margin: 0 !important;
+        padding: 12px 14px !important;
+        background: var(--bg-main) !important;
+        border: 1.5px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        outline: none !important;
+        box-shadow: none !important;
+        color: var(--text-primary) !important;
+        font-family: var(--font-main) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        transition: border-color .15s ease !important;
+    }
+
+    .swal-neo-input:focus {
+        border-color: var(--black) !important;
+    }
+
+    .swal-neo-input::placeholder {
+        color: var(--text-secondary) !important;
+        opacity: .7;
+    }
+
+    .swal-neo-confirm {
+        min-height: 46px !important;
+        padding: 13px 20px !important;
+        background: var(--yellow) !important;
+        border: 2px solid var(--black) !important;
+        border-radius: 8px !important;
+        box-shadow: 3px 3px 0 var(--black) !important;
+        color: var(--black) !important;
+        font-family: var(--font-main) !important;
+        font-size: 12px !important;
+        font-weight: 900 !important;
+        letter-spacing: .5px !important;
+        text-transform: uppercase !important;
+        transition: transform .15s ease, box-shadow .15s ease !important;
+    }
+
+    .swal-neo-confirm:hover {
+        transform: translate(1px, 1px);
+        box-shadow: 2px 2px 0 var(--black) !important;
+    }
+
+    .swal-neo-cancel {
+        min-height: 44px !important;
+        padding: 12px 18px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        color: var(--text-secondary) !important;
+        font-family: var(--font-main) !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+    }
+
+    .swal-neo-validation {
+        color: #DC2626 !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+    }
+
+    .swal2-icon {
+        margin-top: 8px !important;
+    }
+
+    .swal2-actions {
+        gap: 12px !important;
+        margin-top: 24px !important;
+    }
+
+    /* ==============================
+       RESPONSIVE
+    ============================== */
+
+    @media (max-width: 1100px) {
+        .attendance-layout {
+            grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
+            gap: 18px;
+        }
+
+        .history-header {
+            padding: 20px;
+        }
+
+        .history-card .modern-table thead th,
+        .history-card .modern-table tbody td {
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .attendance-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .attendance-sidebar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .attendance-info-card {
+            margin-top: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .clock-time {
+            font-size: clamp(44px, 7vw, 60px);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .attendance-heading {
+            flex-direction: column;
+            margin-bottom: 22px;
+        }
+
+        .attendance-heading-tag {
+            align-self: flex-start;
+        }
+
+        .attendance-sidebar {
+            grid-template-columns: 1fr;
+        }
+
+        .clock-widget {
+            padding: 24px 20px;
+        }
+
+        .clock-time {
+            font-size: clamp(44px, 12vw, 57px);
+        }
+
+        .history-header {
+            padding: 18px;
+        }
+
+        .history-heading-group {
+            gap: 10px;
+        }
+
+        .history-icon {
+            width: 39px;
+            height: 39px;
+            font-size: 21px;
+        }
+
+        .history-title {
+            font-size: 15px;
+        }
+
+        .history-count {
+            margin-left: 49px;
+        }
+
+        .swal-neo {
+            padding: 23px 19px !important;
+        }
+
+        .swal2-actions {
+            flex-direction: column-reverse;
+            width: 100%;
+        }
+
+        .swal-neo-confirm,
+        .swal-neo-cancel {
+            width: 100% !important;
+            margin: 0 !important;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .btn-kiosk,
+        .history-card .modern-table tbody tr,
+        .swal-neo-confirm {
+            transition: none !important;
+        }
+    }
+</style>
+
+<div class="attendance-page">
+
+    <!-- PAGE HEADER -->
+    <div class="attendance-heading">
+        <div>
+            <h1>Time Clock Kiosk</h1>
+            <p>
+                Record your work attendance securely and keep track of
+                employee time-in and time-out records.
+            </p>
+        </div>
+
+        <div class="attendance-heading-tag">
+            <i class="ph ph-fingerprint"></i>
+            Attendance Center
+        </div>
+    </div>
+
+    <div class="attendance-layout">
+
+        <!-- LEFT: CLOCK AND PUNCH ACTION -->
+        <aside class="attendance-sidebar">
+
+            <section class="clock-widget">
+
+                <div class="clock-top">
+                    <div class="clock-label">
+                        <i class="ph ph-clock"></i>
+                        Current Time
+                    </div>
+
+                    <div class="clock-live">
+                        <span class="clock-live-dot"></span>
+                        LIVE
+                    </div>
+                </div>
+
+                <div
+                    class="clock-time"
+                    id="digital-clock"
+                    role="timer"
+                    aria-label="Current time"
+                >
+                    00:00:00
+                </div>
+
+                <div class="clock-date" id="digital-date">
+                    Loading date...
+                </div>
+
+                <div class="clock-divider"></div>
+
+                <div class="clock-action-label">
+                    Employee Attendance
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-kiosk"
+                    onclick="openKioskPunch()"
+                >
+                    <i class="ph ph-fingerprint"></i>
+                    Punch In / Out
+                </button>
+
+                <p class="clock-helper">
+                    <i class="ph ph-info"></i>
+                    <span>
+                        Enter your employee credentials. The system will
+                        determine whether to record your time-in or time-out.
+                    </span>
+                </p>
+
+                <div class="clock-security">
+                    <i class="ph ph-shield-check"></i>
+                    Secure employee verification
+                </div>
+
+                <!-- Existing attendance submission form -->
+                <form id="kiosk-form" method="POST" style="display: none;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="kiosk_punch">
+                    <input type="hidden" name="kiosk_username" id="kiosk-u">
+                    <input type="hidden" name="kiosk_password" id="kiosk-p">
+                </form>
+
+            </section>
+
+            <section class="attendance-info-card">
+                <div class="info-card-heading">
+                    <span class="info-card-icon">
+                        <i class="ph ph-calendar-check"></i>
+                    </span>
+                    Attendance Reminder
+                </div>
+
+                <p>
+                    Make sure to record your attendance when starting and
+                    finishing your shift. Always verify your credentials
+                    before submitting a punch.
+                </p>
+            </section>
+
+        </aside>
+
+        <!-- RIGHT: ATTENDANCE HISTORY -->
+        <main class="attendance-main">
+
+            <section class="history-card">
+
+                <div class="history-header">
+
+                    <div class="history-heading-group">
+                        <div class="history-icon">
+                            <i class="ph ph-list-checks"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="history-title">
+                                {% if is_manager %}
+                                    Global Attendance Logs
+                                {% else %}
+                                    Today's Punch Records
+                                {% endif %}
+                            </h2>
+
+                            <p class="history-subtitle">
+                                {% if is_manager %}
+                                    Review employee attendance activity.
+                                {% else %}
+                                    Review your available attendance records.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="history-count">
+                        <i class="ph ph-clock-counter-clockwise"></i>
+                        Attendance History
+                    </div>
+
+                </div>
+
+                <div class="history-table-wrap">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Date</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>
+                                    <div class="employee-name">
+                                        {{ log.employee.user.first_name }}
+                                        {{ log.employee.user.last_name }}
+                                    </div>
+
+                                    <span class="employee-username">
+                                        @{{ log.employee.user.username }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="attendance-date">
+                                        {{ log.clock_in|date:"M d, Y" }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="attendance-time attendance-time-in">
+                                        {{ log.clock_in|time:"h:i A" }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {% if log.clock_out %}
+                                        <span class="attendance-time attendance-time-out">
+                                            {{ log.clock_out|time:"h:i A" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="attendance-time-pending">
+                                            Not recorded
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if log.clock_out %}
+                                        <span class="status-badge badge-present">
+                                            <i class="ph ph-check-circle"></i>
+                                            Completed
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge badge-duty">
+                                            <i class="ph ph-hourglass"></i>
+                                            On Duty
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="empty-attendance">
+                                    <div class="empty-attendance-icon">
+                                        <i class="ph ph-calendar-blank"></i>
+                                    </div>
+
+                                    <p class="empty-attendance-title">
+                                        No attendance records yet
+                                    </p>
+
+                                    <p class="empty-attendance-text">
+                                        Attendance records will appear here
+                                        once a punch has been recorded.
+                                    </p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="history-footer">
+                    <i class="ph ph-info"></i>
+                    Attendance information is displayed according to the
+                    records available to your account.
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+</div>
+
+<script>
+    /* ==============================
+       DIGITAL CLOCK
+    ============================== */
+
+    function updateClock() {
+        const clockElement = document.getElementById('digital-clock');
+        const dateElement = document.getElementById('digital-date');
+
+        if (!clockElement || !dateElement) return;
+
+        const now = new Date();
+
+        clockElement.textContent = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+
+        dateElement.textContent = now.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+
+
+    /* ==============================
+       KIOSK ATTENDANCE VERIFICATION
+    ============================== */
+
+    function openKioskPunch() {
+        Swal.fire({
+            customClass: {
+                popup: 'swal-neo',
+                title: 'swal-neo-title',
+                htmlContainer: 'swal-neo-html',
+                confirmButton: 'swal-neo-confirm',
+                cancelButton: 'swal-neo-cancel',
+                validationMessage: 'swal-neo-validation'
+            },
+
+            buttonsStyling: false,
+            title: 'Verify Your Identity',
+
+            html: `
+                <div class="swal-neo-form">
+
+                    <div class="swal-neo-field">
+                        <label for="swal-u" class="swal-neo-label">
+                            Username
+                        </label>
+
+                        <input
+                            id="swal-u"
+                            class="swal-neo-input"
+                            type="text"
+                            placeholder="Enter your username"
+                            autocomplete="username"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            maxlength="150"
+                        >
+                    </div>
+
+                    <div class="swal-neo-field">
+                        <label for="swal-p" class="swal-neo-label">
+                            Password
+                        </label>
+
+                        <input
+                            id="swal-p"
+                            class="swal-neo-input"
+                            type="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            maxlength="256"
+                        >
+                    </div>
+
+                </div>
+            `,
+
+            showCancelButton: true,
+            confirmButtonText: 'Submit Punch',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+            focusConfirm: false,
+
+            didOpen: () => {
+                const usernameInput = document.getElementById('swal-u');
+                const passwordInput = document.getElementById('swal-p');
+
+                usernameInput.focus();
+
+                usernameInput.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        passwordInput.focus();
+                    }
+                });
+
+                passwordInput.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        Swal.clickConfirm();
+                    }
+                });
+            },
+
+            preConfirm: () => {
+                const usernameInput = document.getElementById('swal-u');
+                const passwordInput = document.getElementById('swal-p');
+
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value;
+
+                if (!username || !password) {
+                    Swal.showValidationMessage(
+                        'Both username and password are required.'
+                    );
+                    return false;
+                }
+
+                return {
+                    u: username,
+                    p: password
+                };
+            }
+
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                const form = document.getElementById('kiosk-form');
+
+                document.getElementById('kiosk-u').value = result.value.u;
+                document.getElementById('kiosk-p').value = result.value.p;
+
+                form.submit();
+            }
+        });
+    }
+
+
+    /* ==============================
+       DJANGO MESSAGE NOTIFICATIONS
+    ============================== */
+
+    {% if messages %}
+    document.addEventListener('DOMContentLoaded', function () {
+        {% for message in messages %}
+            Swal.fire({
+                icon: "{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %}",
+
+                title: "{% if message.tags == 'error' %}Access Denied{% elif message.tags == 'warning' %}Attention Required{% elif message.tags == 'info' %}Information{% else %}Attendance Updated{% endif %}",
+
+                text: "{{ message|escapejs }}",
+
+                confirmButtonText: 'Got It',
+
+                customClass: {
+                    popup: 'swal-neo',
+                    title: 'swal-neo-title',
+                    confirmButton: 'swal-neo-confirm'
+                },
+
+                buttonsStyling: false
+            });
+        {% endfor %}
+    });
+    {% endif %}
+</script>
+
+{% endblock %}

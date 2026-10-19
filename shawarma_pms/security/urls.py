@@ -11,4 +11,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard_view, name="dashboard"),
     path("api/clock-in/", views.clock_in, name="clock_in"),
     path("api/clock-out/", views.clock_out, name="clock_out"),
+    path('settings/user-roles/', views.user_roles_view, name='user_roles'),
+    path('employees/', views.employee_list_view, name='employee_list'),
+    path('attendance/', views.attendance_view, name='attendance'),
 ]

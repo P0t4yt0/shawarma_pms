@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {% load static %}
+{% load access_tags %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -154,98 +155,136 @@
 </head>
 <body>
 
-    <!-- Palitan ng ganito: -->
-        <aside class="sidebar">
-            <a href="{% url 'security:dashboard' %}" class="logo-container">
-                <img src="{% static 'images/logo.jpg' %}" alt="Shawarma POS" style="max-width: 100%; max-height: 56px; object-fit: contain;">
-            </a>
-        
-        <!-- 1. Dashboard -->
+    <aside class="sidebar">
+        <a href="{% url 'security:dashboard' %}" class="logo-container">
+            <img src="{% static 'images/logo.jpg' %}" alt="Shawarma POS" style="max-width: 100%; max-height: 56px; object-fit: contain;">
+        </a>
+
+        <!-- 1. Dashboard (Laging nakikita) -->
         <a href="{% url 'security:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
             <i class="ph ph-squares-four"></i> Dashboard
         </a>
+       <!-- ATTENDANCE (Laging nakikita ng lahat) -->
+        <a href="{% url 'security:attendance' %}" class="nav-item {% if request.resolver_match.url_name == 'attendance' %}active{% endif %}">
+            <i class="ph ph-calendar-check"></i> Attendance
+        </a>
 
         <!-- 2. POS & Orders -->
+        {% if request.user|has_dynamic_access:"point_of_sale.add_order" or request.user|has_dynamic_access:"point_of_sale.view_order" or request.user|has_dynamic_access:"point_of_sale.view_kds" or request.user|has_dynamic_access:"point_of_sale.view_orderstatuslog" or request.user|has_dynamic_access:"billing_payment.view_receipt" %}
         <div class="nav-category">POS & Orders</div>
-        <a href="{% url 'pos:pos_screen' %}" class="nav-item {% if request.resolver_match.url_name == 'pos_screen' %}active{% endif %}">
-            <i class="ph ph-desktop"></i> New Sales
-        </a>
-        <a href="{% url 'pos:order_list' %}" class="nav-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
-            <i class="ph ph-list-numbers"></i> Order List
-        </a>
-        <a href="{% url 'pos:kds_screen' %}" class="nav-item {% if request.resolver_match.url_name == 'kds_screen' %}active{% endif %}">
-            <i class="ph ph-cooking-pot"></i> Kitchen Orders
-        </a>
-        <a href="{% url 'pos:transaction_history' %}" class="nav-item {% if request.resolver_match.url_name == 'transaction_history' %}active{% endif %}">
-            <i class="ph ph-receipt"></i> Transaction History
-        </a>
-        <a href="{% url 'pos:receipts_list' %}" class="nav-item {% if request.resolver_match.url_name == 'receipts_list' %}active{% endif %}">
-            <i class="ph ph-ticket"></i> Receipts
-        </a>
+            {% if request.user|has_dynamic_access:"point_of_sale.add_order" %}
+            <a href="{% url 'pos:pos_screen' %}" class="nav-item {% if request.resolver_match.url_name == 'pos_screen' %}active{% endif %}"><i class="ph ph-desktop"></i> New Sales</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"point_of_sale.view_order" %}
+            <a href="{% url 'pos:order_list' %}" class="nav-item {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}"><i class="ph ph-list-numbers"></i> Order List</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"point_of_sale.view_kds" %}
+            <a href="{% url 'pos:kds_screen' %}" class="nav-item {% if request.resolver_match.url_name == 'kds_screen' %}active{% endif %}"><i class="ph ph-cooking-pot"></i> Kitchen Orders</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"point_of_sale.view_orderstatuslog" %}
+            <a href="{% url 'pos:transaction_history' %}" class="nav-item {% if request.resolver_match.url_name == 'transaction_history' %}active{% endif %}"><i class="ph ph-receipt"></i> Transaction History</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"billing_payment.view_receipt" %}
+            <a href="{% url 'pos:receipts_list' %}" class="nav-item {% if request.resolver_match.url_name == 'receipts_list' %}active{% endif %}"><i class="ph ph-ticket"></i> Receipts</a>
+            {% endif %}
+        {% endif %}
 
         <!-- 3. Products & Inventory -->
+        {% if request.user|has_dynamic_access:"point_of_sale.view_menuitem" or request.user|has_dynamic_access:"point_of_sale.view_category" or request.user|has_dynamic_access:"inventory.view_ingredient" or request.user|has_dynamic_access:"inventory.view_stockmovement" or request.user|has_dynamic_access:"inventory.view_recipe" or request.user|has_dynamic_access:"inventory.adjust_stock" %}
         <div class="nav-category">Products & Inventory</div>
-        <a href="{% url 'inventory:products' %}" class="nav-item {% if request.resolver_match.url_name == 'products' %}active{% endif %}">
-            <i class="ph ph-hamburger"></i> Product Management
-        </a>
-        <a href="{% url 'inventory:categories' %}" class="nav-item {% if request.resolver_match.url_name == 'categories' %}active{% endif %}">
-            <i class="ph ph-folders"></i> Category Management
-        </a>
-        <a href="{% url 'inventory:list' %}" class="nav-item {% if 'ingredients' in request.path %}active{% endif %}">
-            <i class="ph ph-carrot"></i> Ingredient Stock
-        </a>
-        <a href="{% url 'inventory:stock_movements' %}" class="nav-item {% if 'movements' in request.path %}active{% endif %}">
-            <i class="ph ph-arrows-left-right"></i> Stock In / Out
-        </a>
-        <a href="{% url 'inventory:recipe_management' %}" class="nav-item {% if 'recipes' in request.path %}active{% endif %}">
-            <i class="ph ph-book-open"></i> Recipe Management
-        </a>
-        <a href="{% url 'inventory:spoilage' %}" class="nav-item {% if request.resolver_match.url_name == 'spoilage' %}active{% endif %}">
-            <i class="ph ph-warning-octagon"></i> Expiration & Spoilage
-        </a>
+            {% if request.user|has_dynamic_access:"point_of_sale.view_menuitem" %}
+            <a href="{% url 'inventory:products' %}" class="nav-item {% if request.resolver_match.url_name == 'products' %}active{% endif %}"><i class="ph ph-hamburger"></i> Product Management</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"point_of_sale.view_category" %}
+            <a href="{% url 'inventory:categories' %}" class="nav-item {% if request.resolver_match.url_name == 'categories' %}active{% endif %}"><i class="ph ph-folders"></i> Category Management</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"inventory.view_ingredient" %}
+            <a href="{% url 'inventory:list' %}" class="nav-item {% if 'ingredients' in request.path %}active{% endif %}"><i class="ph ph-carrot"></i> Ingredient Stock</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"inventory.view_stockmovement" %}
+            <a href="{% url 'inventory:stock_movements' %}" class="nav-item {% if 'movements' in request.path %}active{% endif %}"><i class="ph ph-arrows-left-right"></i> Stock In / Out</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"inventory.view_recipe" %}
+            <a href="{% url 'inventory:recipe_management' %}" class="nav-item {% if 'recipes' in request.path %}active{% endif %}"><i class="ph ph-book-open"></i> Recipe Management</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"inventory.adjust_stock" %}
+            <a href="{% url 'inventory:spoilage' %}" class="nav-item {% if request.resolver_match.url_name == 'spoilage' %}active{% endif %}"><i class="ph ph-warning-octagon"></i> Expiration & Spoilage</a>
+            {% endif %}
+        {% endif %}
 
         <!-- 4. Promotions & Discounts -->
+        {% if request.user|has_dynamic_access:"promotions.view_promotion" or request.user|has_dynamic_access:"promotions.view_applieddiscount" %}
         <div class="nav-category">Promotions & Discounts</div>
-        <a href="{% url 'promotions:list' %}" class="nav-item {% if request.resolver_match.url_name == 'list' and 'promotions' in request.path %}active{% endif %}">
-            <i class="ph ph-tag"></i> Promotions & Discounts
-        </a>
-        <a href="{% url 'promotions:history' %}" class="nav-item {% if request.resolver_match.url_name == 'history' and 'promotions' in request.path %}active{% endif %}">
-            <i class="ph ph-clock-counter-clockwise"></i> Usage History
-        </a>
+            {% if request.user|has_dynamic_access:"promotions.view_promotion" %}
+            <a href="{% url 'promotions:list' %}" class="nav-item {% if request.resolver_match.url_name == 'list' and 'promotions' in request.path %}active{% endif %}"><i class="ph ph-tag"></i> Promotions & Discounts</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"promotions.view_applieddiscount" %}
+            <a href="{% url 'promotions:history' %}" class="nav-item {% if request.resolver_match.url_name == 'history' and 'promotions' in request.path %}active{% endif %}"><i class="ph ph-clock-counter-clockwise"></i> Usage History</a>
+            {% endif %}
+        {% endif %}
 
         <!-- 5. Reports -->
+        {% if request.user|has_dynamic_access:"reports_analytics.view_dailysalessummary" or request.user|has_dynamic_access:"reports_analytics.view_variantdailysales" or request.user|has_dynamic_access:"reports_analytics.view_ingredientdailyusage" or request.user|has_dynamic_access:"reports_analytics.view_demandforecast" or request.user|has_dynamic_access:"reports_analytics.view_lowstockalert" %}
         <div class="nav-category">Reports</div>
-        <a href="{% url 'reports_analytics:sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_report' and 'reports' in request.path %}active{% endif %}">
-            <i class="ph ph-chart-bar"></i> Sales Reports
-        </a>
-        <a href="{% url 'reports_analytics:product_sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'product_sales_report' %}active{% endif %}">
-            <i class="ph ph-trend-up"></i> Product Sales
-        </a>
-        <a href="{% url 'reports_analytics:inventory_report' %}" class="nav-item {% if request.resolver_match.url_name == 'inventory_report' %}active{% endif %}">
-            <i class="ph ph-clipboard-data"></i> Inventory Reports
-        </a>
-        <a href="{% url 'reports_analytics:sales_forecast_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_forecast_report' %}active{% endif %}">
-            <i class="ph ph-chart-line-up"></i> Sales Forecast
-        </a>
-        <a href="{% url 'reports_analytics:stock_spoilage_report' %}" class="nav-item {% if request.resolver_match.url_name == 'stock_spoilage_report' %}active{% endif %}">
-            <i class="ph ph-trash"></i> Stock & Spoilage Reports
-        </a>
+            {% if request.user|has_dynamic_access:"reports_analytics.view_dailysalessummary" %}
+            <a href="{% url 'reports_analytics:sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_report' and 'reports' in request.path %}active{% endif %}"><i class="ph ph-chart-bar"></i> Sales Reports</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"reports_analytics.view_variantdailysales" %}
+            <a href="{% url 'reports_analytics:product_sales_report' %}" class="nav-item {% if request.resolver_match.url_name == 'product_sales_report' %}active{% endif %}"><i class="ph ph-trend-up"></i> Product Sales</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"reports_analytics.view_ingredientdailyusage" %}
+            <a href="{% url 'reports_analytics:inventory_report' %}" class="nav-item {% if request.resolver_match.url_name == 'inventory_report' %}active{% endif %}"><i class="ph ph-clipboard-data"></i> Inventory Reports</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"reports_analytics.view_demandforecast" %}
+            <a href="{% url 'reports_analytics:sales_forecast_report' %}" class="nav-item {% if request.resolver_match.url_name == 'sales_forecast_report' %}active{% endif %}"><i class="ph ph-chart-line-up"></i> Sales Forecast</a>
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"reports_analytics.view_lowstockalert" %}
+            <a href="{% url 'reports_analytics:stock_spoilage_report' %}" class="nav-item {% if request.resolver_match.url_name == 'stock_spoilage_report' %}active{% endif %}"><i class="ph ph-trash"></i> Stock & Spoilage Reports</a>
+            {% endif %}
+        {% endif %}
 
-        <!-- 6. Employees -->
-        <div class="nav-category">Employees</div>
-        <a href="#" class="nav-item"><i class="ph ph-users"></i> Employee List</a>
-        <a href="#" class="nav-item"><i class="ph ph-calendar-check"></i> Attendance</a>
-        <a href="#" class="nav-item"><i class="ph ph-calendar"></i> Work Schedules</a>
-        <a href="#" class="nav-item"><i class="ph ph-shield-check"></i> User Roles & Access</a>
-
-        <!-- 7. Settings -->
-        <div class="nav-category">Settings</div>
-        <a href="#" class="nav-item"><i class="ph ph-gear"></i> General Settings</a>
-        <a href="#" class="nav-item"><i class="ph ph-lock-key"></i> Account & Security</a>
-        <a href="#" class="nav-item"><i class="ph ph-bell"></i> Notification Settings</a>
-        <a href="#" class="nav-item"><i class="ph ph-list-magnifying-glass"></i> Activity Logs</a>
-        <a href="#" class="nav-item"><i class="ph ph-database"></i> Backup & Restore</a>
-        <a href="#" class="nav-item"><i class="ph ph-book"></i> User Manual</a>
+        <!-- 6. Employees & Settings -->
+        {% if request.user|has_dynamic_access:"security.manage_employees" or request.user|has_dynamic_access:"security.view_attendance" or request.user|has_dynamic_access:"security.view_shift" or request.user|has_dynamic_access:"activity_log.view_activitylog" %}
+            {% if request.user|has_dynamic_access:"security.manage_employees" or request.user|has_dynamic_access:"security.view_attendance" or request.user|has_dynamic_access:"security.view_shift" %}
+            <div class="nav-category">Employees</div>
+                {% if request.user|has_dynamic_access:"security.manage_employees" %}
+                <a href="{% url 'security:employee_list' %}" class="nav-item {% if request.resolver_match.url_name == 'employee_list' %}active{% endif %}"><i class="ph ph-users"></i> Employee List</a>
+                {% endif %}
+                
+                
+                
+                {% if request.user|has_dynamic_access:"security.view_shift" %}
+                <a href="#" class="nav-item"><i class="ph ph-calendar"></i> Work Schedules</a>
+                {% endif %}
+            {% endif %}
+            
+            {% if request.user|has_dynamic_access:"security.manage_employees" or request.user|has_dynamic_access:"activity_log.view_activitylog" %}
+            <div class="nav-category">Settings</div>
+                {% if request.user|has_dynamic_access:"security.manage_employees" %}
+                <a href="{% url 'security:user_roles' %}" class="nav-item {% if request.resolver_match.url_name == 'user_roles' %}active{% endif %}"><i class="ph ph-shield-check"></i> User Roles & Access</a>
+                <a href="#" class="nav-item"><i class="ph ph-gear"></i> General Settings</a>
+                <a href="#" class="nav-item"><i class="ph ph-lock-key"></i> Account & Security</a>
+                {% endif %}
+                
+                {% if request.user|has_dynamic_access:"activity_log.view_activitylog" %}
+                <a href="#" class="nav-item"><i class="ph ph-list-magnifying-glass"></i> Activity Logs</a>
+                {% endif %}
+            {% endif %}
+        {% endif %}
 
         <form action="{% url 'security:logout' %}" method="POST" class="logout-form">
             {% csrf_token %}

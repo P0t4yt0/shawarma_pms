@@ -1,0 +1,724 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+.access-page .welcome-header {
+    margin-bottom: 24px;
+}
+
+.access-subtitle {
+    max-width: 640px;
+    line-height: 1.55;
+}
+
+.access-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, .9fr) minmax(0, 1.6fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.access-panel {
+    min-width: 0;
+    padding: 24px;
+}
+
+.access-panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--black);
+    font-weight: 800;
+}
+
+.access-panel-title small {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.btn-brutalist {
+    background: var(--yellow);
+    color: var(--black);
+    border: 2px solid var(--black);
+    box-shadow: 3px 3px 0 var(--black);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+    width: 100%;
+    display: block;
+    text-align: center;
+}
+
+.btn-brutalist:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--black);
+}
+
+.btn-brutalist:focus-visible,
+.btn-revoke:focus-visible,
+.permission-tools button:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 3px;
+}
+
+.btn-revoke {
+    background: #fff1f2;
+    color: #b91c1c;
+    border: 2px solid #dc2626;
+    font-weight: 800;
+    border-radius: 6px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-revoke:hover {
+    background: #fecaca;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-family: var(--font-main);
+    font-weight: 600;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 18px;
+    background: #fff;
+    color: var(--black);
+}
+
+.form-input:focus {
+    border-color: var(--black);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, .08);
+}
+
+.field-label {
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--black);
+    display: block;
+    margin-bottom: 7px;
+}
+
+.field-help {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+    margin: -11px 0 14px;
+}
+
+.permission-box {
+    background: #fff;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.permission-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.permission-tools span {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-secondary);
+}
+
+.permission-tools button {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.permission-tools button:hover {
+    background: #f3f4f6;
+}
+
+.permission-group-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 7px;
+    margin-bottom: 10px;
+}
+
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.permission-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    cursor: pointer;
+    font-family: var(--font-main);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--black);
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.permission-option:hover {
+    background: #fffbea;
+}
+
+.permission-option input {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin: 1px 0 0;
+    cursor: pointer;
+    accent-color: var(--yellow);
+}
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 8px;
+}
+
+.modern-table {
+    width: 100%;
+    min-width: 600px;
+}
+
+.modern-table th {
+    white-space: nowrap;
+}
+
+.modern-table td {
+    vertical-align: middle;
+}
+
+.employee-name {
+    font-weight: 800;
+    color: var(--black);
+}
+
+.employee-username {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.module-name {
+    font-weight: 700;
+    color: var(--black);
+}
+
+.expiry-time {
+    font-family: 'Inconsolata', monospace;
+    font-weight: 700;
+    color: var(--status-green);
+    white-space: nowrap;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 38px 20px !important;
+}
+
+.empty-state strong {
+    display: block;
+    color: var(--black);
+    margin-bottom: 5px;
+}
+
+.access-note {
+    background: #fffbea;
+    border: 1px solid #f2d675;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+@media (max-width: 1050px) {
+    .access-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .access-panel {
+        padding: 16px !important;
+    }
+
+    .access-panel-title {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .permission-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .permission-tools {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .access-page .welcome-header h1 {
+        font-size: 26px !important;
+    }
+}
+</style>
+
+<div class="access-page">
+
+    <div class="welcome-header">
+        <div>
+            <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">
+                User Roles & Access
+            </h1>
+
+            <p class="access-subtitle" style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">
+                Grant temporary access to selected system modules for a limited time. Access automatically expires when the selected duration ends.
+            </p>
+        </div>
+    </div>
+
+    <div class="access-layout">
+
+        <!-- Grant Temporary Access -->
+        <div class="panel access-panel">
+
+            <h3 class="access-panel-title">
+                Grant Temporary Access
+                <small>STEP 1 · Choose access</small>
+            </h3>
+
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="grant_access" value="1">
+
+                <label class="field-label">Select Employee</label>
+
+                <select name="employee_id" class="form-input" required>
+                    <option value="" disabled selected>
+                        Choose staff member...
+                    </option>
+
+                    {% for emp in employees %}
+                        <option value="{{ emp.id }}">
+                            {{ emp.first_name }} {{ emp.last_name }} ({{ emp.username }})
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <label class="field-label">Select Tabs to Unlock</label>
+
+                <p class="field-help">
+                    Choose the modules this employee needs. You can select more than one.
+                </p>
+
+                <div class="permission-box" id="permissionBox">
+
+                    <div class="permission-tools">
+                        <span id="permissionCount" aria-live="polite">
+                            0 permissions selected
+                        </span>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" id="selectAllPermissions">
+                                Select all
+                            </button>
+
+                            <button type="button" id="clearPermissions">
+                                Clear all
+                            </button>
+                        </div>
+                    </div>
+
+                    {% for group_name, perms in grouped_permissions.items %}
+                        <div>
+                            <div class="permission-group-title">
+                                {{ group_name }}
+                            </div>
+
+                            <div class="permission-grid">
+
+                                {% for perm in perms %}
+                                    <label class="permission-option">
+
+                                        <input
+                                            type="checkbox"
+                                            name="permissions"
+                                            value="{{ perm.codename }}"
+                                        >
+
+                                        {% if perm.codename == 'add_order' %}
+                                            New Sales
+                                        {% elif perm.codename == 'view_order' %}
+                                            Order List
+                                        {% elif perm.codename == 'view_kds' %}
+                                            Kitchen Orders
+                                        {% elif perm.codename == 'view_orderstatuslog' %}
+                                            Transaction History
+                                        {% elif perm.codename == 'view_receipt' %}
+                                            Receipts
+
+                                        {% elif perm.codename == 'view_menuitem' %}
+                                            Product Management
+                                        {% elif perm.codename == 'view_category' %}
+                                            Category Management
+                                        {% elif perm.codename == 'view_ingredient' %}
+                                            Ingredient Stock
+                                        {% elif perm.codename == 'view_stockmovement' %}
+                                            Stock In / Out
+                                        {% elif perm.codename == 'view_recipe' %}
+                                            Recipe Management
+                                        {% elif perm.codename == 'adjust_stock' %}
+                                            Expiration & Spoilage
+
+                                        {% elif perm.codename == 'view_promotion' %}
+                                            Promotions & Discounts
+                                        {% elif perm.codename == 'view_applieddiscount' %}
+                                            Usage History
+
+                                        {% elif perm.codename == 'view_dailysalessummary' %}
+                                            Sales Reports
+                                        {% elif perm.codename == 'view_variantdailysales' %}
+                                            Product Sales
+                                        {% elif perm.codename == 'view_ingredientdailyusage' %}
+                                            Inventory Reports
+                                        {% elif perm.codename == 'view_demandforecast' %}
+                                            Sales Forecast
+                                        {% elif perm.codename == 'view_lowstockalert' %}
+                                            Stock & Spoilage Reports
+
+                                        {% elif perm.codename == 'manage_employees' %}
+                                            Employee List / Roles
+                                        {% elif perm.codename == 'view_attendance' %}
+                                            Attendance
+                                        {% elif perm.codename == 'view_shift' %}
+                                            Work Schedules
+                                        {% elif perm.codename == 'view_activitylog' %}
+                                            Activity Logs
+
+                                        {% else %}
+                                            {{ perm.name }}
+                                        {% endif %}
+
+                                    </label>
+                                {% endfor %}
+
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                </div>
+
+                <label class="field-label">Duration</label>
+
+                <p class="field-help">
+                    Access will expire automatically after this period.
+                </p>
+
+                <select name="duration" class="form-input" required>
+                    <option value="1">1 Hour</option>
+                    <option value="2">2 Hours</option>
+                    <option value="4">4 Hours (Half Shift)</option>
+                    <option value="8">8 Hours (Full Shift)</option>
+                </select>
+
+                <div class="access-note">
+                    Temporary access applies only to the selected modules and duration. Review your selections before granting access.
+                </div>
+
+                <button type="submit" class="btn-brutalist">
+                    Grant Temporary Access
+                </button>
+
+            </form>
+        </div>
+
+        <!-- Active Overrides -->
+        <div class="panel access-panel">
+
+            <h3 class="access-panel-title">
+                Active Overrides
+                <small>Current temporary permissions</small>
+            </h3>
+
+            <div class="table-scroll">
+                <table class="modern-table">
+
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Unlocked Module</th>
+                            <th>Expires At</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for access in active_accesses %}
+                            <tr>
+
+                                <td class="employee-name">
+                                    {{ access.employee.first_name }}
+                                    {{ access.employee.last_name }}
+
+                                    <span class="employee-username">
+                                        @{{ access.employee.username }}
+                                    </span>
+                                </td>
+
+                                <td class="module-name">
+                                    {% if access.permission.codename == 'add_order' %}
+                                        New Sales
+                                    {% elif access.permission.codename == 'view_order' %}
+                                        Order List
+                                    {% elif access.permission.codename == 'view_kds' %}
+                                        Kitchen Orders
+                                    {% elif access.permission.codename == 'view_orderstatuslog' %}
+                                        Transaction History
+                                    {% elif access.permission.codename == 'view_receipt' %}
+                                        Receipts
+
+                                    {% elif access.permission.codename == 'view_menuitem' %}
+                                        Product Management
+                                    {% elif access.permission.codename == 'view_category' %}
+                                        Category Management
+                                    {% elif access.permission.codename == 'view_ingredient' %}
+                                        Ingredient Stock
+                                    {% elif access.permission.codename == 'view_stockmovement' %}
+                                        Stock In / Out
+                                    {% elif access.permission.codename == 'view_recipe' %}
+                                        Recipe Management
+                                    {% elif access.permission.codename == 'adjust_stock' %}
+                                        Expiration & Spoilage
+
+                                    {% elif access.permission.codename == 'view_promotion' %}
+                                        Promotions & Discounts
+                                    {% elif access.permission.codename == 'view_applieddiscount' %}
+                                        Usage History
+
+                                    {% elif access.permission.codename == 'view_dailysalessummary' %}
+                                        Sales Reports
+                                    {% elif access.permission.codename == 'view_variantdailysales' %}
+                                        Product Sales
+                                    {% elif access.permission.codename == 'view_ingredientdailyusage' %}
+                                        Inventory Reports
+                                    {% elif access.permission.codename == 'view_demandforecast' %}
+                                        Sales Forecast
+                                    {% elif access.permission.codename == 'view_lowstockalert' %}
+                                        Stock & Spoilage Reports
+
+                                    {% elif access.permission.codename == 'manage_employees' %}
+                                        Employee List
+                                    {% elif access.permission.codename == 'view_attendance' %}
+                                        Attendance
+                                    {% elif access.permission.codename == 'view_shift' %}
+                                        Work Schedules
+                                    {% elif access.permission.codename == 'view_activitylog' %}
+                                        Activity Logs
+
+                                    {% else %}
+                                        {{ access.permission.name }}
+                                    {% endif %}
+                                </td>
+
+                                <td class="expiry-time">
+                                    {{ access.expires_at|time:"h:i A" }}
+                                    ({{ access.expires_at|date:"M d" }})
+                                </td>
+
+                                <td style="text-align: right;">
+                                    <form method="POST" style="margin: 0;">
+                                        {% csrf_token %}
+
+                                        <input
+                                            type="hidden"
+                                            name="revoke_access"
+                                            value="1"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="access_id"
+                                            value="{{ access.id }}"
+                                        >
+
+                                        <button type="submit" class="btn-revoke">
+                                            Revoke
+                                        </button>
+                                    </form>
+                                </td>
+
+                            </tr>
+
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <strong>No active overrides</strong>
+                                    There are no temporary permissions to manage right now.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // Permission selection controls
+    const permissionInputs = Array.from(
+        document.querySelectorAll('input[name="permissions"]')
+    );
+
+    const count = document.getElementById("permissionCount");
+    const selectAll = document.getElementById("selectAllPermissions");
+    const clearAll = document.getElementById("clearPermissions");
+
+    function updateCount() {
+        if (!count) return;
+
+        const selected = permissionInputs.filter(
+            input => input.checked
+        ).length;
+
+        count.textContent =
+            selected + (selected === 1
+                ? " permission selected"
+                : " permissions selected");
+    }
+
+    permissionInputs.forEach(function (input) {
+        input.addEventListener("change", updateCount);
+    });
+
+    if (selectAll) {
+        selectAll.addEventListener("click", function () {
+            permissionInputs.forEach(function (input) {
+                input.checked = true;
+            });
+
+            updateCount();
+        });
+    }
+
+    if (clearAll) {
+        clearAll.addEventListener("click", function () {
+            permissionInputs.forEach(function (input) {
+                input.checked = false;
+            });
+
+            updateCount();
+        });
+    }
+
+    updateCount();
+
+    // Confirm before revoking access
+    document.querySelectorAll(
+        'form input[name="revoke_access"]'
+    ).forEach(function (marker) {
+
+        const form = marker.closest("form");
+        if (!form) return;
+
+        form.addEventListener("submit", function (event) {
+
+            if (form.dataset.revokeConfirmed === "true") {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (typeof Swal === "undefined") {
+                if (window.confirm("Revoke this temporary access?")) {
+                    form.submit();
+                }
+                return;
+            }
+
+            Swal.fire({
+                icon: "warning",
+                title: "Revoke access?",
+                text: "The employee will lose this temporary module access immediately.",
+                showCancelButton: true,
+                confirmButtonText: "Yes, revoke access",
+                cancelButtonText: "Keep access",
+                confirmButtonColor: "#dc2626",
+                cancelButtonColor: "#374151",
+                reverseButtons: true
+            }).then(function (result) {
+
+                if (result.isConfirmed) {
+                    form.dataset.revokeConfirmed = "true";
+                    form.submit();
+                }
+
+            });
+
+        });
+
+    });
+
+});
+</script>
+
+{% if messages %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    {% for message in messages %}
+        Swal.fire({
+            icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}",
+            title: "System Update",
+            text: "{{ message|escapejs }}",
+            confirmButtonColor: "#111827"
+        });
+    {% endfor %}
+
+});
+</script>
+{% endif %}
+
+{% endblock %}

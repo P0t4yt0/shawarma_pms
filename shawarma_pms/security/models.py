@@ -12,6 +12,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User, Permission
 
 
 class Role(models.TextChoices):
@@ -132,3 +133,29 @@ class Attendance(models.Model):
         self.clock_out = timezone.now()
         self.save(update_fields=["clock_out"])
         return self
+
+class TemporaryAccess(models.Model):
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='temp_accesses')
+    permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
+    granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='granted_temp_accesses')
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_valid(self):
+        return timezone.now() < self.expires_at
+
+    def __str__(self):
+        return f"{self.employee.username} - {self.permission.name} (Valid until {self.expires_at})"
+
+# Idagdag sa pinakababa ng security/models.py
+class Attendance(models.Model):
+    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE, related_name='attendances')
+    shift = models.ForeignKey('Shift', on_delete=models.SET_NULL, null=True, blank=True)
+    clock_in = models.DateTimeField(auto_now_add=True)
+    clock_out = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=15, default='PRESENT')
+    notes = models.CharField(max_length=200, blank=True, default='')
+
+    def __str__(self):
+        return f"{self.employee.user.username} - {self.clock_in.strftime('%Y-%m-%d')}"

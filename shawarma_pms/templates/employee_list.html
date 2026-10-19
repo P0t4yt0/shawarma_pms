@@ -1,0 +1,740 @@
+{% extends 'dashboard.html' %}
+
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+/* Page layout */
+.employee-page {
+    width: 100%;
+    min-width: 0;
+}
+
+.employee-page .welcome-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.employee-page .welcome-header h1 {
+    margin: 0;
+    font-size: 32px;
+    color: var(--black);
+    letter-spacing: -0.5px;
+}
+
+.employee-subtitle {
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 6px 0 0;
+}
+
+/* Buttons */
+.btn-brutalist {
+    background: var(--yellow);
+    color: var(--black);
+    border: 2px solid var(--black);
+    box-shadow: 3px 3px 0 var(--black);
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-weight: 800;
+    font-family: var(--font-main);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.btn-brutalist:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--black);
+}
+
+.employee-page button:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 3px;
+}
+
+.employee-page button:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+/* Employee table */
+.employee-panel {
+    padding: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.employee-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.employee-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+}
+
+.employee-table th {
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-secondary);
+    background: var(--bg-main);
+    padding: 16px;
+    text-align: left;
+}
+
+.employee-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.employee-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.employee-table tbody tr {
+    transition: background .15s ease;
+}
+
+.employee-table tbody tr:hover {
+    background: rgba(0, 0, 0, .018);
+}
+
+.employee-id {
+    font-family: 'Inconsolata', monospace;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.employee-name {
+    color: var(--black);
+    font-weight: 800;
+    min-width: 140px;
+}
+
+.employee-username {
+    color: var(--text-secondary);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.role-badge,
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.role-badge {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    color: var(--black);
+}
+
+.status-active {
+    background: rgba(34, 197, 94, .12);
+    color: var(--status-green);
+}
+
+.status-inactive {
+    background: rgba(239, 68, 68, .10);
+    color: var(--status-red);
+}
+
+/* Row action buttons */
+.employee-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.employee-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 8px 10px;
+    background: #fff;
+    color: var(--black);
+    font-family: var(--font-main);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+    white-space: nowrap;
+}
+
+.employee-action-btn:hover {
+    background: var(--bg-main);
+}
+
+.employee-action-btn.delete {
+    color: var(--status-red);
+    border-color: var(--status-red);
+}
+
+.employee-action-btn.delete:hover {
+    background: #fff1f2;
+}
+
+.employee-action-btn i {
+    font-size: 15px;
+}
+
+/* Empty state */
+.employee-empty {
+    text-align: center;
+    padding: 55px 20px !important;
+    color: var(--text-secondary);
+}
+
+.employee-empty i {
+    display: block;
+    font-size: 46px;
+    margin-bottom: 12px;
+    color: var(--border-color);
+}
+
+.employee-empty strong {
+    display: block;
+    color: var(--black);
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+.employee-empty p {
+    margin: 0;
+    font-size: 13px;
+}
+
+/* SweetAlert styling */
+.swal-neo {
+    border-radius: 16px !important;
+    padding: 24px !important;
+    font-family: var(--font-main) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .12) !important;
+}
+
+.swal-neo-title {
+    font-family: var(--font-heading) !important;
+    font-weight: 800 !important;
+    color: var(--black) !important;
+    font-size: 25px !important;
+}
+
+.swal-neo-confirm {
+    background: var(--yellow) !important;
+    color: var(--black) !important;
+    border: 2px solid var(--black) !important;
+    box-shadow: 2px 2px 0 var(--black) !important;
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+    padding: 12px 20px !important;
+}
+
+.swal-neo-cancel {
+    background: #fff !important;
+    color: var(--black) !important;
+    border: 1px solid var(--border-color) !important;
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+    padding: 12px 20px !important;
+}
+
+.swal-neo-input {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 5px 0 16px !important;
+    padding: 11px 13px !important;
+    border: 2px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    font-family: var(--font-main) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    outline: none !important;
+}
+
+.swal-neo-input:focus {
+    border-color: var(--black) !important;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, .06) !important;
+}
+
+.swal-employee-form {
+    text-align: left;
+}
+
+.swal-field-label {
+    display: block;
+    color: var(--black);
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 5px;
+}
+
+.swal-form-section {
+    border: 0;
+    border-top: 1px dashed var(--border-color);
+    margin: 20px 0;
+}
+
+.swal-section-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    letter-spacing: .7px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 700px) {
+    .employee-page .welcome-header h1 {
+        font-size: 27px;
+    }
+
+    .employee-page .welcome-header {
+        align-items: stretch;
+    }
+
+    .employee-page .header-actions,
+    .employee-page .header-actions button {
+        width: 100%;
+    }
+
+    .employee-panel {
+        border-radius: 10px;
+    }
+
+    .employee-table th,
+    .employee-table td {
+        padding: 12px;
+    }
+}
+</style>
+
+<div class="employee-page">
+
+    <!-- Page Header -->
+    <div class="welcome-header">
+        <div>
+            <h1>Employee List</h1>
+            <p class="employee-subtitle">
+                Manage staff accounts, roles, and access credentials.
+            </p>
+        </div>
+
+        <div class="header-actions">
+            <button
+                type="button"
+                class="btn-brutalist"
+                onclick="addEmployee()"
+            >
+                <i class="ph ph-user-plus" style="font-size: 20px;"></i>
+                Add New Employee
+            </button>
+        </div>
+    </div>
+
+    <!-- Employee Table -->
+    <div class="panel employee-panel">
+        <div class="employee-table-scroll">
+            <table class="modern-table employee-table">
+
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+
+                        <td class="employee-id">
+                            {{ emp.employee.employee_id|default:"N/A" }}
+                        </td>
+
+                        <td class="employee-name">
+                            {{ emp.first_name }} {{ emp.last_name }}
+                        </td>
+
+                        <td class="employee-username">
+                            @{{ emp.username }}
+                        </td>
+
+                        <td>
+                            <span class="role-badge">
+                                {{ emp.employee.role|default:"No Role" }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {% if emp.is_active %}
+                                <span class="status-badge status-active">
+                                    <i class="ph ph-check-circle"></i>
+                                    Active
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-inactive">
+                                    <i class="ph ph-x-circle"></i>
+                                    Deactivated
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <div class="employee-actions">
+
+                                <!-- Toggle Employee Status -->
+                                <form method="POST" style="margin: 0;">
+                                    {% csrf_token %}
+
+                                    <input
+                                        type="hidden"
+                                        name="action"
+                                        value="toggle_status"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="user_id"
+                                        value="{{ emp.id }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="employee-action-btn"
+                                        aria-label="{% if emp.is_active %}Deactivate{% else %}Reactivate{% endif %} {{ emp.username }}"
+                                    >
+                                        <i class="ph ph-power"></i>
+                                        {% if emp.is_active %}
+                                            Deactivate
+                                        {% else %}
+                                            Reactivate
+                                        {% endif %}
+                                    </button>
+                                </form>
+
+                                <!-- Delete Employee -->
+                                <form
+                                    method="POST"
+                                    style="margin: 0;"
+                                    id="delete-form-{{ emp.id }}"
+                                >
+                                    {% csrf_token %}
+
+                                    <input
+                                        type="hidden"
+                                        name="action"
+                                        value="delete_employee"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="user_id"
+                                        value="{{ emp.id }}"
+                                    >
+
+                                    <button
+                                        type="button"
+                                        class="employee-action-btn delete"
+                                        data-user-id="{{ emp.id }}"
+                                        data-username="{{ emp.username }}"
+                                        onclick="confirmDeleteFromButton(this)"
+                                        aria-label="Delete account for {{ emp.username }}"
+                                    >
+                                        <i class="ph ph-trash"></i>
+                                        Delete
+                                    </button>
+                                </form>
+
+                            </div>
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="employee-empty">
+                            <i class="ph ph-users"></i>
+                            <strong>No employees registered yet</strong>
+                            <p>Add your first employee to get started.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Hidden form for adding an employee -->
+<form
+    id="addEmployeeForm"
+    method="POST"
+    style="display: none;"
+>
+    {% csrf_token %}
+
+    <input type="hidden" name="action" value="add_employee">
+    <input type="hidden" name="first_name" id="f_first">
+    <input type="hidden" name="last_name" id="f_last">
+    <input type="hidden" name="username" id="f_user">
+    <input type="hidden" name="password" id="f_pass">
+    <input type="hidden" name="role" id="f_role">
+    <input type="hidden" name="phone" id="f_phone">
+</form>
+
+<script>
+const swalNeoConfig = {
+    customClass: {
+        popup: 'swal-neo',
+        title: 'swal-neo-title',
+        confirmButton: 'swal-neo-confirm',
+        cancelButton: 'swal-neo-cancel',
+        input: 'swal-neo-input'
+    },
+    buttonsStyling: false
+};
+
+/* Add Employee */
+function addEmployee() {
+    Swal.fire({
+        ...swalNeoConfig,
+        title: 'Add New Employee',
+        width: 540,
+        html: `
+            <div class="swal-employee-form">
+
+                <div class="swal-section-title">
+                    Employee Information
+                </div>
+
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 12px;
+                ">
+                    <div>
+                        <label class="swal-field-label" for="swal-fname">
+                            First Name *
+                        </label>
+                        <input
+                            id="swal-fname"
+                            class="swal2-input swal-neo-input"
+                            placeholder="e.g. Juan"
+                            autocomplete="given-name"
+                            maxlength="150"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label class="swal-field-label" for="swal-lname">
+                            Last Name *
+                        </label>
+                        <input
+                            id="swal-lname"
+                            class="swal2-input swal-neo-input"
+                            placeholder="e.g. Dela Cruz"
+                            autocomplete="family-name"
+                            maxlength="150"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <label class="swal-field-label" for="swal-role">
+                    System Role *
+                </label>
+                <select
+                    id="swal-role"
+                    class="swal2-select swal-neo-input"
+                >
+                    <option value="cashier">Cashier</option>
+                    <option value="kitchen">Kitchen Staff</option>
+                    <option value="manager">Manager</option>
+                </select>
+
+                <label class="swal-field-label" for="swal-phone">
+                    Phone Number (Optional)
+                </label>
+                <input
+                    id="swal-phone"
+                    type="tel"
+                    class="swal2-input swal-neo-input"
+                    placeholder="09XX-XXX-XXXX"
+                    autocomplete="tel"
+                    maxlength="30"
+                >
+
+                <hr class="swal-form-section">
+
+                <div class="swal-section-title">
+                    Login Credentials
+                </div>
+
+                <label class="swal-field-label" for="swal-username">
+                    Username *
+                </label>
+                <input
+                    id="swal-username"
+                    class="swal2-input swal-neo-input"
+                    placeholder="e.g. jdelacruz"
+                    autocomplete="username"
+                    maxlength="150"
+                    required
+                >
+
+                <label class="swal-field-label" for="swal-password">
+                    Temporary Password *
+                </label>
+                <input
+                    id="swal-password"
+                    type="password"
+                    class="swal2-input swal-neo-input"
+                    placeholder="Enter temporary password"
+                    autocomplete="new-password"
+                    required
+                >
+
+                <p style="
+                    color: var(--text-secondary);
+                    font-size: 12px;
+                    line-height: 1.5;
+                    margin: 0;
+                ">
+                    Fields marked with * are required.
+                </p>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Create Account',
+        cancelButtonText: 'Cancel',
+        focusConfirm: false,
+        reverseButtons: true,
+
+        didOpen: () => {
+            document.getElementById('swal-fname').focus();
+        },
+
+        preConfirm: () => {
+            const fname = document.getElementById('swal-fname').value.trim();
+            const lname = document.getElementById('swal-lname').value.trim();
+            const user = document.getElementById('swal-username').value.trim();
+            const pass = document.getElementById('swal-password').value;
+            const role = document.getElementById('swal-role').value;
+            const phone = document.getElementById('swal-phone').value.trim();
+
+            if (!fname || !lname || !user || !pass) {
+                Swal.showValidationMessage(
+                    'Please complete all required fields.'
+                );
+                return false;
+            }
+
+            if (!['cashier', 'kitchen', 'manager'].includes(role)) {
+                Swal.showValidationMessage(
+                    'Please select a valid employee role.'
+                );
+                return false;
+            }
+
+            document.getElementById('f_first').value = fname;
+            document.getElementById('f_last').value = lname;
+            document.getElementById('f_user').value = user;
+            document.getElementById('f_pass').value = pass;
+            document.getElementById('f_role').value = role;
+            document.getElementById('f_phone').value = phone;
+
+            return true;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('addEmployeeForm').submit();
+        }
+    });
+}
+
+/* Delete Confirmation */
+function confirmDeleteFromButton(button) {
+    const userId = button.dataset.userId;
+    const username = button.dataset.username;
+
+    confirmDelete(userId, username);
+}
+
+function confirmDelete(userId, username) {
+    Swal.fire({
+        ...swalNeoConfig,
+        title: 'Delete Account?',
+        text: `Are you sure you want to permanently delete @${username}? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete It',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.getElementById(
+                `delete-form-${userId}`
+            );
+
+            if (form) {
+                form.submit();
+            }
+        }
+    });
+}
+
+/* Django Messages */
+document.addEventListener('DOMContentLoaded', function () {
+    {% if messages %}
+        {% for message in messages %}
+            Swal.fire({
+                ...swalNeoConfig,
+                icon: "{% if message.tags == 'error' %}error{% else %}success{% endif %}",
+                title: "{% if message.tags == 'error' %}Action Failed{% else %}System Notice{% endif %}",
+                text: "{{ message|escapejs }}",
+                confirmButtonText: 'OK'
+            });
+        {% endfor %}
+    {% endif %}
+});
+</script>
+
+{% endblock %}
