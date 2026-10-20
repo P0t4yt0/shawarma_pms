@@ -17,6 +17,7 @@
             --yellow-hover: #FFCF33;
             --yellow-tint: rgba(255, 196, 0, 0.15);
             --black: #0F0F0F;
+            --white: #FFFFFF;  /* <--- IDAGDAG ITO DITO */
             --ink: #171717;
             --bg-main: #F9FAFB;
             --bg-card: #FFFFFF;
@@ -76,8 +77,29 @@
         .btn { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; border: 2px solid var(--black); transition: all 0.15s ease; text-decoration: none; }
         .btn-secondary { background-color: transparent; color: var(--black); border-color: var(--border-color); font-weight: 700; }
         .btn-secondary:hover { background-color: var(--bg-main); border-color: var(--black); color: var(--black); }
+        /* Iibahin natin ang kulay kapag nasa loob ng black top-header */
+        .top-header .btn-secondary {
+            color: var(--white);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .top-header .btn-secondary:hover {
+            background-color: var(--white);
+            color: var(--black);
+            border-color: var(--white);
+        }
         .icon-btn { background: var(--ink); border: 1px solid var(--sidebar-border); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--sidebar-muted); font-size: 20px; transition: all 0.2s ease; }
         .icon-btn:hover { color: var(--yellow); border-color: var(--yellow); }
+
+        /* PROFILE DROPDOWN STYLES */
+        .profile-wrap { position: relative; display: flex; }
+        .profile-panel { position: absolute; top: calc(100% + 12px); right: 0; width: 240px; background-color: var(--bg-card); border: 2px solid var(--black); border-radius: var(--border-radius); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.1); overflow: hidden; z-index: 60; text-align: left; }
+        .profile-head { padding: 16px; border-bottom: 2px solid var(--black); background: var(--yellow-tint); }
+        .profile-body { padding: 8px 0; background: var(--white); }
+        .profile-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--black); text-decoration: none; transition: background 0.15s; font-family: var(--font-main); }
+        .profile-item i { font-size: 18px; }
+        .profile-item:hover { background-color: var(--bg-main); color: var(--black); }
+        .btn-logout-dropdown:hover { color: var(--status-red) !important; background-color: rgba(239, 68, 68, 0.08) !important; }
+
 
         /* ----- Notification Popup ----- */
         .notif-wrap { position: relative; display: flex; }
@@ -370,7 +392,37 @@
                         </div>
                     </div>
                 </div>
-                <button class="icon-btn"><i class="ph ph-user"></i></button>
+                <div class="profile-wrap">
+                    <button type="button" class="icon-btn" id="profile-toggle" aria-haspopup="dialog" aria-expanded="false" aria-label="User Profile">
+                        <i class="ph ph-user"></i>
+                    </button>
+                    <div class="profile-panel" id="profile-panel" role="dialog" aria-label="User Profile" hidden>
+                        <div class="profile-head">
+                            <div style="font-family: var(--font-heading); font-size: 16px; font-weight: 800; color: var(--black);">{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">@{{ request.user.username }}</div>
+                            <div style="margin-top: 8px; display: inline-block; background: var(--black); color: var(--yellow); padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase;">
+                                {% if request.user.is_superuser %}
+                                    System Admin
+                                {% elif request.user.employee %}
+                                    {{ request.user.employee.role }}
+                                {% else %}
+                                    Staff
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="profile-body">
+                            <a href="{% url 'security:account_security' %}" class="profile-item">
+                                <i class="ph ph-lock-key"></i> Account Settings
+                            </a>
+                            <form action="{% url 'security:logout' %}" method="POST" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" class="profile-item btn-logout-dropdown" style="width: 100%; text-align: left; background: transparent; border: none; cursor: pointer; color: var(--status-red);">
+                                    <i class="ph ph-sign-out"></i> Logout
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -533,7 +585,7 @@
     <audio id="sound-low-stock" src="{% static 'sounds/low-stock.mp3' %}" preload="auto"></audio>
     <audio id="sound-new-order" src="{% static 'sounds/new-order.mp3' %}" preload="auto"></audio>
     <audio id="sound-ready" src="{% static 'sounds/order-ready.mp3' %}" preload="auto"></audio>
-    
+
     <script>
         // SMART NOTIFICATION SYSTEM WITH DISTINCT SOUNDS
         (function () {
@@ -653,6 +705,32 @@
 
             fetchNotifications();
             setInterval(fetchNotifications, 10000);
+        })();
+    </script>
+
+    <script>
+        // PROFILE DROPDOWN LOGIC
+        (function () {
+            const toggle = document.getElementById('profile-toggle');
+            const panel = document.getElementById('profile-panel');
+            if (!toggle || !panel) return;
+
+            function isOpen() { return !panel.hidden; }
+            function openPanel() { panel.hidden = false; toggle.setAttribute('aria-expanded', 'true'); }
+            function closePanel() { panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); }
+
+            toggle.addEventListener('click', function (event) {
+                event.stopPropagation();
+                if (isOpen()) { closePanel(); } else { openPanel(); }
+            });
+
+            panel.addEventListener('click', function (event) { event.stopPropagation(); });
+
+            document.addEventListener('click', function () { if (isOpen()) closePanel(); });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && isOpen()) { closePanel(); toggle.focus(); }
+            });
         })();
     </script>
 </body>
