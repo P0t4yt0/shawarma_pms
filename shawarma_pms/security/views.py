@@ -653,6 +653,10 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 
+from django.http import JsonResponse
+from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+
 @login_required
 def api_notifications(request):
     notifications = []
@@ -665,9 +669,11 @@ def api_notifications(request):
     role = 'admin'
     if hasattr(request.user, 'employee'):
         role = request.user.employee.role.lower()
+    elif request.user.is_superuser:
+        role = 'admin'
 
-    # 1. Low Stock Alerts (Makikita at tutunog lang sa MANAGER at KITCHEN)
-    if role in ['manager', 'kitchen', 'admin']:
+    # 1. Low Stock Alerts (Makikita at tutunog sa MANAGER, ADMIN, at KITCHEN)
+    if role in ['manager', 'admin', 'kitchen']:
         low_stock_items = Ingredient.objects.filter(is_active=True)
         for item in low_stock_items:
             if item.current_stock <= item.reorder_level:
@@ -682,8 +688,8 @@ def api_notifications(request):
                     'link': reverse('inventory:list')
                 })
 
-    # 2. New Orders (Makikita at tutunog lang sa KITCHEN at MANAGER)
-    if role in ['kitchen', 'manager', 'admin']:
+    # 2. New Orders (Makikita at tutunog STRICTLY sa KITCHEN lang)
+    if role == 'kitchen':
         pending_orders = Order.objects.filter(status='pending').order_by('-created_at')[:5]
         for order in pending_orders:
             notifications.append({
@@ -697,8 +703,8 @@ def api_notifications(request):
                 'link': reverse('pos:kds_screen')
             })
 
-    # 3. Ready Orders (Makikita at tutunog lang sa CASHIER at MANAGER)
-    if role in ['cashier', 'manager', 'admin']:
+    # 3. Ready Orders (Makikita at tutunog STRICTLY sa CASHIER lang)
+    if role == 'cashier':
         ready_orders = Order.objects.filter(status='ready_to_serve').order_by('-last_status_at')[:5]
         for order in ready_orders:
             notifications.append({

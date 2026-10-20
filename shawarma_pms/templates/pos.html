@@ -1,603 +1,642 @@
 {% extends 'dashboard.html' %}
+{% load l10n %}
 {% block content %}
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    const csrfToken = '{{ csrf_token }}';
-    const activePromos = JSON.parse('{{ promos_json|escapejs }}');
-    
-    (function() {
-        const savedCat = sessionStorage.getItem('activeCategory');
-        if (savedCat && savedCat !== 'All') {
-            const style = document.createElement('style');
-            style.id = 'anti-flicker-style';
-            const safeCat = savedCat.replace(/"/g, '\\"');
-            style.innerHTML = `
-                .product-card:not([data-category="${safeCat}"]) { display: none !important; }
-                .category-tabs .tab { background: rgba(255, 255, 255, 0.7) !important; color: var(--text-secondary) !important; border-color: var(--border-color) !important; box-shadow: none !important; }
-                .category-tabs .tab[data-name="${safeCat}"] { background: var(--black) !important; color: var(--white) !important; border-color: var(--black) !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important; }
-            `;
-            document.head.appendChild(style);
-        }
-    })();
-</script>
-
 <style>
-    .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
-    .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
-    div:where(.swal2-container) div:where(.swal2-actions) { gap: 12px !important; }
-    .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; transition: background 0.2s ease; box-shadow: none !important; }
-    .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
-    .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; font-family: var(--font-main) !important; padding: 14px 24px !important; border-radius: 8px !important; }
-    .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; font-weight: 700 !important; box-shadow: none !important; }
-    .swal-neo-input:focus { border-color: var(--yellow) !important; }
+    .pos-container { display: flex; height: calc(100vh - 120px); gap: 24px; max-width: 1600px; margin: 0 auto; overflow: hidden; }
+    .pos-container button { font-family: var(--font-main); }
+    .pos-container :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
-    .pos-container { display: flex; height: calc(100vh - 120px); gap: 24px; overflow: hidden; max-width: 1600px; margin: 0 auto; }
-    .inventory-section { flex: 2.2; display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; }
-    .search-header { display: flex; gap: 16px; margin-bottom: 20px; flex-shrink: 0; }
-    .search-input-group { position: relative; flex: 1; }
-    .search-input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--text-secondary); }
-    .search-input { width: 100%; padding: 14px 16px 14px 48px; border: 2px solid var(--border-color); border-radius: 12px; outline: none; background: var(--bg-card); font-size: 14px; font-family: var(--font-main); transition: all 0.3s ease; }
+    /* ---------- Left: products ---------- */
+    .inventory-section { flex: 2.2; display: flex; flex-direction: column; min-width: 0; height: 100%; }
+    .search-header { position: relative; margin-bottom: 16px; flex-shrink: 0; }
+    .search-header .ph-magnifying-glass { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--text-secondary); }
+    .search-input { width: 100%; padding: 14px 48px; border: 2px solid var(--border-color); border-radius: 12px; outline: none; background: var(--bg-card); font-size: 15px; font-family: var(--font-main); }
     .search-input:focus { border-color: var(--yellow); }
+    .search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: none; background: none; cursor: pointer; color: var(--text-secondary); font-size: 18px; display: none; }
 
-    .category-tabs { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
-    .tab { padding: 10px 24px; border-radius: 20px; border: 1px solid var(--border-color); font-weight: 700; font-size: 13px; font-family: var(--font-main); cursor: pointer; background: var(--bg-card); color: var(--text-secondary); flex-shrink: 0; transition: all 0.2s ease; }
+    .category-tabs { display: flex; gap: 10px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 6px; flex-shrink: 0; }
+    .tab { padding: 10px 20px; border-radius: 20px; border: 1px solid var(--border-color); font-weight: 700; font-size: 13px; cursor: pointer; background: var(--bg-card); color: var(--text-secondary); flex-shrink: 0; transition: .15s; }
     .tab:hover { border-color: var(--black); color: var(--black); }
-    .tab.active { background: var(--black); color: #FFFFFF; border-color: var(--black); }
+    .tab.active { background: var(--black); color: #fff; border-color: var(--black); }
 
-    .product-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; overflow-y: auto; align-content: start; padding-right: 8px; padding-bottom: 24px; }
-    .product-card { background: var(--bg-card); border-radius: 16px; padding: 16px; text-align: center; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; height: 160px; }
-    .product-card:hover { border-color: var(--yellow); transform: translateY(-4px); box-shadow: 0 8px 16px rgba(255, 196, 0, 0.15); }
-    .product-card .pid { font-size: 11px; font-family: 'Inconsolata', monospace; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-    .product-card .name { font-weight: 800; color: var(--text-primary); font-size: 14px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .product-card .price { color: var(--yellow); font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; margin-top: auto; }
+    .grid-meta { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; flex-shrink: 0; }
+    .product-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; overflow-y: auto; align-content: start; padding: 4px 8px 24px 4px; }
+    .product-card { position: relative; background: var(--bg-card); border-radius: 16px; padding: 14px; text-align: center; border: 2px solid var(--border-color); cursor: pointer; transition: .15s; display: flex; flex-direction: column; justify-content: space-between; height: 150px; user-select: none; }
+    .product-card:hover { border-color: var(--yellow); transform: translateY(-3px); box-shadow: 0 8px 16px rgba(255,196,0,.15); }
+    .product-card:active { transform: scale(.97); }
+    .product-card.in-cart { border-color: var(--black); }
+    .product-card .pid { font-size: 11px; font-family: 'Inconsolata', monospace; color: var(--text-secondary); font-weight: 700; }
+    .product-card .name { font-weight: 800; color: var(--text-primary); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-card .name small { color: var(--text-secondary); font-weight: 600; }
+    .product-card .price { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 20px; color: var(--black); }
+    .card-qty { position: absolute; top: -8px; right: -8px; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 14px; background: var(--yellow); color: var(--black); border: 2px solid var(--black); font-weight: 800; font-size: 13px; display: none; align-items: center; justify-content: center; }
+    .product-card.in-cart .card-qty { display: flex; }
+    .grid-empty { grid-column: 1 / -1; text-align: center; padding: 48px 16px; color: var(--text-secondary); font-weight: 600; }
 
-    .order-section { flex: 1.1; background: var(--bg-card); border-radius: 20px; display: flex; flex-direction: column; border: 1px solid var(--border-color); overflow: hidden; min-width: 400px; height: 100%; }
-    .order-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .order-header h3 { margin: 0; font-size: 18px; color: var(--black); font-weight: 800; font-family: 'Inconsolata', monospace; }
-    .order-header .badge-new { font-weight: 700; font-size: 12px; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 8px; text-transform: uppercase; border: 1px solid var(--border-color); }
-    
-    .cart-container { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; display: flex; flex-direction: column; }
-    .empty-cart { margin: auto; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    .cart-item { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
-    .cart-item-name { margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: var(--black); }
-    .cart-item-price { color: var(--text-secondary); font-size: 13px; font-family: 'Inconsolata', monospace; font-weight: 600; }
-    .qty-controls { display: flex; align-items: center; gap: 8px; }
-    .qty-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-main); font-weight: 700; cursor: pointer; transition: 0.2s; }
-    .qty-btn:hover { background: var(--yellow); border-color: var(--black); color: var(--black); }
-    .qty-input { width: 32px; text-align: center; font-family: 'Inconsolata', monospace; font-weight: 700; font-size: 14px; border: none; outline: none; background: transparent; }
-    .item-subtotal { font-weight: 800; font-family: 'Inconsolata', monospace; font-size: 16px; color: var(--black); }
+    /* ---------- Right: order panel ---------- */
+    .order-section { flex: 1.1; background: var(--bg-card); border-radius: 20px; display: flex; flex-direction: column; border: 1px solid var(--border-color); overflow: hidden; min-width: 380px; height: 100%; }
+    .order-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .order-header h3 { margin: 0; font-size: 18px; font-weight: 800; font-family: 'Inconsolata', monospace; color: var(--black); }
+    .badge-state { font-weight: 700; font-size: 12px; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border-color); }
+    .panel-notice { display: none; padding: 10px 20px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .panel-notice.error { display: block; background: #fee2e2; color: #b91c1c; }
+    .panel-notice.success { display: block; background: #d1fae5; color: #047857; }
+    .panel-notice.info { display: block; background: var(--yellow-tint); color: var(--black); }
 
-    .order-summary { padding: 24px; background: #FFFFFF; border-top: 1px solid var(--border-color); flex-shrink: 0; }
-    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .total-label { font-weight: 800; font-size: 20px; color: var(--yellow); }
-    .total-amount { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 36px; color: var(--yellow); letter-spacing: -1px; }
+    .view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    .view.show { display: flex; }
+    .view-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .view-footer { padding: 16px 20px 20px; border-top: 1px solid var(--border-color); background: #fff; flex-shrink: 0; }
 
-    .btn-brutalist { width: 100%; padding: 18px; border-radius: 12px; border: 3px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 4px 4px 0px var(--black); transition: all 0.15s ease-in-out; text-transform: uppercase; letter-spacing: 1px; }
-    .btn-brutalist:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--black); background: var(--yellow-hover); }
-    .btn-brutalist:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px var(--black); }
+    .order-type { display: flex; gap: 6px; padding: 12px 20px 0; flex-shrink: 0; }
+    .seg { flex: 1; padding: 10px; border-radius: 10px; border: 2px solid var(--border-color); background: var(--bg-main); font-weight: 800; font-size: 13px; cursor: pointer; color: var(--text-secondary); }
+    .seg.active { border-color: var(--black); background: var(--yellow-tint); color: var(--black); }
+
+    .empty-cart { margin: auto; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 0; font-weight: 600; }
+    .cart-item { padding: 12px 0; border-bottom: 1px dashed var(--border-color); }
+    .cart-row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .cart-item-name { font-size: 14px; font-weight: 700; color: var(--black); margin: 0; }
+    .cart-item-price { font-size: 12px; color: var(--text-secondary); font-family: 'Inconsolata', monospace; font-weight: 600; }
+    .item-subtotal { font-weight: 800; font-family: 'Inconsolata', monospace; font-size: 16px; color: var(--black); text-align: right; white-space: nowrap; }
+    .item-subtotal del { display: block; font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+    .cart-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .qty-controls { display: flex; align-items: center; gap: 4px; }
+    .qty-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); font-weight: 800; font-size: 16px; cursor: pointer; }
+    .qty-btn:hover { background: var(--yellow); border-color: var(--black); }
+    .qty-val { min-width: 32px; text-align: center; font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 15px; }
+    .link-btn { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 12px; color: var(--text-secondary); padding: 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; }
+    .link-btn:hover { color: var(--black); background: var(--bg-main); }
+    .link-btn.danger:hover { color: var(--status-red); background: #fee2e2; }
+    .note-badge { margin-top: 6px; font-size: 12px; color: #b91c1c; font-weight: 800; background: #fee2e2; padding: 4px 10px; border-radius: 8px; display: inline-block; }
+    .promo-badge { font-size: 11px; color: #047857; font-weight: 800; margin-top: 2px; }
+    .note-editor { margin-top: 8px; padding: 10px; background: var(--bg-main); border-radius: 10px; }
+    .note-editor input { width: 100%; padding: 10px 12px; border: 2px solid var(--border-color); border-radius: 8px; font: 700 14px var(--font-main); outline: none; }
+    .note-editor input:focus { border-color: var(--yellow); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .chip { padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border-color); background: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
+    .chip:hover, .chip.active { border-color: var(--black); background: var(--yellow-tint); }
+
+    .sum-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+    .sum-row.discount { color: #047857; }
+    .total-row { display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0 14px; }
+    .total-label { font-weight: 800; font-size: 18px; color: var(--black); }
+    .total-amount { font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 38px; color: var(--black); letter-spacing: -1px; }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .btn-outline { flex: 1; padding: 13px; border-radius: 10px; border: 2px solid var(--border-color); background: transparent; color: var(--black); font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-outline:hover { border-color: var(--black); }
+    .btn-outline.danger { border-color: var(--status-red); color: var(--status-red); }
+    .btn-outline.good { border-color: #10B981; color: #047857; }
+    .btn-outline:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-brutalist { width: 100%; padding: 16px; border-radius: 12px; border: 3px solid var(--black); background: var(--yellow); color: var(--black); font-weight: 900; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 4px 4px 0 var(--black); transition: .15s; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-brutalist:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--black); background: var(--yellow-hover); }
+    .btn-brutalist:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
+    .btn-brutalist:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    .btn-secondary-lite { width: 100%; padding: 12px; border-radius: 10px; border: 2px solid var(--border-color); background: #fff; font-weight: 800; cursor: pointer; margin-top: 10px; }
+
+    .void-strip { display: none; background: #fee2e2; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .void-strip.show { display: block; }
+    .void-strip p { margin: 0 0 8px; font-weight: 800; font-size: 13px; color: #b91c1c; }
+    .void-strip .inline { display: flex; gap: 8px; }
+    .field { width: 100%; padding: 12px 14px; border: 2px solid var(--border-color); border-radius: 10px; outline: none; background: #fff; font: 700 15px var(--font-main); }
+    .field:focus { border-color: var(--black); }
+    .field-label { font-weight: 800; font-size: 12px; color: var(--text-secondary); margin: 16px 0 8px; display: block; }
+    .void-strip .btn-void { padding: 0 16px; border-radius: 10px; border: none; background: var(--status-red); color: #fff; font-weight: 800; cursor: pointer; }
+
+    .promo-row { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 14px; border: 2px solid var(--border-color); border-radius: 12px; background: var(--bg-main); margin-bottom: 8px; cursor: pointer; font-weight: 700; }
+    .promo-row:hover { border-color: var(--black); }
+    .promo-row.active { border-color: var(--black); background: var(--yellow-tint); }
+    .promo-val { font-family: 'Inconsolata', monospace; font-weight: 800; }
+
+    .method-grid { display: flex; gap: 10px; }
+    .pay-method-btn { flex: 1; cursor: pointer; }
+    .pay-method-btn input { display: none; }
+    .method-card { border: 2px solid var(--border-color); border-radius: 12px; padding: 14px; text-align: center; font-weight: 800; color: var(--text-secondary); background: var(--bg-main); display: flex; flex-direction: column; gap: 4px; align-items: center; transition: .15s; }
+    .method-card i { font-size: 26px; }
+    .pay-method-btn input:checked + .method-card { border-color: var(--black); background: var(--yellow-tint); color: var(--black); box-shadow: 4px 4px 0 var(--black); transform: translate(-2px, -2px); }
+    .cash-input { font: 800 28px 'Inconsolata', monospace; text-align: center; height: 62px; }
+    .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+    .quick-cash-btn { background: var(--bg-main); border: 2px solid var(--border-color); border-radius: 8px; padding: 12px 0; font: 800 15px 'Inconsolata', monospace; cursor: pointer; color: var(--text-secondary); }
+    .quick-cash-btn:hover { border-color: var(--black); color: var(--black); background: var(--yellow-tint); }
+    .quick-cash-btn.wide { grid-column: span 2; color: var(--black); }
+    .cash-feedback { margin-top: 12px; text-align: center; font-weight: 800; font-size: 18px; min-height: 28px; }
+    .cash-feedback.ok { color: #047857; }
+    .cash-feedback.short { color: #b91c1c; }
+
+    .success-wrap { margin: auto; text-align: center; padding: 24px; }
+    .success-wrap i { font-size: 72px; color: #10B981; }
+    .success-wrap h2 { margin: 8px 0 4px; font-weight: 800; color: var(--black); }
+    .success-wrap .change { font-size: 36px; font-weight: 800; font-family: 'Inconsolata', monospace; color: var(--black); margin-top: 12px; }
+    .success-wrap .meta { color: var(--text-secondary); font-weight: 600; font-size: 14px; }
+
+    @media (max-width: 1000px) {
+        .pos-container { flex-direction: column; height: auto; overflow: visible; }
+        .inventory-section { height: 70vh; }
+        .order-section { min-width: 0; height: auto; min-height: 560px; }
+    }
 </style>
 
 <div class="pos-container">
+    <!-- ================= PRODUCTS ================= -->
     <div class="inventory-section">
         <div class="search-header">
-            <div class="search-input-group">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" id="menu-search" class="search-input" placeholder="Enter product name or SKU...">
-            </div>
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="menu-search" class="search-input" placeholder="Search name or SKU   ( / )" autocomplete="off">
+            <button class="search-clear" id="search-clear" aria-label="Clear search"><i class="ph ph-x"></i></button>
         </div>
 
-        <div class="category-tabs">
-            <button class="tab active" data-name="All" onclick="filterCategory('All')">All Categories</button>
+        <div class="category-tabs" id="category-tabs">
+            <button class="tab active" data-name="All">All</button>
             {% for category in categories %}
-                <button class="tab" data-name="{{ category.name }}" onclick="filterCategory('{{ category.name }}')">{{ category.name }}</button>
+            <button class="tab" data-name="{{ category.name }}">{{ category.name }}</button>
             {% endfor %}
         </div>
 
+        <div class="grid-meta" id="grid-meta"></div>
         <div class="product-grid" id="product-list">
             {% for variant in variants %}
-            <div class="product-card" data-category="{{ variant.item.category.name }}" onclick="addToCart({{ variant.id }}, '{{ variant.item.name }} ({{ variant.name }})', {{ variant.price }})">
+            <div class="product-card" tabindex="0" role="button"
+                 data-id="{{ variant.id }}" data-category="{{ variant.item.category.name }}"
+                 data-name="{{ variant.item.name }} ({{ variant.name }})" data-price="{{ variant.price|unlocalize }}">
+                <span class="card-qty">0</span>
                 <div class="pid">SKU: {{ variant.sku }}</div>
-                <div class="name">{{ variant.item.name }}<br><small style="color: var(--text-secondary); font-weight: 600;">{{ variant.name }}</small></div>
+                <div class="name">{{ variant.item.name }}<br><small>{{ variant.name }}</small></div>
                 <div class="price">₱{{ variant.price }}</div>
             </div>
             {% empty %}
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary);">
-                No active menu items found in the database.
-            </div>
+            <div class="grid-empty">No active menu items found. Add products in the inventory first.</div>
             {% endfor %}
+            <div class="grid-empty" id="no-results" style="display:none;">No products match your search.</div>
         </div>
     </div>
 
+    <!-- ================= ORDER PANEL ================= -->
     <div class="order-section">
         <div class="order-header">
-            <h3 id="transaction-id" style="color: var(--black);">{{ next_order_number }}</h3>
-            <span class="badge-new">New Order</span>
+            <h3 id="transaction-id">{{ next_order_number }}</h3>
+            <span class="badge-state" id="state-badge">New order</span>
+        </div>
+        <div class="panel-notice" id="panel-notice" role="status"></div>
+
+        <!-- 1. CART -->
+        <div class="view show" id="view-cart">
+            <div class="order-type">
+                <button class="seg active" data-type="Dine-in"><i class="ph ph-fork-knife"></i> Dine-in</button>
+                <button class="seg" data-type="Take-out"><i class="ph ph-bag"></i> Take-out</button>
+            </div>
+            <div class="view-body" id="cart-body">
+                <div class="empty-cart" id="empty-cart-msg">
+                    <i class="ph ph-shopping-cart" style="font-size: 56px; color: var(--border-color);"></i>
+                    <span>Cart is empty. Tap a product to add it.</span>
+                </div>
+                <div id="cart-items"></div>
+            </div>
+            <div class="view-footer">
+                <div class="sum-row"><span id="item-count">0 items</span><span>Subtotal <span id="subtotal">₱0.00</span></span></div>
+                <div class="sum-row discount" id="discount-row" style="display:none;"><span id="discount-name">Discount</span><span id="discount-amount">-₱0.00</span></div>
+                <div class="total-row"><span class="total-label">Total due</span><span class="total-amount" id="grand-total">₱0.00</span></div>
+
+                <div class="void-strip" id="void-strip">
+                    <p>Manager PIN needed to void this order</p>
+                    <div class="inline">
+                        <input type="password" id="void-pin" class="field" placeholder="PIN" inputmode="numeric" autocomplete="off">
+                        <button class="btn-void" id="void-confirm">Void order</button>
+                        <button class="link-btn" id="void-cancel">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn-outline danger" id="btn-void"><i class="ph ph-x-circle"></i> Void</button>
+                    <button class="btn-outline good" id="btn-discount"><i class="ph ph-tag"></i> <span id="discount-btn-label">Discount</span></button>
+                </div>
+                <button class="btn-brutalist" id="btn-pay">Pay now</button>
+            </div>
         </div>
 
-        <div class="cart-container">
-            <div class="empty-cart" id="empty-cart-msg">
-                <i class="ph ph-shopping-cart" style="font-size: 56px; color: var(--border-color);"></i>
-                <span>Cart is empty</span>
+        <!-- 2. DISCOUNT -->
+        <div class="view" id="view-discount">
+            <div class="view-body">
+                <button class="link-btn" data-back style="margin-bottom: 12px;"><i class="ph ph-arrow-left"></i> Back to cart</button>
+                <label class="field-label" style="margin-top:0;">Choose a discount</label>
+                <div id="promo-list"></div>
+                <label class="field-label" for="voucher-code">Or enter a voucher code</label>
+                <div style="display:flex; gap:8px;">
+                    <input id="voucher-code" class="field" placeholder="Voucher code" style="text-transform: uppercase;" autocomplete="off">
+                    <button class="btn-outline" id="voucher-apply" style="flex:0 0 auto; padding: 0 20px;">Apply</button>
+                </div>
             </div>
-            <div id="cart-items-wrapper"></div>
+            <div class="view-footer">
+                <button class="btn-outline danger" id="promo-remove" style="width:100%;"><i class="ph ph-trash"></i> Remove discount</button>
+            </div>
         </div>
 
-        <div class="order-summary">
-            <div class="total-row" id="discount-summary-row" style="display: none; margin-bottom: 8px;">
-                <span style="font-weight: 700; font-size: 14px; color: #10B981;">Discount Applied</span>
-                <span id="total-discount-amount" style="font-family: 'Inconsolata', monospace; font-weight: 800; font-size: 16px; color: #10B981;">-₱0.00</span>
-            </div>
-            
-            <div class="total-row">
-                <span class="total-label">Total Due</span>
-                <span class="total-amount">₱<span id="grand-total">0.00</span></span>
-            </div>
+        <!-- 3. PAYMENT -->
+        <div class="view" id="view-payment">
+            <div class="view-body">
+                <button class="link-btn" data-back style="margin-bottom: 12px;"><i class="ph ph-arrow-left"></i> Back to cart</button>
+                <div style="text-align:center; background: var(--bg-main); padding: 16px; border-radius: 16px; border: 1px dashed var(--border-color);">
+                    <span style="color: var(--text-secondary); font-weight: 800; font-size: 12px;">Total amount due</span>
+                    <div style="font: 800 42px 'Inconsolata', monospace; color: var(--black); letter-spacing: -1px;" id="payment-total-due">₱0.00</div>
+                </div>
 
-            <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-                <button type="button" onclick="confirmVoid()" style="flex: 1; padding: 14px; border-radius: 10px; border: 2px solid var(--status-red); background: transparent; color: var(--status-red); font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;">
-                    <i class="ph ph-x-circle"></i> Void
-                </button>
-                <button type="button" onclick="applyDiscount()" style="flex: 1; padding: 14px; border-radius: 10px; border: 2px solid #10B981; background: transparent; color: #10B981; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;">
-                    <i class="ph ph-tag"></i> Discount
-                </button>
-            </div>
+                <label class="field-label">Payment method</label>
+                <div class="method-grid">
+                    <label class="pay-method-btn"><input type="radio" name="pay_method" value="cash" checked><div class="method-card"><i class="ph ph-money"></i> Cash</div></label>
+                    <label class="pay-method-btn"><input type="radio" name="pay_method" value="ewallet"><div class="method-card"><i class="ph ph-device-mobile"></i> E-Wallet</div></label>
+                </div>
 
-            <button class="btn-brutalist" onclick="processPayment()">
-                PAY NOW
-            </button>
+                <div id="cash-section">
+                    <label class="field-label" for="pay-cash-amount">Amount received (₱)</label>
+                    <input type="number" id="pay-cash-amount" class="field cash-input" placeholder="0.00" min="0" step="0.01">
+                    <div class="quick-grid">
+                        <button class="quick-cash-btn" data-add="50">+50</button>
+                        <button class="quick-cash-btn" data-add="100">+100</button>
+                        <button class="quick-cash-btn" data-add="500">+500</button>
+                        <button class="quick-cash-btn" data-add="1000">+1000</button>
+                        <button class="quick-cash-btn wide" id="btn-exact">Exact amount</button>
+                        <button class="quick-cash-btn wide" id="btn-cash-clear">Clear</button>
+                    </div>
+                    <div class="cash-feedback" id="cash-feedback"></div>
+                </div>
+
+                <div id="ewallet-section" style="display:none;">
+                    <label class="field-label">Provider</label>
+                    <div class="chips" id="provider-chips">
+                        <button class="chip" data-provider="GCash">GCash</button>
+                        <button class="chip" data-provider="Maya">Maya</button>
+                        <button class="chip" data-provider="GrabPay">GrabPay</button>
+                        <button class="chip" data-provider="Other">Other</button>
+                    </div>
+                    <input type="text" id="pay-ewallet-custom" class="field" placeholder="Type provider name" style="display:none; margin-bottom: 8px;">
+                    <label class="field-label" for="pay-ewallet-ref">Reference number</label>
+                    <input type="text" id="pay-ewallet-ref" class="field" placeholder="0000 000 000" style="font-family: 'Inconsolata', monospace; letter-spacing: 1px;">
+                </div>
+            </div>
+            <div class="view-footer">
+                <button class="btn-brutalist" id="btn-confirm-pay"><i class="ph ph-check-circle"></i> <span id="confirm-label">Confirm payment</span></button>
+            </div>
+        </div>
+
+        <!-- 4. SUCCESS -->
+        <div class="view" id="view-success">
+            <div class="view-body" style="display:flex;">
+                <div class="success-wrap">
+                    <i class="ph-fill ph-check-circle"></i>
+                    <h2>Payment complete</h2>
+                    <div class="meta" id="success-meta"></div>
+                    <div id="success-change"></div>
+                </div>
+            </div>
+            <div class="view-footer">
+                <button class="btn-brutalist" id="btn-new-order"><i class="ph ph-plus-circle"></i> New order</button>
+                <button class="btn-secondary-lite" id="btn-reprint"><i class="ph ph-printer"></i> Reprint receipt</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel', input: 'swal-neo-input' }, buttonsStyling: false };
-    
-    let cart = [];
-    let currentPromo = null;
+(function () {
+    const csrfToken = '{{ csrf_token }}';
+    const activePromos = JSON.parse('{{ promos_json|escapejs }}');
+    const MANAGER_PIN = '1234'; // NOTE: client-side only; verify on the server for real security
+    const NOTE_PRESETS = ['No onions', 'Extra sauce', 'Spicy', 'Less spicy', 'Cut in half'];
+    const $ = id => document.getElementById(id);
+    const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    function filterCategory(category) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`.tab[data-name="${category}"]`).classList.add('active');
-        document.querySelectorAll('.product-card').forEach(card => {
-            card.style.display = (category === 'All' || card.getAttribute('data-category') === category) ? 'flex' : 'none';
+    let cart = [], currentPromo = null, noteOpen = null, orderType = 'Dine-in';
+    let payTotal = 0, provider = '', lastReceipt = null, activeCat = sessionStorage.getItem('activeCategory') || 'All';
+    let noticeTimer = null;
+
+    /* ---------- helpers ---------- */
+    function showView(name) {
+        ['cart', 'discount', 'payment', 'success'].forEach(v => $('view-' + v).classList.toggle('show', v === name));
+        $('state-badge').textContent = { cart: 'New order', discount: 'Discount', payment: 'Payment', success: 'Paid' }[name];
+        notice('');
+    }
+    function notice(msg, type = 'info', ms = 2800) {
+        const el = $('panel-notice');
+        clearTimeout(noticeTimer);
+        el.className = 'panel-notice' + (msg ? ' ' + type : '');
+        el.textContent = msg;
+        if (msg && ms) noticeTimer = setTimeout(() => notice(''), ms);
+    }
+    function totals() {
+        let subtotal = 0, discount = 0;
+        cart.forEach(item => {
+            const sub = item.price * item.qty;
+            let d = 0;
+            if (currentPromo) {
+                const v = parseFloat(currentPromo.value);
+                d = currentPromo.kind === 'percent' ? sub * v / 100 : Math.min(v * item.qty, sub);
+            }
+            item.discount = Math.round(d * 100) / 100;
+            subtotal += sub; discount += item.discount;
         });
+        return { subtotal, discount, total: subtotal - discount };
     }
 
-    document.getElementById('menu-search').addEventListener('input', function() {
-        const term = this.value.toLowerCase();
+    /* ---------- filtering ---------- */
+    function applyFilters() {
+        const term = $('menu-search').value.trim().toLowerCase();
+        let shown = 0;
         document.querySelectorAll('.product-card').forEach(card => {
-            const name = card.querySelector('.name').innerText.toLowerCase();
-            const id = card.querySelector('.pid').innerText.toLowerCase();
-            card.style.display = (name.includes(term) || id.includes(term)) ? 'flex' : 'none';
+            const ok = (activeCat === 'All' || card.dataset.category === activeCat) &&
+                (!term || card.dataset.name.toLowerCase().includes(term) || card.querySelector('.pid').textContent.toLowerCase().includes(term));
+            card.style.display = ok ? 'flex' : 'none';
+            if (ok) shown++;
         });
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.name === activeCat));
+        $('no-results').style.display = shown === 0 && document.querySelector('.product-card') ? 'block' : 'none';
+        $('grid-meta').textContent = shown + (shown === 1 ? ' item' : ' items');
+        $('search-clear').style.display = term ? 'block' : 'none';
+    }
+    $('category-tabs').addEventListener('click', e => {
+        const t = e.target.closest('.tab'); if (!t) return;
+        activeCat = t.dataset.name; sessionStorage.setItem('activeCategory', activeCat); applyFilters();
+    });
+    $('menu-search').addEventListener('input', applyFilters);
+    $('menu-search').addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const visible = [...document.querySelectorAll('.product-card')].filter(c => c.style.display !== 'none');
+        if (visible.length === 1) { visible[0].click(); $('menu-search').value = ''; applyFilters(); }
+    });
+    $('search-clear').addEventListener('click', () => { $('menu-search').value = ''; applyFilters(); $('menu-search').focus(); });
+
+    /* ---------- products -> cart ---------- */
+    function addCard(card) {
+        const id = Number(card.dataset.id);
+        const existing = cart.find(i => i.id === id && i.notes === '');
+        if (existing) existing.qty++;
+        else cart.push({ id, name: card.dataset.name, price: parseFloat(card.dataset.price), qty: 1, discount: 0, notes: '' });
+        renderCart();
+        const body = $('cart-body'); body.scrollTop = body.scrollHeight;
+    }
+    $('product-list').addEventListener('click', e => { const c = e.target.closest('.product-card'); if (c) addCard(c); });
+    $('product-list').addEventListener('keydown', e => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('product-card')) { e.preventDefault(); addCard(e.target); }
     });
 
-    function addToCart(id, name, price) {
-        const existing = cart.find(item => item.id === id && item.notes === '');
-        if (existing) { 
-            existing.qty += 1; 
-        } else { 
-            cart.push({ id: id, name: name, price: price, qty: 1, discount: 0, notes: '' }); 
-        }
-        renderCart();
-    }
-
-    function updateQty(index, delta) {
-        if (cart[index]) {
-            cart[index].qty += delta;
-            if (cart[index].qty <= 0) {
-                cart.splice(index, 1);
-            }
-        }
-        renderCart();
-    }
-
-    // --- MALAKING NOTES LOGIC ---
-    async function editItemNote(index) {
-        const item = cart[index];
-        const { value: text } = await Swal.fire({
-            ...swalNeoConfig,
-            title: 'Add Custom Note',
-            input: 'text',
-            inputPlaceholder: 'e.g. No onions, Cut into half, Extra sauce',
-            inputValue: item.notes || '',
-            showCancelButton: true,
-            confirmButtonText: 'Save Note'
-        });
-
-        if (text !== undefined) {
-            item.notes = text;
-            renderCart();
-        }
-    }
-
-    function applyDiscount() {
-        if (cart.length === 0) return Swal.fire({ ...swalNeoConfig, icon: 'warning', title: 'Empty Cart', text: 'Add items first before applying a discount.' });
-
-        let manualOptions = '<option value="" selected disabled>Select Standard Discount...</option>';
-        activePromos.filter(p => p.campaign_type === 'manual' || p.campaign_type === 'seasonal').forEach(p => {
-            let val = p.kind === 'percent' ? `${parseFloat(p.value)}%` : `₱${parseFloat(p.value)}`;
-            manualOptions += `<option value="${p.id}">${p.name} (${val} OFF)</option>`;
-        });
-
-        Swal.fire({
-            ...swalNeoConfig,
-            title: 'Apply Discount',
-            html: `
-                <div style="text-align: left; font-family: var(--font-main);">
-                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Manual Discounts (e.g. Senior/PWD)</label>
-                    <select id="swal-manual-promo" class="swal2-select swal-neo-input" style="width: 100%; margin: 0 0 16px 0; display: flex; padding: 10px 16px; font-size: 14px;">
-                        ${manualOptions}
-                    </select>
-                    <div style="text-align: center; font-weight: 800; color: var(--text-secondary); margin-bottom: 16px; font-size: 12px;">— OR —</div>
-                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Voucher Code</label>
-                    <input id="swal-voucher-code" class="swal2-input swal-neo-input" placeholder="Enter code here..." style="width: 100%; margin: 0; padding: 10px 16px; font-size: 14px; text-transform: uppercase;">
-                    <button type="button" onclick="document.getElementById('swal-manual-promo').value=''; document.getElementById('swal-voucher-code').value='';" style="width: 100%; margin-top: 12px; padding: 10px; background: transparent; border: 1px solid var(--status-red); color: var(--status-red); border-radius: 8px; font-weight: 700; cursor: pointer;">Remove Applied Discount</button>
-                </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Apply to Cart',
-            preConfirm: () => {
-                const manualId = document.getElementById('swal-manual-promo').value;
-                const code = document.getElementById('swal-voucher-code').value.trim().toUpperCase();
-                let selected = null;
-                if (code) {
-                    selected = activePromos.find(p => p.code && p.code.toUpperCase() === code);
-                    if (!selected) { Swal.showValidationMessage('Invalid Voucher Code!'); return false; }
-                } else if (manualId) {
-                    selected = activePromos.find(p => p.id == manualId);
-                } else { return { clear: true }; }
-                return selected;
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                if (result.value.clear) {
-                    currentPromo = null;
-                    Swal.fire({ ...swalNeoConfig, icon: 'info', title: 'Removed', text: 'Discount has been removed.', timer: 1500, showConfirmButton: false });
-                } else {
-                    currentPromo = result.value;
-                    Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Applied!', text: `${currentPromo.name} applied successfully.`, timer: 1500, showConfirmButton: false });
-                }
-                renderCart();
-            }
-        });
-    }
-
+    /* ---------- cart ---------- */
     function renderCart() {
-        const wrapper = document.getElementById('cart-items-wrapper');
-        const emptyMsg = document.getElementById('empty-cart-msg');
-        wrapper.innerHTML = '';
-        
-        let total = 0;
-        let totalDiscount = 0;
-
-        if (cart.length === 0) {
-            emptyMsg.style.display = 'flex';
-            currentPromo = null; 
-        } else {
-            emptyMsg.style.display = 'none';
-            cart.forEach((item, index) => {
-                let subtotal = item.price * item.qty;
-                let discountAmount = 0;
-
-                if (currentPromo) {
-                    if (currentPromo.kind === 'percent') discountAmount = subtotal * (parseFloat(currentPromo.value) / 100);
-                    else if (currentPromo.kind === 'fixed') {
-                        discountAmount = parseFloat(currentPromo.value) * item.qty;
-                        if (discountAmount > subtotal) discountAmount = subtotal; 
-                    }
-                }
-                
-                item.discount = discountAmount;
-                let netSubtotal = subtotal - discountAmount;
-                
-                total += netSubtotal;
-                totalDiscount += discountAmount;
-
-                let discountBadge = discountAmount > 0 ? `<div style="font-size: 11px; color: #10B981; font-weight: 800; margin-top: 4px;">-${discountAmount.toFixed(2)} (${currentPromo.name})</div>` : '';
-                
-                // INAYOS NA NOTES BADGE: Malaki, visible, may highlight
-                let notesBadge = item.notes ? `<div style="font-size: 13px; color: #dc2626; font-weight: 800; margin-top: 8px; background: #fee2e2; padding: 6px 10px; border-radius: 8px; display: inline-block;">📌 Note: ${item.notes}</div>` : '';
-
-                wrapper.innerHTML += `
-                    <div class="cart-item">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <h5 class="cart-item-name">${item.name}</h5>
-                                <button onclick="editItemNote(${index})" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px;" title="Add Custom Note">
-                                    <i class="ph ph-pencil-simple" style="font-size: 16px;"></i>
-                                </button>
-                            </div>
-                            <div class="cart-item-price">₱${item.price.toFixed(2)}</div>
-                            ${notesBadge}
-                            ${discountBadge}
-                        </div>
-                        <div class="qty-controls" style="align-self: flex-start; margin-top: 4px;">
-                            <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
-                            <input type="text" class="qty-input" value="${item.qty}" readonly>
-                            <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
-                        </div>
-                        <div style="margin-left: 16px; text-align: right; align-self: flex-start; margin-top: 4px;">
-                            <span class="item-subtotal">₱${netSubtotal.toFixed(2)}</span>
-                            ${discountAmount > 0 ? `<br><del style="font-size: 11px; color: var(--text-secondary);">₱${subtotal.toFixed(2)}</del>` : ''}
-                        </div>
+        const t = totals();
+        const empty = cart.length === 0;
+        if (empty) { currentPromo = null; noteOpen = null; }
+        $('empty-cart-msg').style.display = empty ? 'flex' : 'none';
+        $('cart-items').innerHTML = cart.map((item, i) => {
+            const sub = item.price * item.qty, net = sub - item.discount;
+            const editor = noteOpen === i ? `
+                <div class="note-editor">
+                    <input type="text" id="note-input" value="${esc(item.notes)}" placeholder="Type a note, press Enter to save" maxlength="80">
+                    <div class="chips">${NOTE_PRESETS.map(p => `<button class="chip" data-act="preset" data-i="${i}" data-text="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+                    <div style="display:flex; gap:8px;"><button class="link-btn" data-act="note-save" data-i="${i}">Save note</button><button class="link-btn" data-act="note-cancel">Cancel</button></div>
+                </div>` : '';
+            return `<div class="cart-item">
+                <div class="cart-row">
+                    <div>
+                        <h5 class="cart-item-name">${esc(item.name)}</h5>
+                        <div class="cart-item-price">${peso(item.price)} each</div>
+                        ${item.notes ? `<div class="note-badge">Note: ${esc(item.notes)}</div>` : ''}
+                        ${item.discount > 0 ? `<div class="promo-badge">-${peso(item.discount)} (${esc(currentPromo.name)})</div>` : ''}
                     </div>
-                `;
-            });
-        }
+                    <div class="item-subtotal">${peso(net)}${item.discount > 0 ? `<del>${peso(sub)}</del>` : ''}</div>
+                </div>
+                <div class="cart-actions">
+                    <div class="qty-controls">
+                        <button class="qty-btn" data-act="dec" data-i="${i}" aria-label="Decrease">−</button>
+                        <span class="qty-val">${item.qty}</span>
+                        <button class="qty-btn" data-act="inc" data-i="${i}" aria-label="Increase">+</button>
+                    </div>
+                    <div>
+                        <button class="link-btn" data-act="note" data-i="${i}"><i class="ph ph-pencil-simple"></i> ${item.notes ? 'Edit note' : 'Add note'}</button>
+                        <button class="link-btn danger" data-act="remove" data-i="${i}"><i class="ph ph-trash"></i> Remove</button>
+                    </div>
+                </div>${editor}
+            </div>`;
+        }).join('');
 
-        const summaryDiv = document.getElementById('discount-summary-row');
-        if (totalDiscount > 0) {
-            summaryDiv.style.display = 'flex';
-            document.getElementById('total-discount-amount').innerText = `-₱${totalDiscount.toFixed(2)}`;
-        } else {
-            summaryDiv.style.display = 'none';
-        }
+        const count = cart.reduce((s, i) => s + i.qty, 0);
+        $('item-count').textContent = count + (count === 1 ? ' item' : ' items');
+        $('subtotal').textContent = peso(t.subtotal);
+        $('grand-total').textContent = peso(t.total);
+        $('discount-row').style.display = t.discount > 0 ? 'flex' : 'none';
+        $('discount-name').textContent = currentPromo ? currentPromo.name : '';
+        $('discount-amount').textContent = '-' + peso(t.discount);
+        $('discount-btn-label').textContent = currentPromo ? 'Change discount' : 'Discount';
+        ['btn-void', 'btn-discount', 'btn-pay'].forEach(id => $(id).disabled = empty);
+        if (empty) $('void-strip').classList.remove('show');
 
-        document.getElementById('grand-total').innerText = total.toFixed(2);
-    }
-
-    function getCartTotal() {
-        return cart.reduce((sum, item) => sum + (item.price * item.qty) - (item.discount || 0), 0);
-    }
-
-    function confirmVoid() {
-        if (cart.length === 0) return Swal.fire({ ...swalNeoConfig, icon: 'info', title: 'Cart is empty', text: 'There is nothing to void.' });
-
-        Swal.fire({
-            ...swalNeoConfig, title: 'Manager Override', text: 'Please enter the Manager PIN to void this order.', input: 'password', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Authorize Void', cancelButtonText: 'Cancel',
-            preConfirm: (pin) => {
-                if (pin !== '1234') { Swal.showValidationMessage('Incorrect Manager PIN!'); }
-                return pin === '1234';
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                cart = [];
-                currentPromo = null;
-                renderCart();
-                Swal.fire({ ...swalNeoConfig, title: 'Order Voided', text: 'The cart has been cleared.', icon: 'success' });
-            }
+        document.querySelectorAll('.product-card').forEach(card => {
+            const q = cart.filter(i => i.id === Number(card.dataset.id)).reduce((s, i) => s + i.qty, 0);
+            card.classList.toggle('in-cart', q > 0);
+            card.querySelector('.card-qty').textContent = q;
         });
+        if (noteOpen !== null) { const n = $('note-input'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }
     }
 
-    async function processPayment() {
-        const totalAmount = getCartTotal();
-        if (cart.length === 0) return Swal.fire({ ...swalNeoConfig, icon: 'warning', title: 'Empty Cart', text: 'Please add items to cart before checking out.' });
-
-        const { value: method } = await Swal.fire({
-            ...swalNeoConfig, title: 'Select Payment Method', input: 'radio', inputOptions: { 'cash': 'Cash Payment', 'ewallet': 'Online / E-Wallet' },
-            inputValidator: (value) => { if (!value) return 'Please choose a payment method!' }, confirmButtonText: 'Next', showCancelButton: true
-        });
-
-        if (!method) return;
-
-        let providerData = null;
-        let changeAmount = 0;
-        let cashGiven = 0;
-
-        if (method === 'ewallet') {
-            const { value: ewalletData } = await Swal.fire({
-                ...swalNeoConfig, title: 'E-Wallet Payment',
-                html: `
-                    <div style="font-weight: 800; font-size: 24px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 24px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
-                    <label style="font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 8px;">Select Provider:</label>
-                    <select id="ewallet-provider" class="swal2-select swal-neo-input" style="display: flex; width: 80%; margin: 0 auto 15px auto;" onchange="document.getElementById('ewallet-custom').style.display = this.value === 'Other' ? 'block' : 'none'">
-                        <option value="" disabled selected>Select Platform...</option><option value="GCash">GCash</option><option value="Maya">Maya</option><option value="GrabPay">GrabPay</option><option value="Other">Other (Specify)</option>
-                    </select>
-                    <input id="ewallet-custom" class="swal2-input swal-neo-input" placeholder="Type Provider Name" style="display: none; width: 80%; margin: 0 auto 15px auto;">
-                    <label style="font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 8px; margin-top: 16px;">Reference Number:</label>
-                    <input id="ewallet-ref" class="swal2-input swal-neo-input" placeholder="0000 000 000" style="display: flex; width: 80%; margin: 0 auto;">
-                `,
-                confirmButtonText: 'Confirm Payment', showCancelButton: true,
-                preConfirm: () => {
-                    let provider = document.getElementById('ewallet-provider').value;
-                    if (provider === 'Other') provider = document.getElementById('ewallet-custom').value;
-                    const refNum = document.getElementById('ewallet-ref').value;
-                    if (!provider || provider.trim() === '') { Swal.showValidationMessage('Please select or type a provider.'); return false; }
-                    if (!refNum || refNum.trim() === '') { Swal.showValidationMessage('Reference Number is required.'); return false; }
-                    return { provider, refNum };
-                }
-            });
-            if (!ewalletData) return;
-            providerData = ewalletData;
-        } else {
-            const { value: amountGiven } = await Swal.fire({
-                ...swalNeoConfig, title: 'Cash Payment',
-                html: `
-                    <div style="font-weight: 800; font-size: 24px; font-family: 'Inconsolata', monospace; color: var(--yellow); margin-bottom: 24px;">Total Due: ₱${totalAmount.toFixed(2)}</div>
-                    <input id="cash-amount" type="number" class="swal2-input swal-neo-input" placeholder="0.00" style="display: flex; width: 80%; margin: 0 auto; font-family: 'Inconsolata', monospace; font-size: 28px; text-align: center;">
-                `,
-                confirmButtonText: 'Confirm Payment', showCancelButton: true, cancelButtonText: 'Cancel',
-                preConfirm: () => {
-                    const amount = parseFloat(document.getElementById('cash-amount').value);
-                    if (!amount || amount < totalAmount) { Swal.showValidationMessage('Insufficient cash amount!'); return false; }
-                    return amount;
-                }
-            });
-            if (!amountGiven) return;
-            cashGiven = amountGiven;
-            changeAmount = cashGiven - totalAmount;
+    function saveNote(i) {
+        const input = $('note-input');
+        if (cart[i] && input) {
+            const text = input.value.trim();
+            const dup = cart.findIndex((c, idx) => idx !== i && c.id === cart[i].id && c.notes === text);
+            cart[i].notes = text;
+            if (dup > -1) { cart[dup].qty += cart[i].qty; cart.splice(i, 1); }
         }
+        noteOpen = null; renderCart();
+    }
+    $('cart-items').addEventListener('click', e => {
+        const b = e.target.closest('[data-act]'); if (!b) return;
+        const i = Number(b.dataset.i), act = b.dataset.act;
+        if (act === 'inc') cart[i].qty++;
+        else if (act === 'dec') { cart[i].qty--; if (cart[i].qty <= 0) { cart.splice(i, 1); noteOpen = null; } }
+        else if (act === 'remove') { cart.splice(i, 1); noteOpen = null; }
+        else if (act === 'note') { noteOpen = noteOpen === i ? null : i; }
+        else if (act === 'note-cancel') { noteOpen = null; }
+        else if (act === 'note-save') return saveNote(i);
+        else if (act === 'preset') { $('note-input').value = b.dataset.text; $('note-input').focus(); return; }
+        renderCart();
+    });
+    $('cart-items').addEventListener('keydown', e => {
+        if (e.target.id !== 'note-input') return;
+        if (e.key === 'Enter') saveNote(noteOpen);
+        if (e.key === 'Escape') { noteOpen = null; renderCart(); }
+    });
+    document.querySelectorAll('.seg').forEach(b => b.addEventListener('click', () => {
+        orderType = b.dataset.type;
+        document.querySelectorAll('.seg').forEach(s => s.classList.toggle('active', s === b));
+    }));
 
-        Swal.fire({ ...swalNeoConfig, title: 'Processing...', text: 'Saving order to database...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    /* ---------- void (inline PIN) ---------- */
+    $('btn-void').addEventListener('click', () => {
+        $('void-strip').classList.add('show'); $('void-pin').value = ''; $('void-pin').focus();
+    });
+    $('void-cancel').addEventListener('click', () => { $('void-strip').classList.remove('show'); notice(''); });
+    function doVoid() {
+        if ($('void-pin').value !== MANAGER_PIN) { notice('Incorrect manager PIN. Try again.', 'error'); $('void-pin').select(); return; }
+        cart = []; currentPromo = null; $('void-strip').classList.remove('show'); renderCart();
+        notice('Order voided. Cart cleared.', 'success');
+    }
+    $('void-confirm').addEventListener('click', doVoid);
+    $('void-pin').addEventListener('keydown', e => { if (e.key === 'Enter') doVoid(); });
 
-        let payload = {
-            items: cart,
-            payment_method: method,
-            applied_promo_id: currentPromo ? currentPromo.id : null
-        };
-        
-        if (method === 'cash') payload.tendered = cashGiven;
-        else if (method === 'ewallet') { payload.provider = providerData.provider; payload.refNum = providerData.refNum; }
+    /* ---------- discount (inline panel) ---------- */
+    function renderPromos() {
+        const list = activePromos.filter(p => p.campaign_type === 'manual' || p.campaign_type === 'seasonal');
+        $('promo-list').innerHTML = list.length ? list.map(p => {
+            const val = p.kind === 'percent' ? parseFloat(p.value) + '% off' : peso(parseFloat(p.value)) + ' off';
+            return `<button class="promo-row ${currentPromo && currentPromo.id === p.id ? 'active' : ''}" data-id="${p.id}"><span>${esc(p.name)}</span><span class="promo-val">${val}</span></button>`;
+        }).join('') : '<div class="meta" style="color:var(--text-secondary); font-weight:600;">No standard discounts available.</div>';
+        $('promo-remove').style.display = currentPromo ? 'flex' : 'none';
+    }
+    function setPromo(p) {
+        currentPromo = p; renderCart(); showView('cart');
+        notice(p ? p.name + ' applied.' : 'Discount removed.', p ? 'success' : 'info');
+    }
+    $('btn-discount').addEventListener('click', () => { renderPromos(); $('voucher-code').value = ''; showView('discount'); });
+    $('promo-list').addEventListener('click', e => {
+        const r = e.target.closest('.promo-row'); if (r) setPromo(activePromos.find(p => p.id == r.dataset.id));
+    });
+    function applyVoucher() {
+        const code = $('voucher-code').value.trim().toUpperCase();
+        if (!code) return notice('Enter a voucher code first.', 'error');
+        const p = activePromos.find(x => x.code && x.code.toUpperCase() === code);
+        if (!p) return notice('Voucher code not found.', 'error');
+        setPromo(p);
+    }
+    $('voucher-apply').addEventListener('click', applyVoucher);
+    $('voucher-code').addEventListener('keydown', e => { if (e.key === 'Enter') applyVoucher(); });
+    $('promo-remove').addEventListener('click', () => setPromo(null));
+    document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => showView('cart')));
 
+    /* ---------- payment (inline) ---------- */
+    const method = () => document.querySelector('input[name="pay_method"]:checked').value;
+    const cashVal = () => parseFloat($('pay-cash-amount').value) || 0;
+    const providerName = () => provider === 'Other' ? $('pay-ewallet-custom').value.trim() : provider;
+
+    function updatePayState() {
+        const cash = method() === 'cash';
+        $('cash-section').style.display = cash ? 'block' : 'none';
+        $('ewallet-section').style.display = cash ? 'none' : 'block';
+        let ready;
+        if (cash) {
+            const diff = Math.round((cashVal() - payTotal) * 100) / 100, fb = $('cash-feedback');
+            fb.className = 'cash-feedback' + (cashVal() ? (diff >= 0 ? ' ok' : ' short') : '');
+            fb.textContent = !cashVal() ? '' : diff >= 0 ? 'Change: ' + peso(diff) : 'Short by ' + peso(-diff);
+            ready = cashVal() > 0 && diff >= 0;
+        } else {
+            ready = providerName() !== '' && $('pay-ewallet-ref').value.trim() !== '';
+        }
+        $('btn-confirm-pay').disabled = !ready;
+    }
+    $('btn-pay').addEventListener('click', () => {
+        if (!cart.length) return;
+        payTotal = totals().total;
+        $('payment-total-due').textContent = peso(payTotal);
+        $('pay-cash-amount').value = ''; $('pay-ewallet-ref').value = ''; $('pay-ewallet-custom').value = '';
+        $('pay-ewallet-custom').style.display = 'none'; provider = '';
+        document.querySelectorAll('#provider-chips .chip').forEach(c => c.classList.remove('active'));
+        document.querySelector('input[name="pay_method"][value="cash"]').checked = true;
+        showView('payment'); updatePayState(); $('pay-cash-amount').focus();
+    });
+    document.querySelectorAll('input[name="pay_method"]').forEach(r => r.addEventListener('change', updatePayState));
+    $('pay-cash-amount').addEventListener('input', updatePayState);
+    $('pay-ewallet-ref').addEventListener('input', updatePayState);
+    $('pay-ewallet-custom').addEventListener('input', updatePayState);
+    document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => {
+        $('pay-cash-amount').value = (cashVal() + Number(b.dataset.add)).toFixed(2); updatePayState();
+    }));
+    $('btn-exact').addEventListener('click', () => { $('pay-cash-amount').value = payTotal.toFixed(2); updatePayState(); });
+    $('btn-cash-clear').addEventListener('click', () => { $('pay-cash-amount').value = ''; updatePayState(); $('pay-cash-amount').focus(); });
+    $('provider-chips').addEventListener('click', e => {
+        const c = e.target.closest('.chip'); if (!c) return;
+        provider = c.dataset.provider;
+        document.querySelectorAll('#provider-chips .chip').forEach(x => x.classList.toggle('active', x === c));
+        $('pay-ewallet-custom').style.display = provider === 'Other' ? 'block' : 'none';
+        if (provider === 'Other') $('pay-ewallet-custom').focus(); else $('pay-ewallet-ref').focus();
+        updatePayState();
+    });
+
+    $('btn-confirm-pay').addEventListener('click', () => {
+        const m = method(), btn = $('btn-confirm-pay');
+        const payload = { items: cart, payment_method: m, applied_promo_id: currentPromo ? currentPromo.id : null, order_type: orderType };
+        if (m === 'cash') payload.tendered = cashVal();
+        else { payload.provider = providerName(); payload.refNum = $('pay-ewallet-ref').value.trim(); }
+
+        btn.disabled = true; $('confirm-label').textContent = 'Saving order…';
         fetch("{% url 'pos:pos_screen' %}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-            body: JSON.stringify(payload)
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }, body: JSON.stringify(payload)
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                const totalDiscount = cart.reduce((sum, item) => sum + (item.discount || 0), 0);
-                generateThermalReceipt(data.order_number, cart, totalAmount, changeAmount, method, providerData, totalDiscount);
-
-                let messageHTML = `<div style="font-size: 16px; margin-top: 10px;">Order <strong style="color:var(--black); font-family:'Inconsolata',monospace;">${data.order_number}</strong> placed via <strong>${method === 'cash' ? 'Cash' : 'E-Wallet'}</strong>.</div>`;
-                if (method === 'cash') messageHTML += `<div style="margin-top: 15px; font-size: 24px; font-weight: 800; color: var(--status-green);">Change: ₱${changeAmount.toFixed(2)}</div>`;
-                else messageHTML += `<div style="margin-top: 15px; font-size: 15px; color: var(--text-secondary);">Provider: <strong>${providerData.provider}</strong><br>Ref No: <strong style="color: var(--black);">${providerData.refNum}</strong></div>`;
-
-                Swal.fire({ ...swalNeoConfig, title: 'Transaction Complete!', html: messageHTML, icon: 'success' }).then(() => {
-                    cart = [];
-                    currentPromo = null;
-                    renderCart();
-                    
-                    let currentId = document.getElementById('transaction-id').innerText;
-                    let parts = currentId.split('-');
-                    if (parts.length === 2) {
-                        let nextNum = parseInt(parts[1], 10) + 1;
-                        document.getElementById('transaction-id').innerText = parts[0] + '-' + nextNum.toString().padStart(4, '0');
-                    }
-                });
-            } else {
-                Swal.fire({ ...swalNeoConfig, title: 'Error', text: data.error, icon: 'error' });
-            }
+            if (!data.success) { notice(data.error || 'The order could not be saved. Try again.', 'error', 0); return; }
+            const change = m === 'cash' ? cashVal() - payTotal : 0;
+            const discount = cart.reduce((s, i) => s + (i.discount || 0), 0);
+            lastReceipt = { orderNumber: data.order_number, items: JSON.parse(JSON.stringify(cart)), total: payTotal, change, method: m,
+                providerData: m === 'ewallet' ? { provider: payload.provider, refNum: payload.refNum } : null, discount, orderType };
+            $('success-meta').innerHTML = `Order <strong>${esc(data.order_number)}</strong> · ${esc(orderType)} · ${peso(payTotal)} via ${m === 'cash' ? 'Cash' : esc(payload.provider)}` +
+                (m === 'ewallet' ? `<br>Ref: ${esc(payload.refNum)}` : '');
+            $('success-change').innerHTML = m === 'cash' ? `<div class="meta" style="margin-top:16px;">Give change</div><div class="change">${peso(change)}</div>` : '';
+            showView('success');
+            printReceipt(lastReceipt);
         })
-        .catch(error => Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Server Error', text: 'Could not connect to database.' }));
-    }
+        .catch(() => notice('Cannot reach the server. Check your connection and try again.', 'error', 0))
+        .finally(() => { $('confirm-label').textContent = 'Confirm payment'; updatePayState(); });
+    });
 
-    // --- INAYOS NA TICKET RECEIPT PRINTING PARA MATIBAY SA BROWSER ---
-    function generateThermalReceipt(orderNumber, items, total, change, method, providerData, totalDiscount) {
+    $('btn-new-order').addEventListener('click', () => {
+        cart = []; currentPromo = null; noteOpen = null; renderCart();
+        const el = $('transaction-id'), parts = el.innerText.split('-');
+        if (parts.length === 2) el.innerText = parts[0] + '-' + String(parseInt(parts[1], 10) + 1).padStart(parts[1].length, '0');
+        showView('cart');
+    });
+    $('btn-reprint').addEventListener('click', () => lastReceipt && printReceipt(lastReceipt));
+
+    /* ---------- keyboard shortcuts ---------- */
+    document.addEventListener('keydown', e => {
+        const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+        if (e.key === '/' && !typing) { e.preventDefault(); $('menu-search').focus(); }
+        if (e.key === 'Escape' && ($('view-payment').classList.contains('show') || $('view-discount').classList.contains('show'))) showView('cart');
+    });
+
+    /* ---------- receipt (same 3 copies as before) ---------- */
+    function printReceipt(r) {
         const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-
+        iframe.style.display = 'none'; document.body.appendChild(iframe);
         const date = new Date().toLocaleString();
-        let itemsHtml = '';
-        let kitchenItemsHtml = '';
-        
-        items.forEach(item => {
-            // Receipt Note Formats
-            let noteHtml = item.notes ? `<div style="font-style: italic; font-weight: bold; margin-left: 10px; margin-bottom: 6px; font-size: 12px; color: #000;">* NOTE: ${item.notes}</div>` : '';
-            let kitchenNote = item.notes ? `<div style="font-size: 14px; font-weight: bold; margin-left: 10px; padding: 4px 0; margin-bottom: 6px; border-top: 1px dashed #000; border-bottom: 1px dashed #000;">*** NOTE: ${item.notes.toUpperCase()} ***</div>` : '';
-            
-            itemsHtml += `
-                <div class="flex-row" style="margin-bottom: 2px;">
-                    <span>${item.qty}x ${item.name}</span>
-                    <span>P${(item.price * item.qty).toFixed(2)}</span>
-                </div>
-                ${noteHtml}
-            `;
-            kitchenItemsHtml += `
-                <div style="font-size: 14px; font-weight: bold; margin-top: 8px;">
-                    [ ${item.qty}x ] ${item.name}
-                </div>
-                ${kitchenNote}
-            `;
+        let itemsHtml = '', kitchenHtml = '';
+        r.items.forEach(item => {
+            const n = item.notes ? esc(item.notes) : '';
+            itemsHtml += `<div class="flex-row"><span>${item.qty}x ${esc(item.name)}</span><span>P${(item.price * item.qty).toFixed(2)}</span></div>` +
+                (n ? `<div style="font-style:italic;font-weight:bold;margin-left:10px;font-size:12px;">* NOTE: ${n}</div>` : '');
+            kitchenHtml += `<div style="font-size:14px;font-weight:bold;margin-top:8px;">[ ${item.qty}x ] ${esc(item.name)}</div>` +
+                (n ? `<div style="font-size:14px;font-weight:bold;margin-left:10px;padding:4px 0;border-top:1px dashed #000;border-bottom:1px dashed #000;">*** NOTE: ${n.toUpperCase()} ***</div>` : '');
         });
-
-        let discountHtml = '';
-        if (totalDiscount > 0) {
-            discountHtml = `
-                <div class="line"></div>
-                <div class="flex-row bold">
-                    <span>DISCOUNT</span>
-                    <span>-P${totalDiscount.toFixed(2)}</span>
-                </div>
-            `;
-        }
-
-        let paymentHtml = `<div style="margin-top: 8px;">Method: ${method === 'cash' ? 'CASH' : 'E-WALLET (' + providerData.provider + ')'}</div>`;
-        if (method === 'cash') {
-            paymentHtml += `<div>Amount Paid: P${(total + change).toFixed(2)}</div><div>Change: P${change.toFixed(2)}</div>`;
-        } else {
-            paymentHtml += `<div>Ref No: ${providerData.refNum}</div>`;
-        }
-
-        const receiptTemplate = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    @page { margin: 0; } 
-                    body { font-family: 'Inconsolata', monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; max-width: 300px; color: #000; box-sizing: border-box; }
-                    .receipt-section { page-break-after: always; padding-bottom: 10px; border-bottom: 1px dashed #000; margin-bottom: 10px; }
-                    .receipt-section:last-child { page-break-after: auto; border-bottom: none; }
-                    .center { text-align: center; margin-bottom: 10px; }
-                    .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-                    .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
-                    .details { margin-bottom: 8px; }
-                    .flex-row { display: flex; justify-content: space-between; }
-                    .bold { font-weight: bold; }
-                    .line { border-top: 1px dashed #000; margin: 8px 0; }
-                    .footer { text-align: center; margin-top: 15px; font-size: 10px; }
-                </style>
-            </head>
-            <body>
-                <!-- CUSTOMER COPY -->
-                <div class="receipt-section">
-                    <div class="center">
-                        <div class="title">FAKE ARAB SHAWARMA</div>
-                        <div class="copy-type">CUSTOMER COPY</div>
-                    </div>
-                    <div class="details">
-                        <div>Order #: <strong>${orderNumber}</strong></div>
-                        <div>Date: ${date}</div>
-                    </div>
-                    <div class="line"></div>
-                    ${itemsHtml}
-                    ${discountHtml}
-                    <div class="line"></div>
-                    <div class="flex-row bold" style="font-size: 16px;">
-                        <span>TOTAL:</span>
-                        <span>P${total.toFixed(2)}</span>
-                    </div>
-                    ${paymentHtml}
-                    <div class="footer">Thank you for your purchase!</div>
-                </div>
-
-                <!-- CASHIER COPY -->
-                <div class="receipt-section">
-                    <div class="center">
-                        <div class="title">FAKE ARAB SHAWARMA</div>
-                        <div class="copy-type">CASHIER COPY</div>
-                    </div>
-                    <div class="details">
-                        <div>Order #: <strong>${orderNumber}</strong></div>
-                        <div>Date: ${date}</div>
-                    </div>
-                    <div class="line"></div>
-                    ${itemsHtml}
-                    ${discountHtml}
-                    <div class="line"></div>
-                    <div class="flex-row bold" style="font-size: 16px;">
-                        <span>TOTAL:</span>
-                        <span>P${total.toFixed(2)}</span>
-                    </div>
-                    ${paymentHtml}
-                </div>
-
-                <!-- KITCHEN COPY -->
-                <div class="receipt-section">
-                    <div class="center">
-                        <div class="title">KITCHEN TICKET</div>
-                        <div class="copy-type">KITCHEN COPY</div>
-                    </div>
-                    <div class="details">
-                        <div style="font-size: 16px;">Order #: <strong>${orderNumber}</strong></div>
-                        <div>Date: ${date}</div>
-                    </div>
-                    <div style="border-top: 2px solid #000; margin-bottom: 10px;"></div>
-                    ${kitchenItemsHtml}
-                </div>
-            </body>
-            </html>
-        `;
-
-        iframe.contentWindow.document.open();
-        iframe.contentWindow.document.write(receiptTemplate);
-        iframe.contentWindow.document.close();
-        setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
+        const discountHtml = r.discount > 0 ? `<div class="line"></div><div class="flex-row bold"><span>DISCOUNT</span><span>-P${r.discount.toFixed(2)}</span></div>` : '';
+        let pay = `<div style="margin-top:8px;">Method: ${r.method === 'cash' ? 'CASH' : 'E-WALLET (' + esc(r.providerData.provider) + ')'}</div>`;
+        pay += r.method === 'cash' ? `<div>Amount Paid: P${(r.total + r.change).toFixed(2)}</div><div>Change: P${r.change.toFixed(2)}</div>` : `<div>Ref No: ${esc(r.providerData.refNum)}</div>`;
+        const head = label => `<div class="center"><div class="title">FAKE ARAB SHAWARMA</div><div class="copy-type">${label}</div></div>
+            <div class="details"><div>Order #: <strong>${esc(r.orderNumber)}</strong> (${esc(r.orderType)})</div><div>Date: ${date}</div></div><div class="line"></div>`;
+        const body = `${itemsHtml}${discountHtml}<div class="line"></div><div class="flex-row bold" style="font-size:16px;"><span>TOTAL:</span><span>P${r.total.toFixed(2)}</span></div>${pay}`;
+        const html = `<!DOCTYPE html><html><head><style>
+            @page { margin: 0; } body { font-family: 'Inconsolata', monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; max-width: 300px; color: #000; }
+            .sec { page-break-after: always; padding-bottom: 10px; border-bottom: 1px dashed #000; margin-bottom: 10px; } .sec:last-child { page-break-after: auto; border-bottom: none; }
+            .center { text-align: center; margin-bottom: 10px; } .title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+            .copy-type { font-weight: bold; background: #000; color: #fff; padding: 2px 6px; display: inline-block; }
+            .details { margin-bottom: 8px; } .flex-row { display: flex; justify-content: space-between; margin-bottom: 2px; } .bold { font-weight: bold; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; } .footer { text-align: center; margin-top: 15px; font-size: 10px; }
+            </style></head><body>
+            <div class="sec">${head('CUSTOMER COPY')}${body}<div class="footer">Thank you for your purchase!</div></div>
+            <div class="sec">${head('CASHIER COPY')}${body}</div>
+            <div class="sec"><div class="center"><div class="title">KITCHEN TICKET</div><div class="copy-type">KITCHEN COPY</div></div>
+                <div class="details"><div style="font-size:16px;">Order #: <strong>${esc(r.orderNumber)}</strong> — ${esc(r.orderType).toUpperCase()}</div><div>Date: ${date}</div></div>
+                <div style="border-top:2px solid #000;margin-bottom:10px;"></div>${kitchenHtml}</div>
+            </body></html>`;
+        iframe.contentWindow.document.open(); iframe.contentWindow.document.write(html); iframe.contentWindow.document.close();
+        setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); setTimeout(() => iframe.remove(), 2000); }, 500);
     }
+
+    applyFilters();
+    renderCart();
+})();
 </script>
 {% endblock %}
