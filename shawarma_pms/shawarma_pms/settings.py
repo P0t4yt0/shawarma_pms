@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "promotions",
     "billing_payment",
     "reports_analytics",
+    "maintenance",
 ]
 
 MIDDLEWARE = [

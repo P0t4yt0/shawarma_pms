@@ -13,4 +13,5 @@ urlpatterns = [
     path("promotions/", include("promotions.urls")),
     path('reports/', include('reports_analytics.urls')),
     path('activity/', include('activity_log.urls')),
+    path('maintenance/', include('maintenance.urls', namespace='maintenance')),
 ]

@@ -337,6 +337,13 @@
                 <a href="{% url 'security:user_roles' %}" class="nav-item {% if request.resolver_match.url_name == 'user_roles' %}active{% endif %}"><i class="ph ph-shield-check"></i> User Roles & Access</a>
                 <a href="{% url 'security:general_settings' %}" class="nav-item {% if request.resolver_match.url_name == 'general_settings' %}active{% endif %}"><i class="ph ph-gear"></i> General Settings</a>
                 
+                <!-- BAGONG DAGDAG: Backup & Maintenance (Para sa Admin / Superuser) -->
+                {% if request.user.is_superuser or request.user.is_staff %}
+                <a href="{% url 'maintenance:maintenance_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'maintenance_dashboard' %}active{% endif %}">
+                    <i class="ph ph-database"></i> Backup & Maintenance
+                </a>
+                {% endif %}
+
                 {% endif %}
                 
                 {% if request.user|has_dynamic_access:"activity_log.view_activitylog" %}

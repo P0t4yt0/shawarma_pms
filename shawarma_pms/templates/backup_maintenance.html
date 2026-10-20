@@ -1,0 +1,668 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* ==============================
+       BACKUP & MAINTENANCE PAGE
+    ============================== */
+
+    .bm-page {
+        width: 100%;
+        min-width: 0;
+        color: var(--black);
+    }
+
+    .bm-page,
+    .bm-page * {
+        box-sizing: border-box;
+    }
+
+    .bm-page button,
+    .bm-page input,
+    .bm-page select,
+    .bm-page textarea {
+        font-family: var(--font-main);
+    }
+
+    /* ==============================
+       PAGE HEADER
+    ============================== */
+
+    .bm-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+    }
+
+    .bm-heading h1 {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: clamp(26px, 3vw, 34px);
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: -1px;
+        color: var(--black);
+    }
+
+    .bm-heading p {
+        margin: 8px 0 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+        max-width: 620px;
+    }
+
+    .bm-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: var(--yellow-tint);
+        color: var(--black);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .7px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .bm-tag i {
+        font-size: 17px;
+    }
+
+    /* ==============================
+       CARDS & CONTAINER
+    ============================== */
+
+    .bm-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-subtle);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .bm-card-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .bm-card-head.danger-head {
+        border-bottom-color: rgba(239, 68, 68, 0.2);
+        background: rgba(239, 68, 68, 0.04);
+    }
+
+    .bm-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: var(--yellow-tint);
+        color: var(--black);
+        flex-shrink: 0;
+    }
+
+    .bm-icon.danger-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--status-red);
+    }
+
+    .bm-card-title {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .bm-card-sub {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .bm-card-body {
+        padding: 24px;
+    }
+
+    /* ==============================
+       GRID LAYOUT FOR BACKUP/RECOVERY
+    ============================== */
+
+    .bm-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+    }
+
+    /* ==============================
+       FIELDS & INPUTS
+    ============================== */
+
+    .bm-field {
+        margin-bottom: 16px;
+    }
+
+    .bm-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .bm-label {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--black);
+    }
+
+    .bm-input {
+        width: 100%;
+        padding: 11px 13px;
+        border: 2px solid var(--border-color);
+        border-radius: 9px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--black);
+        background: #fff;
+        outline: none;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .bm-input:focus {
+        border-color: var(--black);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, .06);
+    }
+
+    .bm-file-input {
+        width: 100%;
+        padding: 10px;
+        border: 2px dashed var(--border-color);
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: var(--bg-main);
+        cursor: pointer;
+        transition: border-color .15s ease;
+    }
+
+    .bm-file-input:hover {
+        border-color: var(--black);
+    }
+
+    .bm-help {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+    }
+
+    .bm-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--black);
+        font-family: 'Inconsolata', monospace;
+        margin-bottom: 16px;
+    }
+
+    /* ==============================
+       BUTTON VARIATIONS
+    ============================== */
+
+    .btn-w-full {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .btn-danger-brutalist {
+        background-color: var(--status-red) !important;
+        color: white !important;
+        border-color: var(--black) !important;
+    }
+
+    .btn-danger-brutalist:hover {
+        background-color: #dc2626 !important;
+    }
+
+    /* ==============================
+       SCANNER / STATUS STATES
+    ============================== */
+
+    .bm-scan-box {
+        text-align: center;
+        padding: 32px 16px;
+        background: var(--bg-main);
+        border: 2px dashed var(--border-color);
+        border-radius: var(--border-radius);
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .spinner {
+        width: 36px;
+        height: 36px;
+        border: 4px solid var(--border-color);
+        border-top: 4px solid var(--black);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px auto;
+    }
+
+    /* ==============================
+    SWEETALERT STYLING (NEO-BRUTALIST)
+    ============================== */
+
+    .swal-neo { 
+        border-radius: 16px !important; 
+        padding: 24px !important; 
+        font-family: var(--font-main) !important; 
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; 
+    }
+
+    .swal-neo-title { 
+        font-family: var(--font-heading) !important; 
+        font-weight: 800 !important; 
+        color: var(--black) !important; 
+        font-size: 26px !important; 
+        margin-bottom: 12px !important; 
+    }
+
+    div:where(.swal2-container) div:where(.swal2-actions) { 
+        gap: 12px !important; 
+    }
+
+    .swal-neo-confirm { 
+        background-color: var(--yellow) !important; 
+        color: var(--black) !important; 
+        border: 2px solid var(--black) !important; 
+        box-shadow: 3px 3px 0 var(--black) !important; 
+        font-weight: 800 !important; 
+        border-radius: 8px !important; 
+        font-family: var(--font-main) !important; 
+        padding: 12px 24px !important; 
+        transition: all 0.1s ease !important; 
+        cursor: pointer !important;
+    }
+
+    .swal-neo-confirm:hover { 
+        transform: translate(1px, 1px) !important; 
+        box-shadow: 2px 2px 0 var(--black) !important; 
+    }
+
+    .swal-neo-cancel { 
+        background-color: var(--border-color) !important; 
+        color: var(--black) !important; 
+        border: 2px solid var(--black) !important; 
+        box-shadow: 3px 3px 0 var(--black) !important; 
+        font-weight: 700 !important; 
+        font-family: var(--font-main) !important; 
+        padding: 12px 20px !important; 
+        border-radius: 8px !important; 
+        transition: all 0.1s ease !important; 
+        cursor: pointer !important;
+    }
+
+    .swal-neo-cancel:hover { 
+        transform: translate(1px, 1px) !important; 
+        box-shadow: 2px 2px 0 var(--black) !important; 
+    }
+
+    @media (max-width: 900px) {
+        .bm-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+</style>
+
+<div class="bm-page">
+
+    <!-- PAGE HEADER -->
+    <div class="bm-heading">
+        <div>
+            <h1>Backup &amp; Maintenance</h1>
+            <p>
+                Manage system health, optimize database storage, export encrypted backup dumps,
+                and handle system data recovery.
+            </p>
+        </div>
+
+        <div class="bm-tag">
+            <i class="ph ph-database"></i>
+            Database Admin
+        </div>
+    </div>
+
+    <!-- 1. SYSTEM MAINTENANCE -->
+    <section class="bm-card">
+        <div class="bm-card-head">
+            <span class="bm-icon"><i class="ph ph-wrench"></i></span>
+            <div>
+                <h2 class="bm-card-title">System Maintenance &amp; Optimization</h2>
+                <p class="bm-card-sub">Check database integrity and clean up unused table storage.</p>
+            </div>
+        </div>
+
+        <div class="bm-card-body">
+            <!-- INIT SCAN -->
+            <div id="scan-init" class="bm-scan-box">
+                <span class="bm-icon" style="margin: 0 auto 12px auto; width: 48px; height: 48px; font-size: 24px;">
+                    <i class="ph ph-shield-check"></i>
+                </span>
+                <h3 style="margin: 0 0 6px 0; font-family: var(--font-heading); font-size: 16px; font-weight: 800;">No Recent Diagnostics Run</h3>
+                <p style="margin: 0 0 18px 0; font-size: 13px; color: var(--text-secondary);">Click below to analyze database tables for overhead and unallocated storage space.</p>
+                <button type="button" onclick="runProScan()" class="btn-brutalist">
+                    <i class="ph ph-magnifying-glass"></i> Start System Check
+                </button>
+            </div>
+
+            <!-- LOADER STATE -->
+            <div id="pro-loader" class="bm-scan-box" style="display: none;">
+                <div class="spinner"></div>
+                <h3 style="margin: 0 0 4px 0; font-family: var(--font-heading); font-size: 16px; font-weight: 800;">Analyzing Database...</h3>
+                <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">Scanning table fragmentation and system overhead space.</p>
+            </div>
+
+            <!-- RESULTS STATE -->
+            <div id="pro-results" style="display: none;">
+                <div style="background: var(--bg-main); border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; font-family: var(--font-heading); font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-check-circle" style="font-size: 20px; color: var(--status-green);"></i>
+                        Diagnostics Complete
+                    </h4>
+                    <p style="margin: 0 0 8px 0; font-size: 13px; color: var(--black); font-weight: 600;">
+                        Current Database Size: <span style="font-family: 'Inconsolata', monospace; font-size: 15px; font-weight: 800;">{{ db_size }} MB</span>
+                    </p>
+
+                    {% if report %}
+                        <p style="margin: 12px 0 6px 0; color: var(--status-red); font-size: 13px; font-weight: 800;">⚠️ Table Overhead Detected:</p>
+                        <ul style="margin: 0 0 0 20px; padding: 0; color: var(--status-red); font-size: 13px; font-weight: 600;">
+                            {% for item in report %}
+                                <li style="margin-bottom: 4px;">{{ item }}</li> 
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p style="margin: 8px 0 0 0; color: var(--status-green); font-size: 13px; font-weight: 700;">
+                            ✨ All tables are fully optimized. No leftover storage overhead found.
+                        </p>
+                    {% endif %}
+                </div>
+
+                {% if report %}
+                    <form method="POST" action="{% url 'maintenance:maintenance_dashboard' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-brutalist">
+                            <i class="ph ph-broom"></i> Clean Up &amp; Optimize Storage
+                        </button>
+                    </form>
+                {% else %}
+                    <div style="background: var(--yellow-tint); border: 1px solid var(--border-color); padding: 14px 18px; border-radius: 10px; display: flex; align-items: center; gap: 10px;">
+                        <i class="ph ph-rocket" style="font-size: 20px;"></i>
+                        <span style="font-size: 13px; font-weight: 700; color: var(--black);">System is running at peak speed. No cleanup necessary.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. BACKUP & RECOVERY GRID -->
+    <div class="bm-grid">
+        
+        <!-- SYSTEM BACKUP -->
+        <section class="bm-card">
+            <div class="bm-card-head">
+                <span class="bm-icon"><i class="ph ph-download-simple"></i></span>
+                <div>
+                    <h2 class="bm-card-title">Database Backup</h2>
+                    <p class="bm-card-sub">Generate AES-encrypted database backup file.</p>
+                </div>
+            </div>
+
+            <div class="bm-card-body">
+                <div class="bm-badge">
+                    <i class="ph ph-clock-counter-clockwise"></i>
+                    Last Backup: {{ last_backup_time }}
+                </div>
+
+                <form id="backupForm" action="{% url 'maintenance:trigger_backup' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="bm-field">
+                        <label class="bm-label" for="encryption_key">Encryption Password</label>
+                        <input type="password" id="encryption_key" name="encryption_key" class="bm-input" placeholder="Set a strong password" required>
+                    </div>
+
+                    <div class="bm-field">
+                        <label class="bm-label" for="confirm_encryption_key">Confirm Password</label>
+                        <input type="password" id="confirm_encryption_key" name="confirm_encryption_key" class="bm-input" placeholder="Re-enter password" required>
+                        <span class="bm-help">Remember this password. You will need it to restore data later.</span>
+                    </div>
+
+                    <button type="submit" class="btn-brutalist btn-w-full">
+                        <i class="ph ph-lock-key"></i> Encrypt &amp; Download Dump
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- SYSTEM RECOVERY -->
+        <section class="bm-card">
+            <div class="bm-card-head">
+                <span class="bm-icon"><i class="ph ph-upload-simple"></i></span>
+                <div>
+                    <h2 class="bm-card-title">System Recovery</h2>
+                    <p class="bm-card-sub">Restore state from an encrypted backup file.</p>
+                </div>
+            </div>
+
+            <div class="bm-card-body">
+                <form action="{% url 'maintenance:trigger_restore' %}" method="POST" enctype="multipart/form-data" id="restoreForm">
+                    {% csrf_token %}
+                    
+                    <div class="bm-field">
+                        <label class="bm-label">Encrypted File (.enc / .gz)</label>
+                        <input type="file" name="backup_file" class="bm-file-input" accept=".gz,.enc" required>
+                    </div>
+
+                    <div class="bm-field">
+                        <label class="bm-label">Decryption Password</label>
+                        <input type="password" name="decryption_key" class="bm-input" placeholder="Enter file password" required>
+                        <span class="bm-help">Supply the password used when creating the backup.</span>
+                    </div>
+
+                    <button type="submit" class="btn-brutalist btn-w-full">
+                        <i class="ph ph-lock-key-open"></i> Decrypt &amp; Restore System
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- 3. DANGER ZONE -->
+    <section class="bm-card" style="border-color: rgba(239, 68, 68, 0.4);">
+        <div class="bm-card-head danger-head">
+            <span class="bm-icon danger-icon"><i class="ph ph-warning"></i></span>
+            <div>
+                <h2 class="bm-card-title" style="color: var(--status-red);">Danger Zone</h2>
+                <p class="bm-card-sub">Irreversible system reset operations.</p>
+            </div>
+        </div>
+
+        <div class="bm-card-body" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+            <div>
+                <h3 style="margin: 0 0 4px 0; font-family: var(--font-heading); font-size: 15px; font-weight: 800; color: var(--black);">Wipe System Transactions &amp; Employee Data</h3>
+                <p style="margin: 0; font-size: 13px; color: var(--text-secondary); max-width: 580px; line-height: 1.5;">
+                    Permanently empties all sales history, inventory movements, and staff profiles.
+                    <strong>Superuser admin accounts will remain protected.</strong>
+                </p>
+            </div>
+
+            <form action="{% url 'maintenance:delete_all_data' %}" method="POST" onsubmit="confirmWipeData(event);">
+                {% csrf_token %}
+                <button type="submit" class="btn-brutalist btn-danger-brutalist">
+                    <i class="ph ph-trash"></i> Wipe All Data
+                </button>
+            </form>
+        </div>
+    </section>
+
+</div>
+
+<script>
+    // Config para sa SweetAlert2 matching Category Management
+    const bmSwalConfig = {
+        customClass: {
+            popup: 'swal-neo',
+            title: 'swal-neo-title',
+            confirmButton: 'swal-neo-confirm',
+            cancelButton: 'swal-neo-cancel'
+        },
+        buttonsStyling: false
+    };
+
+    // 1. DJANGO MESSAGES
+    document.addEventListener("DOMContentLoaded", function() {
+        {% if messages %}
+            {% for message in messages %}
+                (function() {
+                    let iconType = 'info';
+                    let titleText = 'Notice';
+                    let msgTags = "{{ message.tags }}".toLowerCase();
+
+                    if (msgTags.includes('success')) {
+                        iconType = 'success';
+                        titleText = 'Action Successful';
+                    } else if (msgTags.includes('error')) {
+                        iconType = 'error';
+                        titleText = 'Operation Failed';
+                    } else if (msgTags.includes('warning')) {
+                        iconType = 'warning';
+                        titleText = 'Warning';
+                    }
+
+                    Swal.fire({
+                        ...bmSwalConfig,
+                        title: titleText,
+                        text: "{{ message|escapejs }}",
+                        icon: iconType,
+                        confirmButtonText: 'OK'
+                    });
+
+                    let messageContent = "{{ message|escapejs }}".toLowerCase();
+                    if (messageContent.includes('optimiz')) {
+                        document.getElementById('scan-init').style.display = 'none';
+                        document.getElementById('pro-loader').style.display = 'none';
+                        document.getElementById('pro-results').style.display = 'block';
+                    }
+                })();
+            {% endfor %}
+        {% endif %}
+    });
+
+    // 2. DIAGNOSTIC SCAN ANIMATION
+    function runProScan() {
+        document.getElementById('scan-init').style.display = 'none';
+        document.getElementById('pro-loader').style.display = 'block';
+
+        setTimeout(() => {
+            document.getElementById('pro-loader').style.display = 'none';
+            document.getElementById('pro-results').style.display = 'block';
+
+            Swal.fire({
+                ...bmSwalConfig,
+                title: 'Diagnostics Complete',
+                text: 'Database inspection completed.',
+                icon: 'success',
+                confirmButtonText: 'View Results'
+            });
+        }, 1500);
+    }
+
+    // 3. WIPE DATA CONFIRMATION
+    function confirmWipeData(event) {
+        event.preventDefault();
+        Swal.fire({
+            ...bmSwalConfig,
+            title: 'Wipe System Data?',
+            text: "This action will permanently delete all records EXCEPT active Superuser accounts.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Wipe Data',
+            cancelButtonText: 'Cancel'
+        }).then((result) => { 
+            if (result.isConfirmed) { event.target.submit(); } 
+        });
+    }
+
+    // 4. BACKUP FORM VALIDATION
+    document.addEventListener("DOMContentLoaded", function() {
+        const backupForm = document.getElementById('backupForm');
+
+        if (backupForm) {
+            backupForm.addEventListener('submit', function(event) {
+                const passwordInput = document.getElementById('encryption_key').value;
+                const confirmPasswordInput = document.getElementById('confirm_encryption_key').value;
+
+                if (passwordInput.length < 8) {
+                    event.preventDefault(); 
+                    Swal.fire({
+                        ...bmSwalConfig,
+                        title: 'Weak Password',
+                        text: 'Password must be at least 8 characters long.',
+                        icon: 'warning',
+                        confirmButtonText: 'OK'
+                    });
+                    return; 
+                }
+
+                if (passwordInput !== confirmPasswordInput) {
+                    event.preventDefault(); 
+                    Swal.fire({
+                        ...bmSwalConfig,
+                        title: 'Password Mismatch',
+                        text: 'The passwords you entered do not match. Please re-enter.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+
+                setTimeout(() => {
+                    Swal.fire({
+                        ...bmSwalConfig,
+                        title: 'Generating Backup...',
+                        text: 'Your encrypted backup download is starting. Do not lose your password.',
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+
+                    document.getElementById('encryption_key').value = '';
+                    document.getElementById('confirm_encryption_key').value = '';
+                }, 1000);
+            });
+        }
+    });
+</script>
+
+{% endblock %}
