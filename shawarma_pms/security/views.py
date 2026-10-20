@@ -649,3 +649,70 @@ def general_settings_view(request):
 
     return render(request, "general_settings.html", {"store": store})
 
+from django.http import JsonResponse
+from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def api_notifications(request):
+    notifications = []
+    
+    # Local imports para iwas circular error
+    from inventory.models import Ingredient
+    from point_of_sale.models import Order
+    
+    # Kunin ang mismong role ng naka-login na user
+    role = 'admin'
+    if hasattr(request.user, 'employee'):
+        role = request.user.employee.role.lower()
+
+    # 1. Low Stock Alerts (Makikita at tutunog lang sa MANAGER at KITCHEN)
+    if role in ['manager', 'kitchen', 'admin']:
+        low_stock_items = Ingredient.objects.filter(is_active=True)
+        for item in low_stock_items:
+            if item.current_stock <= item.reorder_level:
+                notifications.append({
+                    'id': f"stock_{item.id}_{item.updated_at.strftime('%Y%m%d')}",
+                    'type': 'warning',
+                    'icon': 'ph-warning-circle',
+                    'title': 'Low Stock Alert',
+                    'message': f"{item.name} is running low ({item.current_stock} {item.unit} left).",
+                    'time': item.updated_at.strftime("%I:%M %p"),
+                    'timestamp': item.updated_at.timestamp(),
+                    'link': reverse('inventory:list')
+                })
+
+    # 2. New Orders (Makikita at tutunog lang sa KITCHEN at MANAGER)
+    if role in ['kitchen', 'manager', 'admin']:
+        pending_orders = Order.objects.filter(status='pending').order_by('-created_at')[:5]
+        for order in pending_orders:
+            notifications.append({
+                'id': f"order_pending_{order.id}",
+                'type': 'info',
+                'icon': 'ph-cooking-pot',
+                'title': 'New Order Received',
+                'message': f"Order #{order.order_number} is waiting to be prepared.",
+                'time': order.created_at.strftime("%I:%M %p"),
+                'timestamp': order.created_at.timestamp(),
+                'link': reverse('pos:kds_screen')
+            })
+
+    # 3. Ready Orders (Makikita at tutunog lang sa CASHIER at MANAGER)
+    if role in ['cashier', 'manager', 'admin']:
+        ready_orders = Order.objects.filter(status='ready_to_serve').order_by('-last_status_at')[:5]
+        for order in ready_orders:
+            notifications.append({
+                'id': f"order_ready_{order.id}",
+                'type': 'success',
+                'icon': 'ph-bell-ringing',
+                'title': 'Order Ready',
+                'message': f"Order #{order.order_number} is ready for pickup/dispatch.",
+                'time': order.last_status_at.strftime("%I:%M %p"),
+                'timestamp': order.last_status_at.timestamp(),
+                'link': reverse('pos:order_list')
+            })
+
+    # I-sort para pinakabago ang nasa itaas
+    notifications.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return JsonResponse({'notifications': notifications[:15]})

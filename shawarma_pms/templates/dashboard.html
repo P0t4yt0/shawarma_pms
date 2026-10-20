@@ -103,6 +103,12 @@
         .notif-item-title { font-size: 13px; font-weight: 800; color: var(--black); }
         .notif-item-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
         .notif-item-time { font-family: 'Inconsolata', monospace; font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+        /* UNREAD NOTIFICATION STYLES */
+        .notif-item { cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; }
+        .notif-item.unread { background-color: var(--yellow-tint); border-left-color: var(--yellow); }
+        .notif-item.unread .notif-item-title { color: var(--black); }
+        .notif-item:active { transform: scale(0.98); }
+
         [hidden] { display: none !important; }
         @media (max-width: 700px) {
             .notif-panel { position: fixed; top: 78px; left: 16px; right: 16px; width: auto; max-width: none; }
@@ -523,63 +529,130 @@
         })();
     </script>
 
+    <!-- 3 Magkakaibang Notification Sounds (Naka-host na sa local static files mo) -->
+    <audio id="sound-low-stock" src="{% static 'sounds/low-stock.mp3' %}" preload="auto"></audio>
+    <audio id="sound-new-order" src="{% static 'sounds/new-order.mp3' %}" preload="auto"></audio>
+    <audio id="sound-ready" src="{% static 'sounds/order-ready.mp3' %}" preload="auto"></audio>
+    
     <script>
-        // Notification popup: open from the bell, close on outside click or Escape.
+        // SMART NOTIFICATION SYSTEM WITH DISTINCT SOUNDS
         (function () {
-            var toggle = document.getElementById('notif-toggle');
-            var panel = document.getElementById('notif-panel');
-            var clearBtn = document.getElementById('notif-clear');
-            var dot = document.getElementById('notif-dot');
-            if (!toggle || !panel) return;
+            const toggle = document.getElementById('notif-toggle');
+            const panel = document.getElementById('notif-panel');
+            const clearBtn = document.getElementById('notif-clear');
+            const dot = document.getElementById('notif-dot');
+            const list = document.getElementById('notif-list');
 
-            function isOpen() {
-                return !panel.hidden;
+            function isOpen() { return !panel.hidden; }
+            function openPanel() { panel.hidden = false; toggle.setAttribute('aria-expanded', 'true'); }
+            function closePanel() { panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); }
+
+            toggle.addEventListener('click', function (e) { e.stopPropagation(); isOpen() ? closePanel() : openPanel(); });
+            panel.addEventListener('click', function (e) { e.stopPropagation(); });
+            document.addEventListener('click', function () { if (isOpen()) closePanel(); });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) { closePanel(); toggle.focus(); } });
+
+            function fetchNotifications() {
+                fetch("{% url 'security:api_notifications' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        const notifs = data.notifications;
+                        const readNotifs = JSON.parse(localStorage.getItem('shawarma_read_notifs') || '[]');
+                        const alertedNotifs = JSON.parse(localStorage.getItem('shawarma_alerted_notifs') || '[]');
+                        
+                        list.innerHTML = '';
+                        let unreadCount = 0;
+                        let hasNewUnread = false;
+                        
+                        // Set para ma-track kung anong TYPES ng notif ang bago
+                        let newNotifTypes = new Set();
+
+                        if (notifs.length === 0) {
+                            list.innerHTML = `
+                                <div class="notif-empty">
+                                    <i class="ph ph-bell-slash"></i>
+                                    <strong>No notifications yet</strong>
+                                    <p>You're all caught up.</p>
+                                </div>`;
+                            dot.hidden = true;
+                            return;
+                        }
+
+                        notifs.forEach(n => {
+                            const isRead = readNotifs.includes(n.id);
+                            
+                            if (!isRead) {
+                                unreadCount++;
+                                if (!alertedNotifs.includes(n.id)) {
+                                    hasNewUnread = true;
+                                    alertedNotifs.push(n.id);
+                                    newNotifTypes.add(n.type); // Isave kung 'info', 'success', o 'warning'
+                                }
+                            }
+
+                            list.innerHTML += `
+                                <div class="notif-item ${isRead ? '' : 'unread'}" onclick="markAsReadAndGo('${n.id}', '${n.link}')">
+                                    <div class="notif-item-icon" style="${n.type === 'warning' ? 'color: #EF4444; background: #fee2e2;' : ''}">
+                                        <i class="ph ${n.icon}"></i>
+                                    </div>
+                                    <div class="notif-item-body">
+                                        <div class="notif-item-title">${n.title}</div>
+                                        <div class="notif-item-text">${n.message}</div>
+                                        <div class="notif-item-time">${n.time}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        dot.hidden = unreadCount === 0;
+
+                        // Piliin kung aling sound ang tutunog base sa pinakamataas na priority
+                        if (hasNewUnread) {
+                            localStorage.setItem('shawarma_alerted_notifs', JSON.stringify(alertedNotifs));
+                            
+                            let audioToPlay = null;
+                            if (newNotifTypes.has('info')) {
+                                // Priority 1: New Order (Service Bell)
+                                audioToPlay = document.getElementById('sound-new-order');
+                            } else if (newNotifTypes.has('success')) {
+                                // Priority 2: Order Ready (Chime)
+                                audioToPlay = document.getElementById('sound-ready');
+                            } else if (newNotifTypes.has('warning')) {
+                                // Priority 3: Low Stock (Pop)
+                                audioToPlay = document.getElementById('sound-low-stock');
+                            }
+
+                            if (audioToPlay) {
+                                audioToPlay.play().catch(e => console.log("Audio autoplay blocked by browser."));
+                            }
+                        }
+                    })
+                    .catch(err => console.error("Notification Error:", err));
             }
 
-            function openPanel() {
-                panel.hidden = false;
-                toggle.setAttribute('aria-expanded', 'true');
-            }
-
-            function closePanel() {
-                panel.hidden = true;
-                toggle.setAttribute('aria-expanded', 'false');
-            }
-
-            toggle.addEventListener('click', function (event) {
-                event.stopPropagation();
-                if (isOpen()) {
-                    closePanel();
-                } else {
-                    openPanel();
+            window.markAsReadAndGo = function(id, link) {
+                let readNotifs = JSON.parse(localStorage.getItem('shawarma_read_notifs') || '[]');
+                if (!readNotifs.includes(id)) {
+                    readNotifs.push(id);
+                    localStorage.setItem('shawarma_read_notifs', JSON.stringify(readNotifs));
                 }
-            });
+                window.location.href = link;
+            };
 
-            // Clicks inside the panel (e.g. "Mark all read") stay open.
-            panel.addEventListener('click', function (event) {
-                event.stopPropagation();
-            });
-
-            // Clicking anywhere outside closes the popup.
-            document.addEventListener('click', function () {
-                if (isOpen()) {
-                    closePanel();
-                }
-            });
-
-            // Escape closes the popup and returns focus to the bell.
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape' && isOpen()) {
-                    closePanel();
-                    toggle.focus();
-                }
-            });
-
-            if (clearBtn && dot) {
+            if (clearBtn) {
                 clearBtn.addEventListener('click', function () {
-                    dot.hidden = true;
+                    fetch("{% url 'security:api_notifications' %}").then(res => res.json()).then(data => {
+                        const allIds = data.notifications.map(n => n.id);
+                        localStorage.setItem('shawarma_read_notifs', JSON.stringify(allIds));
+                        localStorage.setItem('shawarma_alerted_notifs', JSON.stringify(allIds));
+                        dot.hidden = true;
+                        fetchNotifications(); 
+                    });
                 });
             }
+
+            fetchNotifications();
+            setInterval(fetchNotifications, 10000);
         })();
     </script>
 </body>
