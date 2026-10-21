@@ -210,6 +210,48 @@
         .btn-brutalist i {
             font-size: 20px;
         }
+        /* Fully hide the sidebar when collapsed */
+        .sidebar {
+            flex: 0 0 280px;
+            width: 280px;
+            overflow: hidden;
+            transition:
+                width 0.25s ease,
+                flex-basis 0.25s ease,
+                margin 0.25s ease;
+        }
+
+        .sidebar.collapsed {
+            flex-basis: 0;
+            width: 0;
+            min-width: 0;
+            margin-left: 0;
+            margin-right: 0;
+            border: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        /* Hide everything inside the collapsed sidebar */
+        .sidebar.collapsed > * {
+            visibility: hidden;
+        }
+
+        /* Let the main screen use the freed space */
+        .main-wrapper {
+            flex: 1 1 0;
+            min-width: 0;
+            width: 0;
+        }
+
+        .content-scroll {
+            min-width: 0;
+        }
+
+        .sidebar-toggle {
+            flex-shrink: 0;
+        }
+
     </style>
 </head>
 <body>
@@ -369,6 +411,16 @@
 
     <main class="main-wrapper">
         <header class="top-header">
+            <button
+                type="button"
+                class="icon-btn sidebar-toggle"
+                id="sidebar-toggle"
+                aria-label="Collapse sidebar"
+                aria-expanded="true"
+                title="Collapse sidebar"
+            >
+                <i class="ph ph-sidebar-simple"></i>
+            </button>
             <div class="search-bar">
                 <i class="ph ph-magnifying-glass"></i>        
                 <input type="text" placeholder="Search orders, products, or employees...">
@@ -737,6 +789,57 @@
 
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape' && isOpen()) { closePanel(); toggle.focus(); }
+            });
+        })();
+        (function () {
+            const sidebar = document.querySelector('.sidebar');
+            const toggle = document.getElementById('sidebar-toggle');
+
+            if (!sidebar || !toggle) return;
+
+            const KEY = 'shawarma.sidebarCollapsed';
+
+            function setCollapsed(collapsed) {
+                sidebar.classList.toggle('collapsed', collapsed);
+
+                toggle.setAttribute(
+                    'aria-expanded',
+                    String(!collapsed)
+                );
+
+                toggle.setAttribute(
+                    'aria-label',
+                    collapsed ? 'Expand sidebar' : 'Collapse sidebar'
+                );
+
+                toggle.title = collapsed
+                    ? 'Expand sidebar'
+                    : 'Collapse sidebar';
+
+                const icon = toggle.querySelector('i');
+
+                if (icon) {
+                    icon.className = collapsed
+                        ? 'ph ph-sidebar'
+                        : 'ph ph-sidebar-simple';
+                }
+
+                sidebar.querySelectorAll('.nav-item').forEach(item => {
+                    const label = item.getAttribute('aria-label')
+                        || item.textContent.trim().replace(/\s+/g, ' ');
+
+                    item.setAttribute('aria-label', label);
+                    item.title = collapsed ? label : '';
+                });
+
+                localStorage.setItem(KEY, String(collapsed));
+            }
+
+            const saved = localStorage.getItem(KEY);
+            setCollapsed(saved === 'true');
+
+            toggle.addEventListener('click', function () {
+                setCollapsed(!sidebar.classList.contains('collapsed'));
             });
         })();
     </script>
