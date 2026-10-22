@@ -429,9 +429,11 @@
             </div>
 
             <div class="header-actions">
+                {% if request.user.employee.role|lower != 'kitchen' %}
                 <a href="{% url 'pos:pos_screen' %}" class="btn btn-secondary">
                     <i class="ph ph-desktop"></i> New Sale
                 </a>
+                {% endif %}
                 <div class="notif-wrap">
                     <button type="button" class="icon-btn" id="notif-toggle" aria-haspopup="dialog" aria-expanded="false" aria-controls="notif-panel" aria-label="Notifications">
                         <i class="ph ph-bell"></i>

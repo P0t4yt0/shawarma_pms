@@ -160,7 +160,7 @@ def user_roles_view(request):
     if request.method == 'POST':
         if 'grant_access' in request.POST:
             user_id = request.POST.get('employee_id')
-            perm_codenames = request.POST.getlist('permissions') # Binago: getlist para makuha lahat ng checked
+            perm_codenames = request.POST.getlist('permissions')
             duration_hours = int(request.POST.get('duration'))
             
             if not perm_codenames:
@@ -168,19 +168,39 @@ def user_roles_view(request):
                 return redirect('security:user_roles')
                 
             employee = User.objects.get(id=user_id)
-            expires_at = timezone.now() + timedelta(hours=duration_hours)
             
-            # I-loop ang bawat na-check na permission at gawan ng access
+            # --- 1. Kunin ang mga default permissions niya base sa kanyang Role ---
+            group_perms = Permission.objects.filter(group__user=employee)
+            
             for codename in perm_codenames:
                 permission = Permission.objects.get(codename=codename)
-                TemporaryAccess.objects.create(
+                
+                # I-skip kung default na sa kanya (halimbawa, 'New Sales' sa Cashier)
+                if permission in group_perms:
+                    continue
+                
+                # --- 2. I-check kung may ACTIVE temporary access na para mag-extend ---
+                existing_access = TemporaryAccess.objects.filter(
                     employee=employee,
                     permission=permission,
-                    granted_by=request.user,
-                    expires_at=expires_at
-                )
+                    expires_at__gt=timezone.now()
+                ).first()
                 
-            messages.success(request, f"Temporary access granted to {employee.first_name} for {duration_hours} hours.")
+                if existing_access:
+                    # I-extend na lang ang oras!
+                    existing_access.expires_at += timedelta(hours=duration_hours)
+                    existing_access.granted_by = request.user
+                    existing_access.save()
+                else:
+                    # Gumawa ng bago kung wala pa
+                    TemporaryAccess.objects.create(
+                        employee=employee,
+                        permission=permission,
+                        granted_by=request.user,
+                        expires_at=timezone.now() + timedelta(hours=duration_hours)
+                    )
+                
+            messages.success(request, f"Access updated for {employee.first_name}. Duplicates were extended.")
             return redirect('security:user_roles')
             
         elif 'revoke_access' in request.POST:
@@ -189,27 +209,22 @@ def user_roles_view(request):
             messages.success(request, "Access revoked successfully.")
             return redirect('security:user_roles')
 
-    # Kunin lang ang mga regular employees (Hindi superuser/admin)
     employees = User.objects.filter(is_superuser=False, is_active=True)
     
-    # Ito yung mga specific modules/tabs na pwedeng ipa-unlock ng admin
-    # Kunin ang LAAHAT ng permissions na naka-map sa sidebar tabs
+    # --- 3. Ipasa ang default perms sa HTML para ma-disable natin ang checkboxes ---
+    for emp in employees:
+        emp.native_perms = list(Permission.objects.filter(group__user=emp).values_list('codename', flat=True))
+    
     available_permissions = Permission.objects.filter(
         codename__in=[
-            # POS & Orders
             'add_order', 'view_order', 'view_kds', 'view_orderstatuslog', 'view_receipt',
-            # Products & Inventory
             'view_menuitem', 'view_category', 'view_ingredient', 'view_stockmovement', 'view_recipe', 'adjust_stock',
-            # Promotions & Discounts
             'view_promotion', 'view_applieddiscount',
-            # Reports & Analytics
             'view_dailysalessummary', 'view_variantdailysales', 'view_ingredientdailyusage', 'view_demandforecast', 'view_lowstockalert',
-            # Employees & Settings
             'manage_employees', 'view_attendance', 'view_shift', 'view_activitylog'
         ]
     )
     
-    # I-grupo sila nang maayos para sa UI
     grouped_permissions = {
         'POS & Orders': available_permissions.filter(codename__in=['add_order', 'view_order', 'view_kds', 'view_orderstatuslog', 'view_receipt']),
         'Products & Inventory': available_permissions.filter(codename__in=['view_menuitem', 'view_category', 'view_ingredient', 'view_stockmovement', 'view_recipe', 'adjust_stock']),
@@ -220,7 +235,6 @@ def user_roles_view(request):
     
     active_accesses = TemporaryAccess.objects.filter(expires_at__gt=timezone.now()).order_by('-created_at')
     
-    # I-update ang context para gamitin ang grouped_permissions
     context = {
         'employees': employees,
         'grouped_permissions': grouped_permissions,

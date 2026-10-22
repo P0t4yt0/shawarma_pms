@@ -18,6 +18,9 @@ from django.views.decorators.http import require_GET, require_POST
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.shortcuts import render
+from django.core.exceptions import PermissionDenied
+from django.utils.timezone import now
+from security.models import TemporaryAccess
 
 from activity_log.services import log_activity
 from inventory.models import InsufficientStock
@@ -87,8 +90,17 @@ def kds_update_status(request):
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 @login_required
-@permission_required("point_of_sale.add_order", raise_exception=True)
 def pos_screen(request):
+    has_standard_perm = request.user.has_perm('point_of_sale.add_order')
+    
+    has_temp_access = TemporaryAccess.objects.filter(
+        employee=request.user,
+        permission__codename='add_order',
+        expires_at__gt=now()
+    ).exists()
+
+    if not (has_standard_perm or has_temp_access):
+        raise PermissionDenied("Forbidden: You dont have temporary access for this page.")
     if request.method == "POST":
         try:
             data = json.loads(request.body)

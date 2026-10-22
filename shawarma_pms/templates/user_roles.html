@@ -330,14 +330,12 @@
 
                 <label class="field-label">Select Employee</label>
 
-                <select name="employee_id" class="form-input" required>
-                    <option value="" disabled selected>
-                        Choose staff member...
-                    </option>
-
+                <select name="employee_id" id="employeeSelect" style="width: 100%; padding: 12px 16px; border: 2px solid var(--border-color); border-radius: 8px; font-family: var(--font-main); font-size: 14px; font-weight: 700; color: var(--black); outline: none; cursor: pointer; background-color: var(--bg-card); transition: border-color 0.2s ease;" onfocus="this.style.borderColor='var(--black)'" onblur="this.style.borderColor='var(--border-color)'" onchange="updateDefaultPermissions()" required>
+                    <option value="" disabled selected>Select an employee...</option>
                     {% for emp in employees %}
-                        <option value="{{ emp.id }}">
-                            {{ emp.first_name }} {{ emp.last_name }} ({{ emp.username }})
+                        <!-- Ipapasok natin ang native_perms bilang data attribute -->
+                        <option value="{{ emp.id }}" data-perms="{{ emp.native_perms|join:',' }}">
+                            {{ emp.first_name }} {{ emp.last_name }} ({{ emp.employee.role|title }})
                         </option>
                     {% endfor %}
                 </select>
@@ -377,11 +375,7 @@
                                 {% for perm in perms %}
                                     <label class="permission-option">
 
-                                        <input
-                                            type="checkbox"
-                                            name="permissions"
-                                            value="{{ perm.codename }}"
-                                        >
+                                        <input type="checkbox" name="permissions" value="{{ perm.codename }}" {% if perm.codename in emp.native_perms %} checked disabled {% endif %}>
 
                                         {% if perm.codename == 'add_order' %}
                                             New Sales
@@ -720,5 +714,48 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% endif %}
+
+<script>
+function updateDefaultPermissions() {
+    const select = document.getElementById('employeeSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    // Kunin ang comma-separated permissions mula sa piniling employee
+    const permsString = selectedOption.getAttribute('data-perms') || "";
+    const defaultPerms = permsString.split(',');
+
+    // Kunin lahat ng checkboxes sa listahan
+    const checkboxes = document.querySelectorAll('input[name="permissions"]');
+
+    checkboxes.forEach(cb => {
+        // I-check kung nasa default list ng employee ang permission na ito
+        if (defaultPerms.includes(cb.value)) {
+            cb.checked = true;
+            cb.disabled = true;
+            // I-gray out ang buong linya para halatang default na
+            if (cb.parentElement) {
+                cb.parentElement.style.opacity = '0.5';
+                cb.parentElement.style.cursor = 'not-allowed';
+            }
+        } else {
+            // I-reset kung hindi
+            cb.checked = false;
+            cb.disabled = false;
+            if (cb.parentElement) {
+                cb.parentElement.style.opacity = '1';
+                cb.parentElement.style.cursor = 'pointer';
+            }
+        }
+    });
+}
+
+// Patakbuhin nang isang beses kung may naka-select na agad pagka-load
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.getElementById('employeeSelect');
+    if (select && select.value) {
+        updateDefaultPermissions();
+    }
+});
+</script>
 
 {% endblock %}
