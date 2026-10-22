@@ -10,6 +10,8 @@ from django.core.paginator import Paginator
 from .models import Ingredient, LowStockAlert, Ingredient, StockMovement, Unit, Recipe, RecipeLine
 from point_of_sale.models import Category, MenuItem, MenuVariant
 from inventory.models import Ingredient, StockMovement, Unit, RecipeItem
+from inventory.models import Category as InvCategory
+from point_of_sale.models import Category as POSCategory, MenuVariant
 
 @login_required
 def inventory_list(request):
@@ -137,21 +139,28 @@ def product_management(request):
 
 @login_required
 def category_management(request):
+    # Alamin kung anong tab ang naka-open (default ay 'pos')
+    active_tab = request.GET.get('tab', 'pos')
+
     if request.method == "POST":
         try:
             data = json.loads(request.body)
             action = data.get('action')
+            target_tab = data.get('tab', 'pos')
+            
+            # Piliin kung aling Model ang gagamitin depende sa tab
+            TargetCategoryModel = POSCategory if target_tab == 'pos' else InvCategory
 
             if action == 'add':
                 with transaction.atomic():
                     name = data['name'].strip()
                     slug = slugify(name)
-                    Category.objects.create(name=name, slug=slug, is_active=True)
+                    TargetCategoryModel.objects.create(name=name, slug=slug, is_active=True)
                 return JsonResponse({"success": True, "message": "Category added successfully!"})
                 
             elif action == 'edit':
                 with transaction.atomic():
-                    category = Category.objects.get(id=data['category_id'])
+                    category = TargetCategoryModel.objects.get(id=data['category_id'])
                     category.name = data['name'].strip()
                     category.slug = slugify(category.name)
                     category.is_active = data['is_active']
@@ -161,27 +170,41 @@ def category_management(request):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
 
-    # GET Request: Kukunin lahat ng categories
-    all_categories = Category.objects.order_by('name')
-    
-    # Process variants for each category before pagination
-    processed_categories = []
-    for category in all_categories:
-        variants = MenuVariant.objects.filter(item__category=category).select_related('item')
-        
-        variant_list = []
-        for v in variants:
-            variant_list.append({
-                'id': v.id,
-                'name': f"{v.item.name} ({v.name})",
-                'price': str(v.price),
-                'is_active': v.is_active,
-                'sku': v.sku if v.sku else f"PRD-{v.id}"
-            })
-            
-        category.serializable_items = variant_list
-        category.items_count = len(variant_list) # Optional: Store length to avoid calling count() in template
-        processed_categories.append(category)
+    # GET Request: Kunin ang tamang categories base sa active tab
+    if active_tab == 'pos':
+        all_categories = POSCategory.objects.order_by('name')
+        processed_categories = []
+        for category in all_categories:
+            variants = MenuVariant.objects.filter(item__category=category).select_related('item')
+            variant_list = []
+            for v in variants:
+                variant_list.append({
+                    'id': v.id,
+                    'name': f"{v.item.name} ({v.name})",
+                    'price': str(v.price),
+                    'is_active': v.is_active,
+                    'sku': v.sku if v.sku else f"PRD-{v.id}"
+                })
+            category.serializable_items = variant_list
+            category.items_count = len(variant_list)
+            processed_categories.append(category)
+    else:
+        # Para sa Inventory Categories, mga ingredients ang naka-link
+        all_categories = InvCategory.objects.order_by('name')
+        processed_categories = []
+        for category in all_categories:
+            ingredients = category.ingredients.all() # Gamit ang related_name na 'ingredients' sa models.py
+            ingredient_list = []
+            for ing in ingredients:
+                ingredient_list.append({
+                    'id': ing.id,
+                    'name': f"{ing.name} ({ing.current_stock} {ing.unit})",
+                    'is_active': ing.is_active,
+                    'sku': ing.sku
+                })
+            category.serializable_items = ingredient_list
+            category.items_count = len(ingredient_list)
+            processed_categories.append(category)
         
     # Pagination Setup
     per_page = request.GET.get('per_page', 10)
@@ -190,7 +213,8 @@ def category_management(request):
     categories = paginator.get_page(page_number)
     
     return render(request, 'category_management.html', {
-        'categories': categories
+        'categories': categories,
+        'active_tab': active_tab
     })
 
 @login_required

@@ -17,7 +17,7 @@
             --yellow-hover: #FFCF33;
             --yellow-tint: rgba(255, 196, 0, 0.15);
             --black: #0F0F0F;
-            --white: #FFFFFF;  /* <--- IDAGDAG ITO DITO */
+            --white: #FFFFFF; 
             --ink: #171717;
             --bg-main: #F9FAFB;
             --bg-card: #FFFFFF;
@@ -41,8 +41,6 @@
         html, body { height: 100%; }
         body { background-color: var(--bg-main); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
 
-        /* ----- Sidebar Navigation (Dark) ----- */
-        /* Locked column: fixed width, own scroll, reserved scrollbar gutter so it never shifts/jumps. */
         .sidebar { flex: 0 0 280px; width: 280px; height: 100vh; background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; overscroll-behavior: contain; }
         .sidebar::-webkit-scrollbar { width: 6px; }
         .sidebar::-webkit-scrollbar-thumb { background-color: var(--sidebar-border); border-radius: 10px; }
@@ -62,10 +60,8 @@
         .btn-logout { background: transparent; border: none; width: calc(100% - 32px); text-align: left; cursor: pointer; font-family: inherit; color: var(--status-red); }
         .btn-logout:hover { background-color: rgba(239, 68, 68, 0.1); color: var(--status-red); }
 
-        /* ----- Main Content Area ----- */
         .main-wrapper { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
-        /* BLACK HEADER */
         .top-header { height: 70px; background-color: var(--black); border-bottom: 1px solid var(--sidebar-border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
         .search-bar { display: flex; align-items: center; background-color: var(--ink); border: 1px solid var(--sidebar-border); border-radius: 8px; padding: 8px 16px; width: 300px; transition: border-color 0.2s; }
         .search-bar:focus-within { border-color: var(--yellow); }
@@ -77,20 +73,13 @@
         .btn { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; border: 2px solid var(--black); transition: all 0.15s ease; text-decoration: none; }
         .btn-secondary { background-color: transparent; color: var(--black); border-color: var(--border-color); font-weight: 700; }
         .btn-secondary:hover { background-color: var(--bg-main); border-color: var(--black); color: var(--black); }
-        /* Iibahin natin ang kulay kapag nasa loob ng black top-header */
-        .top-header .btn-secondary {
-            color: var(--white);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-        .top-header .btn-secondary:hover {
-            background-color: var(--white);
-            color: var(--black);
-            border-color: var(--white);
-        }
+        
+        .top-header .btn-secondary { color: var(--white); border-color: rgba(255, 255, 255, 0.3); }
+        .top-header .btn-secondary:hover { background-color: var(--white); color: var(--black); border-color: var(--white); }
+        
         .icon-btn { background: var(--ink); border: 1px solid var(--sidebar-border); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--sidebar-muted); font-size: 20px; transition: all 0.2s ease; }
         .icon-btn:hover { color: var(--yellow); border-color: var(--yellow); }
 
-        /* PROFILE DROPDOWN STYLES */
         .profile-wrap { position: relative; display: flex; }
         .profile-panel { position: absolute; top: calc(100% + 12px); right: 0; width: 240px; background-color: var(--bg-card); border: 2px solid var(--black); border-radius: var(--border-radius); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.1); overflow: hidden; z-index: 60; text-align: left; }
         .profile-head { padding: 16px; border-bottom: 2px solid var(--black); background: var(--yellow-tint); }
@@ -100,8 +89,6 @@
         .profile-item:hover { background-color: var(--bg-main); color: var(--black); }
         .btn-logout-dropdown:hover { color: var(--status-red) !important; background-color: rgba(239, 68, 68, 0.08) !important; }
 
-
-        /* ----- Notification Popup ----- */
         .notif-wrap { position: relative; display: flex; }
         .notif-dot { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--yellow); border: 2px solid var(--black); }
         .notif-panel { position: absolute; top: calc(100% + 12px); right: 0; width: 360px; max-width: calc(100vw - 32px); background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18); overflow: hidden; z-index: 60; text-align: left; }
@@ -125,7 +112,6 @@
         .notif-item-title { font-size: 13px; font-weight: 800; color: var(--black); }
         .notif-item-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
         .notif-item-time { font-family: 'Inconsolata', monospace; font-size: 11px; font-weight: 700; color: var(--text-secondary); }
-        /* UNREAD NOTIFICATION STYLES */
         .notif-item { cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; }
         .notif-item.unread { background-color: var(--yellow-tint); border-left-color: var(--yellow); }
         .notif-item.unread .notif-item-title { color: var(--black); }
@@ -136,7 +122,6 @@
             .notif-panel { position: fixed; top: 78px; left: 16px; right: 16px; width: auto; max-width: none; }
         }
 
-        /* Scrollable Content (Light) */
         .content-scroll { flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 36px 48px; background-color: var(--bg-main); background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1.5px, transparent 1.5px); background-size: 24px 24px; position: relative; }
         .content-scroll::-webkit-scrollbar { width: 8px; }
         .content-scroll::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; }
@@ -167,7 +152,6 @@
         .item-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; display: block; }
         .item-val { font-size: 13px; font-weight: 700; font-family: 'Inconsolata', monospace; color: var(--black);}
         
-        /* Table Styles for Recent Orders */
         .modern-table { width: 100%; border-collapse: collapse; text-align: left; }
         .modern-table th { padding: 12px 16px; border-bottom: 2px solid var(--black); color: var(--text-secondary); font-size: 13px; text-transform: uppercase; }
         .modern-table td { padding: 16px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: var(--black); font-weight: 500; }
@@ -176,84 +160,12 @@
         .status-completed { background: rgba(34, 197, 94, 0.1); color: var(--status-green); }
         .status-pending { background: var(--yellow-tint); color: #B48600; }
 
-        .btn-brutalist {
-            background-color: var(--yellow);
-            color: var(--black);
-            font-family: var(--font-main);
-            font-weight: 800;
-            font-size: 15px;
-            padding: 12px 24px;
-            border: 2.5px solid var(--black);
-            border-radius: 10px;
-            box-shadow: 4px 4px 0px var(--black);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.15s ease-in-out;
-            text-decoration: none;
-            letter-spacing: 0.3px;
-        }
-
-        .btn-brutalist:hover {
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0px var(--black);
-            background-color: var(--yellow-hover);
-        }
-
-        .btn-brutalist:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px var(--black);
-        }
-
-        .btn-brutalist i {
-            font-size: 20px;
-        }
-                /* Fully hide the sidebar when collapsed */
-        .sidebar {
-            flex: 0 0 280px;
-            width: 280px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            transition:
-                width 0.25s ease,
-                flex-basis 0.25s ease,
-                margin 0.25s ease;
-        }
-
-        .sidebar.collapsed {
-            flex-basis: 0;
-            width: 0;
-            min-width: 0;
-            margin-left: 0;
-            margin-right: 0;
-            border: none;
-            padding-left: 0;
-            padding-right: 0;
-            overflow: hidden;
-        }
-
-        /* Hide everything inside the collapsed sidebar */
-        .sidebar.collapsed > * {
-            visibility: hidden;
-        }
-
-        /* Let the main screen use the freed space */
-        .main-wrapper {
-            flex: 1 1 0;
-            min-width: 0;
-            width: 0;
-        }
-
-        .content-scroll {
-            min-width: 0;
-        }
-
-        .sidebar-toggle {
-            flex-shrink: 0;
-        }
-
+        .sidebar { flex: 0 0 280px; width: 280px; overflow-y: auto; overflow-x: hidden; transition: width 0.25s ease, flex-basis 0.25s ease, margin 0.25s ease; }
+        .sidebar.collapsed { flex-basis: 0; width: 0; min-width: 0; margin-left: 0; margin-right: 0; border: none; padding-left: 0; padding-right: 0; overflow: hidden; }
+        .sidebar.collapsed > * { visibility: hidden; }
+        .main-wrapper { flex: 1 1 0; min-width: 0; width: 0; }
+        .content-scroll { min-width: 0; }
+        .sidebar-toggle { flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -263,11 +175,12 @@
             <img src="{% static 'images/logo.jpg' %}" alt="Shawarma POS" style="max-width: 100%; max-height: 56px; object-fit: contain;">
         </a>
 
-        <!-- 1. Dashboard (Laging nakikita) -->
+        <!-- 1. Dashboard -->
         <a href="{% url 'security:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
             <i class="ph ph-squares-four"></i> Dashboard
         </a>
-       <!-- ATTENDANCE (Laging nakikita ng lahat) -->
+        
+        <!-- ATTENDANCE -->
         <a href="{% url 'security:attendance' %}" class="nav-item {% if request.resolver_match.url_name == 'attendance' %}active{% endif %}">
             <i class="ph ph-calendar-check"></i> Attendance
         </a>
@@ -368,8 +281,6 @@
                 <a href="{% url 'security:employee_list' %}" class="nav-item {% if request.resolver_match.url_name == 'employee_list' %}active{% endif %}"><i class="ph ph-users"></i> Employee List</a>
                 {% endif %}
                 
-                
-                
                 {% if request.user|has_dynamic_access:"security.view_shift" %}
                 <a href="{% url 'security:work_schedules' %}" class="nav-item {% if request.resolver_match.url_name == 'work_schedules' %}active{% endif %}"><i class="ph ph-calendar"></i> Work Schedules</a>
                 {% endif %}
@@ -381,13 +292,11 @@
                 <a href="{% url 'security:user_roles' %}" class="nav-item {% if request.resolver_match.url_name == 'user_roles' %}active{% endif %}"><i class="ph ph-shield-check"></i> User Roles & Access</a>
                 <a href="{% url 'security:general_settings' %}" class="nav-item {% if request.resolver_match.url_name == 'general_settings' %}active{% endif %}"><i class="ph ph-gear"></i> General Settings</a>
                 
-                <!-- BAGONG DAGDAG: Backup & Maintenance (Para sa Admin / Superuser) -->
                 {% if request.user.is_superuser or request.user.is_staff %}
                 <a href="{% url 'maintenance:maintenance_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'maintenance_dashboard' %}active{% endif %}">
                     <i class="ph ph-database"></i> Backup & Maintenance
                 </a>
                 {% endif %}
-
                 {% endif %}
                 
                 {% if request.user|has_dynamic_access:"activity_log.view_activitylog" %}
@@ -413,14 +322,7 @@
 
     <main class="main-wrapper">
         <header class="top-header">
-            <button
-                type="button"
-                class="icon-btn sidebar-toggle"
-                id="sidebar-toggle"
-                aria-label="Collapse sidebar"
-                aria-expanded="true"
-                title="Collapse sidebar"
-            >
+            <button type="button" class="icon-btn sidebar-toggle" id="sidebar-toggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
                 <i class="ph ph-sidebar-simple"></i>
             </button>
             <div class="search-bar">
@@ -500,10 +402,10 @@
                 <form method="GET" action="" style="margin: 0;">
                     <div class="date-filter">
                         <i class="ph ph-calendar" style="font-size: 20px; color: var(--black);"></i> 
-                        <select name="filter">
-                            <option value="today">Today</option>
-                            <option value="this_week">This Week</option>
-                            <option value="this_month">This Month</option>
+                        <select name="filter" onchange="this.form.submit()">
+                            <option value="today" {% if request.GET.filter == 'today' %}selected{% endif %}>Today</option>
+                            <option value="this_week" {% if request.GET.filter == 'this_week' %}selected{% endif %}>This Week</option>
+                            <option value="this_month" {% if request.GET.filter == 'this_month' %}selected{% endif %}>This Month</option>
                         </select>
                     </div>
                 </form>
@@ -513,23 +415,23 @@
 
             <div class="kpi-grid">
                 <!-- 1. Sales Summary -->
-                <a href="#" class="kpi-link">
+                <a href="{% url 'reports_analytics:sales_report' %}" class="kpi-link">
                     <div class="kpi-card">
                         <div class="kpi-title-wrapper">
                             <div class="icon-bg"><i class="ph ph-trend-up"></i></div>
                             <div class="kpi-title">Sales Summary</div>
                         </div>
-                        <div class="kpi-value">₱0.00</div>
+                        <div class="kpi-value">₱{{ total_sales|default:"0.00" }}</div>
                     </div>
                 </a>
                 <!-- 2. Recent Orders (Count) -->
-                <a href="#" class="kpi-link">
+                <a href="{% url 'pos:order_list' %}" class="kpi-link">
                     <div class="kpi-card">
                         <div class="kpi-title-wrapper">
                             <div class="icon-bg"><i class="ph ph-receipt"></i></div>
-                            <div class="kpi-title">Total Orders Today</div>
+                            <div class="kpi-title">Total Orders Filtered</div>
                         </div>
-                        <div class="kpi-value">0</div>
+                        <div class="kpi-value">{{ total_orders|default:"0" }}</div>
                     </div>
                 </a>
                 <!-- 3. Low Stock Alerts -->
@@ -539,17 +441,17 @@
                             <div class="icon-bg critical"><i class="ph ph-warning-circle"></i></div>
                             <div class="kpi-title">Low Stock Alerts</div>
                         </div>
-                        <div class="kpi-value" style="color: var(--status-red);">0</div>
+                        <div class="kpi-value" style="color: var(--status-red);">{{ low_stock_count|default:"0" }}</div>
                     </div>
                 </a>
                 <!-- 4. Active Promotions -->
-                <a href="#" class="kpi-link">
+                <a href="{% url 'promotions:list' %}" class="kpi-link">
                     <div class="kpi-card">
                         <div class="kpi-title-wrapper">
                             <div class="icon-bg"><i class="ph ph-tag"></i></div>
                             <div class="kpi-title">Active Promotions</div>
                         </div>
-                        <div class="kpi-value">0</div>
+                        <div class="kpi-value">{{ active_promotions_count|default:"0" }}</div>
                     </div>
                 </a>
             </div>
@@ -562,7 +464,7 @@
                             <span class="icon-bg" style="width: 32px; height: 32px; font-size: 16px;"><i class="ph ph-clock-counter-clockwise"></i></span>
                             Recent Orders
                         </h3>
-                        <a href="#" style="font-size: 13px; font-weight: 700; color: var(--black); text-decoration: none;">View All &rarr;</a>
+                        <a href="{% url 'pos:order_list' %}" style="font-size: 13px; font-weight: 700; color: var(--black); text-decoration: none;">View All &rarr;</a>
                     </div>
                     
                     <table class="modern-table">
@@ -575,9 +477,22 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.created_at|date:"h:i A" }}</td>
+                                <td>₱{{ order.total }}</td>
+                                <td>
+                                    <span class="status-badge {% if order.status == 'completed' %}status-completed{% else %}status-pending{% endif %}">
+                                        {{ order.get_status_display|default:order.status|title }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
                             <tr>
                                 <td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 32px 16px;">No recent orders to display.</td>
                             </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -592,28 +507,17 @@
                     </div>
                     
                     <ul class="modern-list" style="margin: 0; flex: 1;">
-                        <!-- Sample Data -->
+                        {% for item in best_selling_products %}
                         <li>
                             <div>
-                                <span class="item-main">Classic Beef Shawarma</span>
-                                <span class="item-sub">Wraps</span>
+                                <span class="item-main">{{ item.name }}</span>
+                                <span class="item-sub">{{ item.category }}</span>
                             </div>
-                            <span class="item-val">0 orders</span>
+                            <span class="item-val">{{ item.total_sold }} orders</span>
                         </li>
-                        <li>
-                            <div>
-                                <span class="item-main">Chicken Shawarma Wrap</span>
-                                <span class="item-sub">Wraps</span>
-                            </div>
-                            <span class="item-val">0 orders</span>
-                        </li>
-                        <li>
-                            <div>
-                                <span class="item-main">All-Meat Shawarma Rice</span>
-                                <span class="item-sub">Rice Meals</span>
-                            </div>
-                            <span class="item-val">0 orders</span>
-                        </li>
+                        {% empty %}
+                        <li style="justify-content: center; color: var(--text-secondary);">No sales data yet.</li>
+                        {% endfor %}
                     </ul>
                 </div>
             </div>
@@ -622,37 +526,29 @@
     </main>
 
     <script>
-        // Keep the sidebar's own scroll position when navigating between menu items.
         (function () {
             var sidebar = document.querySelector('.sidebar');
             if (!sidebar) return;
             var KEY = 'shawarma.sidebarScrollTop';
-
             function restore() {
                 var saved = sessionStorage.getItem(KEY);
-                if (saved !== null) {
-                    sidebar.scrollTop = parseInt(saved, 10) || 0;
-                }
+                if (saved !== null) { sidebar.scrollTop = parseInt(saved, 10) || 0; }
             }
-
             restore();
             document.addEventListener('DOMContentLoaded', restore);
             window.addEventListener('load', restore);
             window.addEventListener('pageshow', restore);
-
             sidebar.addEventListener('scroll', function () {
                 sessionStorage.setItem(KEY, sidebar.scrollTop);
             }, { passive: true });
         })();
     </script>
 
-    <!-- 3 Magkakaibang Notification Sounds (Naka-host na sa local static files mo) -->
     <audio id="sound-low-stock" src="{% static 'sounds/low-stock.mp3' %}" preload="auto"></audio>
     <audio id="sound-new-order" src="{% static 'sounds/new-order.mp3' %}" preload="auto"></audio>
     <audio id="sound-ready" src="{% static 'sounds/order-ready.mp3' %}" preload="auto"></audio>
 
     <script>
-        // SMART NOTIFICATION SYSTEM WITH DISTINCT SOUNDS
         (function () {
             const toggle = document.getElementById('notif-toggle');
             const panel = document.getElementById('notif-panel');
@@ -680,8 +576,6 @@
                         list.innerHTML = '';
                         let unreadCount = 0;
                         let hasNewUnread = false;
-                        
-                        // Set para ma-track kung anong TYPES ng notif ang bago
                         let newNotifTypes = new Set();
 
                         if (notifs.length === 0) {
@@ -703,7 +597,7 @@
                                 if (!alertedNotifs.includes(n.id)) {
                                     hasNewUnread = true;
                                     alertedNotifs.push(n.id);
-                                    newNotifTypes.add(n.type); // Isave kung 'info', 'success', o 'warning'
+                                    newNotifTypes.add(n.type);
                                 }
                             }
 
@@ -723,25 +617,15 @@
 
                         dot.hidden = unreadCount === 0;
 
-                        // Piliin kung aling sound ang tutunog base sa pinakamataas na priority
                         if (hasNewUnread) {
                             localStorage.setItem('shawarma_alerted_notifs', JSON.stringify(alertedNotifs));
                             
                             let audioToPlay = null;
-                            if (newNotifTypes.has('info')) {
-                                // Priority 1: New Order (Service Bell)
-                                audioToPlay = document.getElementById('sound-new-order');
-                            } else if (newNotifTypes.has('success')) {
-                                // Priority 2: Order Ready (Chime)
-                                audioToPlay = document.getElementById('sound-ready');
-                            } else if (newNotifTypes.has('warning')) {
-                                // Priority 3: Low Stock (Pop)
-                                audioToPlay = document.getElementById('sound-low-stock');
-                            }
+                            if (newNotifTypes.has('info')) { audioToPlay = document.getElementById('sound-new-order'); }
+                            else if (newNotifTypes.has('success')) { audioToPlay = document.getElementById('sound-ready'); }
+                            else if (newNotifTypes.has('warning')) { audioToPlay = document.getElementById('sound-low-stock'); }
 
-                            if (audioToPlay) {
-                                audioToPlay.play().catch(e => console.log("Audio autoplay blocked by browser."));
-                            }
+                            if (audioToPlay) { audioToPlay.play().catch(e => console.log("Audio autoplay blocked by browser.")); }
                         }
                     })
                     .catch(err => console.error("Notification Error:", err));
@@ -774,7 +658,6 @@
     </script>
 
     <script>
-        // PROFILE DROPDOWN LOGIC
         (function () {
             const toggle = document.getElementById('profile-toggle');
             const panel = document.getElementById('profile-panel');
@@ -790,9 +673,7 @@
             });
 
             panel.addEventListener('click', function (event) { event.stopPropagation(); });
-
             document.addEventListener('click', function () { if (isOpen()) closePanel(); });
-
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape' && isOpen()) { closePanel(); toggle.focus(); }
             });
@@ -800,44 +681,23 @@
         (function () {
             const sidebar = document.querySelector('.sidebar');
             const toggle = document.getElementById('sidebar-toggle');
-
             if (!sidebar || !toggle) return;
-
             const KEY = 'shawarma.sidebarCollapsed';
 
             function setCollapsed(collapsed) {
                 sidebar.classList.toggle('collapsed', collapsed);
-
-                toggle.setAttribute(
-                    'aria-expanded',
-                    String(!collapsed)
-                );
-
-                toggle.setAttribute(
-                    'aria-label',
-                    collapsed ? 'Expand sidebar' : 'Collapse sidebar'
-                );
-
-                toggle.title = collapsed
-                    ? 'Expand sidebar'
-                    : 'Collapse sidebar';
+                toggle.setAttribute('aria-expanded', String(!collapsed));
+                toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+                toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
 
                 const icon = toggle.querySelector('i');
-
-                if (icon) {
-                    icon.className = collapsed
-                        ? 'ph ph-sidebar'
-                        : 'ph ph-sidebar-simple';
-                }
+                if (icon) { icon.className = collapsed ? 'ph ph-sidebar' : 'ph ph-sidebar-simple'; }
 
                 sidebar.querySelectorAll('.nav-item').forEach(item => {
-                    const label = item.getAttribute('aria-label')
-                        || item.textContent.trim().replace(/\s+/g, ' ');
-
+                    const label = item.getAttribute('aria-label') || item.textContent.trim().replace(/\s+/g, ' ');
                     item.setAttribute('aria-label', label);
                     item.title = collapsed ? label : '';
                 });
-
                 localStorage.setItem(KEY, String(collapsed));
             }
 

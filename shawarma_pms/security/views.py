@@ -140,12 +140,91 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    """Dashboard + Smart Promotion Recommendation banner (managers only; never breaks the page if it fails)."""
+    """Dashboard + Smart Promotion Recommendation banner & dynamic KPI Metrics."""
     import logging
+    from django.utils import timezone
+    from django.db.models import Sum, F
+    from datetime import timedelta
     from .templatetags.access_tags import has_dynamic_access
+    
+    # Import necessary models
+    from point_of_sale.models import Order, OrderItem
+    from inventory.models import Ingredient
+    from promotions.models import Promotion
+    
+    # Determine Date Filter
+    filter_type = request.GET.get('filter', 'today')
+    now = timezone.now()
+    
+    if filter_type == 'this_week':
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif filter_type == 'this_month':
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    else: # today
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+    # Query Base Data
+    orders = Order.objects.filter(created_at__gte=start_date)
+    
+    # 1. Total Sales
+    total_sales = orders.filter(status='completed').aggregate(Sum('total'))['total__sum'] or 0.00
+    
+    # 2. Total Orders (Filtered count)
+    total_orders = orders.count()
+    
+    # 3. Low Stock Count
+    low_stock_count = Ingredient.objects.filter(
+        is_active=True, 
+        current_stock__lte=F('reorder_level')
+    ).count()
+    
+    # 4. Active Promotions Count
+    active_promotions_count = Promotion.objects.filter(
+        is_active=True, 
+        start_date__lte=now, 
+        end_date__gte=now
+    ).count()
+    
+    # 5. Recent Orders (Last 5 overall)
+    recent_orders = Order.objects.all().order_by('-created_at')[:5]
+    
+    # 6. Best-Selling Products (Aggregated by OrderItems linked to filtered Orders)
+    best_selling_qs = OrderItem.objects.filter(
+        order__created_at__gte=start_date, 
+        order__status='completed'
+    ).values(
+        'item_name'
+    ).annotate(
+        total_sold=Sum('quantity')
+    ).order_by('-total_sold')[:5]
+    
+    # Format list for template use
+    best_selling_products = []
+    for item in best_selling_qs:
+        best_selling_products.append({
+            'name': item['item_name'],
+            'category': 'Menu Item',  # Default fallback dahil item_name (string) ang ginamit
+            'total_sold': item['total_sold']
+        })
+        
+    # Check permissions for Promo Banner
     can_report = has_dynamic_access(request.user, "reports_analytics.view_demandforecast")
     can_create = has_dynamic_access(request.user, "promotions.add_promotion")
-    ctx = {"show_promo_banner": False, "can_view_promo_report": can_report, "can_create_promo": can_create}
+    
+    ctx = {
+        "show_promo_banner": False, 
+        "can_view_promo_report": can_report, 
+        "can_create_promo": can_create,
+        "total_sales": total_sales,
+        "total_orders": total_orders,
+        "low_stock_count": low_stock_count,
+        "active_promotions_count": active_promotions_count,
+        "recent_orders": recent_orders,
+        "best_selling_products": best_selling_products,
+    }
+    
+    # Attach Smart Promotions Banner if accessible
     if can_report or can_create:
         try:
             from reports_analytics.recommendations import get_cached_recommendations
@@ -153,9 +232,9 @@ def dashboard_view(request):
             ctx["show_promo_banner"] = True
         except Exception:
             logging.getLogger(__name__).exception("Promotion recommendations failed; banner hidden.")
+            
     return render(request, "dashboard.html", ctx)
 
-@require_dynamic_access("security.manage_employees")
 def user_roles_view(request):
     if request.method == 'POST':
         if 'grant_access' in request.POST:

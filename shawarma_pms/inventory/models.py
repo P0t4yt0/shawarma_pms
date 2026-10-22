@@ -47,7 +47,7 @@ class Ingredient(models.Model):
     # Ang blank=True ay ibig sabihin pwede itong iwang walang laman sa form.
     sku = models.CharField(max_length=30, unique=True, blank=True)
     
-    category = models.ForeignKey('point_of_sale.Category', on_delete=models.PROTECT, related_name="inventory_items", null=True, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="ingredients", null=True, blank=True)
     unit = models.CharField(max_length=5, choices=Unit.choices)
     current_stock = models.DecimalField(max_digits=12, decimal_places=3, default=0)
     reorder_level = models.DecimalField(max_digits=12, decimal_places=3, default=0, help_text="Low-stock alert fires when stock <= this")
