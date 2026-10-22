@@ -8,12 +8,10 @@ from django.utils.crypto import get_random_string
 
 from point_of_sale.models import MenuVariant
 
-
 class Unit(models.TextChoices):
     KG = "kg", "Kilogram"
     L = "L", "Liter"
     PCS = "pcs", "Pieces"
-
 
 class IngredientCategory(models.TextChoices):
     PROTEIN = "protein", "Proteins"
@@ -22,12 +20,10 @@ class IngredientCategory(models.TextChoices):
     SAUCE = "sauce", "Sauces"
     PACKAGING = "packaging", "Packaging"
 
-
 class InsufficientStock(Exception):
     def __init__(self, shortages):
-        self.shortages = shortages      # list[(Ingredient, needed, available)]
+        self.shortages = shortages
         super().__init__("Insufficient stock: " + ", ".join(f"{i.name} (need {n}, have {a})" for i, n, a in shortages))
-
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -40,13 +36,9 @@ class Category(models.Model):
     def __str__(self):
         return self.name
     
-
 class Ingredient(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    
-    # Ang blank=True ay ibig sabihin pwede itong iwang walang laman sa form.
     sku = models.CharField(max_length=30, unique=True, blank=True)
-    
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="ingredients", null=True, blank=True)
     unit = models.CharField(max_length=5, choices=Unit.choices)
     current_stock = models.DecimalField(max_digits=12, decimal_places=3, default=0)
@@ -65,25 +57,14 @@ class Ingredient(models.Model):
     def __str__(self):
         return f"{self.name} ({self.current_stock} {self.unit})"
 
-    # =========================================================
-    # AUTOMATIC SKU GENERATOR (Nangyayari pag kinlick ang Save)
-    # =========================================================
     def save(self, *args, **kwargs):
-        # Kapag walang inilagay na SKU ang user...
         if not self.sku:
             is_unique = False
-            
-            # Paulit-ulit itong gagawa ng code hanggang sa makahanap ng code na walang kaparehas (Unique)
             while not is_unique:
-                # Gagawa ng random code, halimbawa: "SKU-A1B2C3D4"
                 new_sku = 'SKU-' + get_random_string(8).upper()
-                
-                # Iche-check sa database kung may nakagamit na nito
                 if not Ingredient.objects.filter(sku=new_sku).exists():
-                    self.sku = new_sku  # Kung wala pang gumagamit, ito na ang magiging SKU niya!
-                    is_unique = True    # Ipapahinto na ang pag-loop
-                    
-        # I-save na sa database nang tuluyan
+                    self.sku = new_sku
+                    is_unique = True
         super().save(*args, **kwargs)
 
     @property
@@ -96,7 +77,6 @@ class Ingredient(models.Model):
 
     @transaction.atomic
     def adjust(self, delta, movement_type, user=None, order=None, note=""):
-        """Apply a signed quantity change safely (row-locked) and record it in the ledger."""
         delta = Decimal(delta)
         locked = Ingredient.objects.select_for_update().get(pk=self.pk)
         locked.current_stock += delta
@@ -107,7 +87,6 @@ class Ingredient(models.Model):
         LowStockAlert.evaluate(locked)
         self.current_stock = locked.current_stock
         return locked.current_stock
-
 
 class StockMovement(models.Model):
     class Type(models.TextChoices):
@@ -121,12 +100,10 @@ class StockMovement(models.Model):
 
     ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT, related_name="movements")
     movement_type = models.CharField(max_length=20, choices=Type.choices, db_index=True)
-    quantity_change = models.DecimalField(max_digits=12, decimal_places=3)      # signed
+    quantity_change = models.DecimalField(max_digits=12, decimal_places=3)
     balance_after = models.DecimalField(max_digits=12, decimal_places=3)
-    order = models.ForeignKey("point_of_sale.Order", null=True, blank=True, on_delete=models.SET_NULL,
-                              related_name="stock_movements")
-    performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
-                                     on_delete=models.SET_NULL, related_name="+")
+    order = models.ForeignKey("point_of_sale.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="stock_movements")
+    performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     note = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -137,9 +114,7 @@ class StockMovement(models.Model):
     def __str__(self):
         return f"{self.ingredient.name}: {self.quantity_change:+} ({self.movement_type})"
 
-
 class Recipe(models.Model):
-    """Bill of Materials for ONE unit of a sellable variant."""
     variant = models.OneToOneField("point_of_sale.MenuVariant", on_delete=models.CASCADE, related_name="recipe")
     notes = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
@@ -152,8 +127,7 @@ class Recipe(models.Model):
 
     @property
     def unit_cost(self):
-        return sum((l.quantity * l.ingredient.cost_per_unit for l in self.lines.select_related("ingredient")),
-                   Decimal("0"))
+        return sum((l.quantity * l.ingredient.cost_per_unit for l in self.lines.select_related("ingredient")), Decimal("0"))
 
     def shortages(self, quantity=1):
         out = []
@@ -172,18 +146,14 @@ class Recipe(models.Model):
         used = []
         for line in self.lines.select_related("ingredient"):
             amount = line.quantity * quantity
-            line.ingredient.adjust(-amount, StockMovement.Type.SALE, user=user, order=order,
-                                   note=f"{quantity} x {self.variant}")
+            line.ingredient.adjust(-amount, StockMovement.Type.SALE, user=user, order=order, note=f"{quantity} x {self.variant}")
             used.append((line.ingredient, amount))
         return used
 
     @transaction.atomic
     def restore_stock(self, quantity=1, order=None, user=None):
-        """Reverse a deduction (order cancelled/voided before being made)."""
         for line in self.lines.select_related("ingredient"):
-            line.ingredient.adjust(line.quantity * quantity, StockMovement.Type.SALE_REVERSAL,
-                                   user=user, order=order, note=f"Reversal {quantity} x {self.variant}")
-
+            line.ingredient.adjust(line.quantity * quantity, StockMovement.Type.SALE_REVERSAL, user=user, order=order, note=f"Reversal {quantity} x {self.variant}")
 
 class RecipeLine(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="lines")
@@ -196,7 +166,6 @@ class RecipeLine(models.Model):
     def __str__(self):
         return f"{self.recipe.variant}: {self.quantity} {self.ingredient.unit} {self.ingredient.name}"
 
-
 class LowStockAlert(models.Model):
     class Status(models.TextChoices):
         OPEN = "open", "Open"
@@ -207,8 +176,7 @@ class LowStockAlert(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
     stock_at_trigger = models.DecimalField(max_digits=12, decimal_places=3)
     triggered_at = models.DateTimeField(auto_now_add=True)
-    acknowledged_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
-                                        on_delete=models.SET_NULL, related_name="+")
+    acknowledged_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     resolved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -219,7 +187,6 @@ class LowStockAlert(models.Model):
 
     @classmethod
     def evaluate(cls, ingredient):
-        """Called after every stock change: open one alert while low, auto-resolve when replenished."""
         open_alerts = cls.objects.filter(ingredient=ingredient).exclude(status=cls.Status.RESOLVED)
         if ingredient.is_low_stock:
             if not open_alerts.exists():
@@ -233,7 +200,7 @@ class RecipeItem(models.Model):
     quantity_required = models.DecimalField(max_digits=10, decimal_places=3, help_text="Gaano karami ang kailangan per serving?")
 
     class Meta:
-        unique_together = ('variant', 'ingredient') # Para hindi ma-doble ang ingredient sa isang product
+        unique_together = ('variant', 'ingredient')
 
     def __str__(self):
         return f"{self.quantity_required} {self.ingredient.unit} of {self.ingredient.name} for {self.variant.name}"
