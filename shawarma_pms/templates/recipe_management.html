@@ -17,7 +17,7 @@
     .recipe-layout { display: flex; gap: 24px; align-items: flex-start; margin-top: 24px; }
     
     /* Left Side: Product List */
-    .product-list-card { flex: 0 0 350px; background: white; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+    .product-list-card { flex: 0 0 350px; background: white; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
     .product-list-header { background: #f8fafc; padding: 16px; border-bottom: 1px solid var(--border-color); font-weight: 800; color: var(--color-main-navy); }
     .product-item { padding: 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
     .product-item:hover { background: #f8fafc; }
@@ -38,6 +38,11 @@
     .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; padding: 14px 28px !important; }
     .swal-neo-cancel { background-color: var(--border-color) !important; color: var(--black) !important; border: none !important; font-weight: 700 !important; padding: 14px 24px !important; border-radius: 8px !important; }
     .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; box-shadow: none !important; font-weight: 700 !important; width: 85% !important; margin: 8px auto 16px auto !important; display: flex !important;}
+    
+    /* Pagination Styles inside Card */
+    .mini-pagination { padding: 12px 16px; background: #f8fafc; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+    .mini-page-btn { padding: 4px 8px; border: 1px solid #D1D5DB; border-radius: 4px; background: white; color: var(--text-main); text-decoration: none; transition: 0.2s; }
+    .mini-page-btn:hover { background: #F3F4F6; }
 </style>
 
 <div class="welcome-header">
@@ -53,8 +58,37 @@
         <div class="product-list-header">
             Select Menu Product
         </div>
-        <div style="max-height: 600px; overflow-y: auto;" id="product-list-container">
+        
+        <!-- SEARCH BAR -->
+        <div style="padding: 12px; border-bottom: 1px solid var(--border-color); background: #ffffff;">
+            <form method="GET" style="display: flex; gap: 8px; margin: 0;">
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Search recipe..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-family: var(--font-main); font-size: 13px;">
+                <button type="submit" class="btn-brutalist" style="padding: 8px 12px; border-radius: 6px; box-shadow: 2px 2px 0 var(--black);">
+                    <i class="ph ph-magnifying-glass"></i>
+                </button>
+            </form>
+        </div>
+
+        <div style="flex: 1; min-height: 350px; max-height: 500px; overflow-y: auto;" id="product-list-container">
             <!-- JS WILL POPULATE THIS -->
+        </div>
+
+        <!-- PAGINATION BAR -->
+        <div class="mini-pagination">
+            <div>
+                Page {{ paginated_variants.number }} of {{ paginated_variants.paginator.num_pages }}
+            </div>
+            <div style="display: flex; gap: 4px;">
+                {% if paginated_variants.has_previous %}
+                    <a href="?page=1&search={{ search_query }}" class="mini-page-btn" title="First">&laquo;&laquo;</a>
+                    <a href="?page={{ paginated_variants.previous_page_number }}&search={{ search_query }}" class="mini-page-btn">&laquo; Prev</a>
+                {% endif %}
+                
+                {% if paginated_variants.has_next %}
+                    <a href="?page={{ paginated_variants.next_page_number }}&search={{ search_query }}" class="mini-page-btn">Next &raquo;</a>
+                    <a href="?page={{ paginated_variants.paginator.num_pages }}&search={{ search_query }}" class="mini-page-btn" title="Last">&raquo;&raquo;</a>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -88,9 +122,18 @@
         const savedId = sessionStorage.getItem('selectedRecipeVariantId');
         if (savedId) {
             const variantId = parseInt(savedId);
-            // I-load agad ang recipe kung nag-eexist pa yung product
+            // I-load agad ang recipe kung nag-eexist pa yung product sa CURRENT page
             if (variantsData.find(v => v.id === variantId)) {
                 selectVariant(variantId);
+            } else {
+                // Kung wala sa current page yung selected item, i-clear ang view sa kanan
+                document.getElementById('recipe-details-container').innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph ph-hand-pointing" style="font-size: 48px; color: var(--border-color); margin-bottom: 16px;"></i>
+                        <h3 style="margin: 0; font-family: var(--font-heading); color: var(--black);">No Product Selected</h3>
+                        <p style="margin: 8px 0 0 0;">Please select a menu product from the left to view or edit its recipe.</p>
+                    </div>
+                `;
             }
         }
     }
@@ -98,6 +141,11 @@
     function renderProductList() {
         const container = document.getElementById('product-list-container');
         container.innerHTML = '';
+
+        if (variantsData.length === 0) {
+            container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No products found matching your search.</div>`;
+            return;
+        }
 
         variantsData.forEach(v => {
             const itemCount = v.recipe.length;

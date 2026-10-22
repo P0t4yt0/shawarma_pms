@@ -1,138 +1,243 @@
 {% extends 'dashboard.html' %}
 {% block content %}
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    :root {
+        --font-heading: 'Inter', sans-serif;
+        --font-body: 'Inter', sans-serif;
+        --font-mono: 'Inconsolata', monospace; 
+        --color-main-navy: #2F3F7B;
+        --color-accent-green: #22C55E;  
+        --text-main: #212529;
+        --text-muted: #6B7280;
+        --border-color: #E5E7EB;
+        --bg-card: #FFFFFF;
+    }
+
+    /* Neo-Brutalism Alert Styles */
     .swal-neo { border-radius: 16px !important; padding: 24px !important; font-family: var(--font-main) !important; box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important; }
     .swal-neo-title { font-family: var(--font-heading) !important; font-weight: 800 !important; color: var(--black) !important; font-size: 26px !important; margin-bottom: 12px !important; }
     .swal-neo-confirm { background-color: var(--yellow) !important; color: var(--black) !important; border: none !important; font-weight: 800 !important; border-radius: 8px !important; font-family: var(--font-main) !important; padding: 14px 28px !important; box-shadow: none !important; transition: background 0.2s ease; }
     .swal-neo-confirm:hover { background-color: var(--yellow-hover) !important; }
+
+    /* Pagination Styles */
+    .pagination-bar { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #ffffff; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted); }
+    .pagination-controls { display: flex; gap: 4px; align-items: center; }
+    .page-active { background: var(--color-main-navy); color: white; padding: 5px 12px; border-radius: 4px; font-weight: 700; }
+    .page-link { color: var(--text-main); padding: 5px 12px; text-decoration: none; border-radius: 4px; }
+    .page-link:hover { background: #F3F4F6; }
+    .page-btn { border: 1px solid #D1D5DB; padding: 5px 10px; border-radius: 4px; color: var(--text-main); text-decoration: none; background: white; display: flex; align-items: center; justify-content: center; }
+    .page-btn:hover { background: #F9FAFB; }
+
+    /* Action Buttons (Export) */
+    .action-btn { background: white; border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; font-family: var(--font-body); }
+    .action-btn:hover { background: #F3F4F6; }
+    .action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* PDF Export Wrapper */
+    .pdf-export-wrapper { background: white !important; padding: 20px 30px !important; font-family: 'DM Sans', sans-serif !important; color: #1a1a2e !important; }
+    .pdf-export-wrapper .panel { border: none !important; box-shadow: none !important; margin-bottom: 24px !important; width: 100% !important; padding: 0 !important; background: transparent !important; }
+    .pdf-export-wrapper table { width: 100% !important; border-collapse: collapse !important; border-left: 1px solid #e8e8f0 !important; border-right: 1px solid #e8e8f0 !important; border-bottom: 1px solid #e8e8f0 !important; }
+    .pdf-export-wrapper thead { display: table-header-group !important; }
+    .pdf-export-wrapper thead th { background: #092c4c !important; color: #fff !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; padding: 10px 14px !important; text-align: left !important; border: none !important; font-family: 'DM Sans', sans-serif !important; }
+    .pdf-export-wrapper tbody tr { page-break-inside: avoid !important; border-bottom: 1px solid #eef0f6 !important; }
+    .pdf-export-wrapper tbody tr:nth-child(even) { background: #fafbfd !important; }
+    .pdf-export-wrapper tbody td { padding: 10px 14px !important; font-size: 12.5px !important; color: #2a2a3e !important; border: none !important; vertical-align: top !important; font-family: 'DM Sans', sans-serif !important; }
+    
+    @media print {
+        .no-print, .no-print * { display: none !important; }
+    }
 </style>
 
 <div class="welcome-header">
     <div>
-        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px;">Transaction History</h1>
+        <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px; font-family: var(--font-heading);">Transaction History</h1>
         <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Review all completed payments, refunds, and daily revenue.</p>
     </div>
     
-    <div class="header-actions">
-        <button class="btn btn-secondary" onclick="window.print()">
-            <i class="ph ph-printer"></i> Print Report
-        </button>
-    </div>
-</div>
-
-<div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
-    <div class="kpi-card" style="padding: 20px;">
-        <div class="kpi-title-wrapper">
-            <div class="icon-bg" style="width: 32px; height: 32px; font-size: 16px;"><i class="ph ph-money"></i></div>
-            <div class="kpi-title">Total Revenue</div>
-        </div>
-        <div class="kpi-value" style="font-size: 24px; margin-top: 12px; color: var(--status-green);">₱{{ total_revenue|default:"0.00" }}</div>
-    </div>
-    <div class="kpi-card" style="padding: 20px;">
-        <div class="kpi-title-wrapper">
-            <div class="icon-bg" style="width: 32px; height: 32px; font-size: 16px;"><i class="ph ph-wallet"></i></div>
-            <div class="kpi-title">Cash Payments</div>
-        </div>
-        <div class="kpi-value" style="font-size: 24px; margin-top: 12px; color: var(--black);">₱{{ cash_total|default:"0.00" }}</div>
-    </div>
-    <div class="kpi-card" style="padding: 20px;">
-        <div class="kpi-title-wrapper">
-            <div class="icon-bg" style="width: 32px; height: 32px; font-size: 16px;"><i class="ph ph-device-mobile"></i></div>
-            <div class="kpi-title">Online / E-Wallet</div>
-        </div>
-        <div class="kpi-value" style="font-size: 24px; margin-top: 12px; color: #2563EB;">₱{{ ewallet_total|default:"0.00" }}</div>
-    </div>
-</div>
-
-<div class="panel">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <div class="search-bar" style="width: 350px; background: var(--bg-main);">
-            <i class="ph ph-magnifying-glass"></i>
-            <input type="text" id="txn-search" placeholder="Search Transaction ID..." oninput="filterTransactions()">
-        </div>
-        
-        <div style="display: flex; gap: 12px;">
-            <select id="method-filter" onchange="filterTransactions()" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
-                <option value="all">All Transactions</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Voided / Cancelled</option>
+    <!-- EXPORT BUTTONS -->
+    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body);">Export Target</label>
+            <select id="export-scope" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; color: var(--color-main-navy); outline: none; cursor: pointer; background-color: #F8FAFC;">
+                <option value="all">Whole Report (All Data)</option>
             </select>
         </div>
+        <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 4px;"></div>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button id="btn-pdf-export" onclick="processExport('pdf')" class="action-btn" style="color: #EF4444; border-color: #FCA5A5; height: 36px;">
+                <i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF
+            </button>
+            <button id="btn-csv-export" onclick="processExport('csv')" class="action-btn" style="color: var(--color-accent-green); border-color: #86efac; height: 36px;">
+                <i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Export CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="printable-area">
+    <!-- UI KPI Cards (Nakatago kapag nag-print) -->
+    <div class="kpi-grid no-print" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px; gap: 15px; display: grid;">
+        <!-- Card 1: Total Revenue -->
+        <div class="kpi-card" style="padding: 20px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                <div style="background: #FEF3C7; color: #D97706; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><i class="ph ph-money" style="font-size: 18px;"></i></div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Sales Revenue</div>
+            </div>
+            <div style="font-size: 28px; font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--status-green);">₱{{ total_revenue|floatformat:"2g"|default:"0.00" }}</div>
+        </div>
+
+        <!-- Card 2: Total Transactions -->
+        <div class="kpi-card" style="padding: 20px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                <div style="background: #FEF3C7; color: #D97706; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><i class="ph ph-receipt" style="font-size: 18px;"></i></div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Transactions</div>
+            </div>
+            <div style="font-size: 28px; font-family: 'Inconsolata', monospace; font-weight: 800; color: var(--black);">{{ total_transactions|default:"0" }}</div>
+        </div>
+
+        <!-- Card 3: Cash vs E-Wallet -->
+        <div class="kpi-card" style="padding: 20px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <div style="background: #FEF3C7; color: #D97706; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><i class="ph ph-wallet" style="font-size: 18px;"></i></div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Cash vs E-Wallet</div>
+            </div>
+            <div style="font-family: var(--font-body); font-size: 14px; font-weight: 600; line-height: 1.6;">
+                <div style="color: var(--black);">Cash: <span style="font-family: 'Inconsolata', monospace; font-weight: 800;">₱{{ cash_total|floatformat:"2g"|default:"0.00" }}</span></div>
+                <div style="color: var(--text-muted);">E-Wallet: <span style="font-family: 'Inconsolata', monospace; font-weight: 800; color: #3B82F6;">₱{{ ewallet_total|floatformat:"2g"|default:"0.00" }}</span></div>
+            </div>
+        </div>
     </div>
 
-    <table class="modern-table">
-        <thead>
-            <tr>
-                <th>Transaction ID</th>
-                <th>Date & Time</th>
-                <th>Order Ref</th>
-                <th>Status</th>
-                <th>Payment Method</th>
-                <th>Amount</th>
-                <th>Cashier</th>
-                <th style="text-align: right;">Action</th>
-            </tr>
-        </thead>
-        <tbody id="transaction-tbody">
-            {% for order in orders %}
-            <tr class="txn-row" data-status="{{ order.status }}">
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#TXN-{{ order.order_number }}</td>
-                <td style="font-size: 13px;">{{ order.created_at|date:"M d, Y h:i A" }}</td>
-                <td style="color: var(--text-secondary); font-family: 'Inconsolata', monospace;">#{{ order.order_number }}</td>
-                <td>
-                    {% if order.status == 'cancelled' %}
-                        <span style="font-weight: 700; color: var(--status-red);"><i class="ph ph-x-circle" style="vertical-align: middle;"></i> Voided</span>
-                    {% else %}
-                        <span style="font-weight: 700; color: var(--black);"><i class="ph ph-check-circle" style="vertical-align: middle;"></i> Paid</span>
-                    {% endif %}
-                </td>
+    <div class="panel">
+        <div data-html2canvas-ignore="true" class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div class="search-bar" style="width: 350px; background: var(--bg-main);">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="txn-search" placeholder="Search Transaction ID..." oninput="filterTransactions()">
+            </div>
+            
+            <div style="display: flex; gap: 12px;">
+                <select id="method-filter" onchange="filterTransactions()" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
+                    <option value="all">All Transactions</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Voided / Cancelled</option>
+                </select>
+            </div>
+        </div>
+
+        <table class="modern-table" id="transaction-table">
+            <thead>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>Date & Time</th>
+                    <th>Order Ref</th>
+                    <th>Status</th>
+                    <th>Payment Method</th>
+                    <th>Amount</th>
+                    <th>Cashier</th>
+                    <th class="no-print" style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="transaction-tbody">
+                {% for order in orders %}
+                <tr class="txn-row" data-status="{{ order.status }}">
+                    <td style="font-family: 'Inconsolata', monospace; font-weight: 700;">#TXN-{{ order.order_number }}</td>
+                    <td style="font-size: 13px;">{{ order.created_at|date:"M d, Y h:i A" }}</td>
+                    <td style="color: var(--text-secondary); font-family: 'Inconsolata', monospace;">#{{ order.order_number }}</td>
+                    <td>
+                        {% if order.status == 'cancelled' %}
+                            <span style="font-weight: 700; color: var(--status-red);"><i class="ph ph-x-circle" style="vertical-align: middle;"></i> Voided</span>
+                        {% else %}
+                            <span style="font-weight: 700; color: var(--black);"><i class="ph ph-check-circle" style="vertical-align: middle;"></i> Paid</span>
+                        {% endif %}
+                    </td>
+                    
+                    {% with payment=order.payments.first %}
+                    <td>
+                        {% if payment.method.kind == 'cash' %}
+                            <span style="font-weight: 700; color: var(--black);"><i class="ph ph-money" style="vertical-align: middle;"></i> Cash</span>
+                        {% elif payment %}
+                            <span style="font-weight: 700; color: #2563EB;"><i class="ph ph-device-mobile" style="vertical-align: middle;"></i> {{ payment.method.name }}</span>
+                        {% else %}
+                            <span style="color: var(--text-secondary);">--</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: 'Inconsolata', monospace; font-weight: 800; {% if order.status == 'cancelled' %}color: var(--status-red); text-decoration: line-through;{% else %}color: var(--status-green);{% endif %}">
+                        ₱{{ order.total|floatformat:"2g" }}
+                    </td>
+                    <td>{{ order.cashier.first_name|default:"Admin" }}</td>
+                    <td class="no-print" style="text-align: right;">
+                        <button class="btn btn-secondary" 
+                                onclick="viewTransaction(
+                                    '#TXN-{{ order.order_number }}', 
+                                    '{{ order.total }}', 
+                                    '{{ order.created_at|date:"M d, Y h:i A" }}', 
+                                    '{{ order.status }}',
+                                    '{{ payment.method.kind|default:"none" }}',
+                                    '{{ payment.tendered|default:"0.00" }}',
+                                    '{{ payment.change_given|default:"0.00" }}',
+                                    '{{ payment.reference_number|default:"" }}',
+                                    '{{ payment.method.name|default:"" }}'
+                                )" 
+                                style="padding: 6px 12px; font-size: 12px; display: inline-flex;">
+                            <i class="ph ph-eye"></i> Details
+                        </button>
+                    </td>
+                    {% endwith %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
+                        <i class="ph ph-receipt" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
+                        No transactions found in the database.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- PAGINATION BAR (No-print) -->
+        <div data-html2canvas-ignore="true" class="pagination-bar no-print">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <form method="GET" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <input type="hidden" name="search" value="{{ request.GET.search|default:'' }}">
+                    <span>Row Per Page</span>
+                    <select name="per_page" onchange="this.form.submit()" style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; cursor: pointer; color: var(--text-main); font-family: var(--font-body);">
+                        <option value="10" {% if request.GET.per_page == "10" %}selected{% endif %}>10</option>
+                        <option value="20" {% if request.GET.per_page == "20" %}selected{% endif %}>20</option>
+                        <option value="50" {% if request.GET.per_page == "50" %}selected{% endif %}>50</option>
+                    </select>
+                    <span>Entries</span>
+                </form>
+                <span>Showing {{ orders.start_index|default:0 }} to {{ orders.end_index|default:0 }} of {{ orders.paginator.count|default:0 }}</span>
+            </div>
+
+            <div class="pagination-controls">
+                {% if orders.has_previous %}
+                    <a href="?page={{ orders.previous_page_number }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-btn"><i class="ph ph-caret-left"></i></a>
+                {% endif %}
                 
-                {% with payment=order.payments.first %}
-                <td>
-                    {% if payment.method.kind == 'cash' %}
-                        <span style="font-weight: 700; color: var(--black);"><i class="ph ph-money" style="vertical-align: middle;"></i> Cash</span>
-                    {% elif payment %}
-                        <span style="font-weight: 700; color: #2563EB;"><i class="ph ph-device-mobile" style="vertical-align: middle;"></i> {{ payment.method.name }}</span>
-                    {% else %}
-                        <span style="color: var(--text-secondary);">--</span>
+                {% for num in orders.paginator.page_range %}
+                    {% if orders.number == num %}
+                        <span class="page-active">{{ num }}</span>
+                    {% elif num > orders.number|add:'-3' and num < orders.number|add:'3' %}
+                        <a href="?page={{ num }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-link">{{ num }}</a>
                     {% endif %}
-                </td>
-                <td style="font-family: 'Inconsolata', monospace; font-weight: 800; {% if order.status == 'cancelled' %}color: var(--status-red); text-decoration: line-through;{% else %}color: var(--status-green);{% endif %}">
-                    ₱{{ order.total }}
-                </td>
-                <td>{{ order.cashier.first_name|default:"Admin" }}</td>
-                <td style="text-align: right;">
-                    <!-- Ipapasa natin ang Payment details papunta sa Javascript -->
-                    <button class="btn btn-secondary" 
-                            onclick="viewTransaction(
-                                '#TXN-{{ order.order_number }}', 
-                                '{{ order.total }}', 
-                                '{{ order.created_at|date:"M d, Y h:i A" }}', 
-                                '{{ order.status }}',
-                                '{{ payment.method.kind|default:"none" }}',
-                                '{{ payment.tendered|default:"0.00" }}',
-                                '{{ payment.change_given|default:"0.00" }}',
-                                '{{ payment.reference_number|default:"" }}',
-                                '{{ payment.method.name|default:"" }}'
-                            )" 
-                            style="padding: 6px 12px; font-size: 12px; display: inline-flex;">
-                        <i class="ph ph-eye"></i> Details
-                    </button>
-                </td>
-                {% endwith %}
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 40px 16px;">
-                    <i class="ph ph-receipt" style="font-size: 48px; color: var(--border-color); margin-bottom: 12px; display: block;"></i>
-                    No transactions found in the database.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                {% endfor %}
+
+                {% if orders.has_next %}
+                    <a href="?page={{ orders.next_page_number }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-btn"><i class="ph ph-caret-right"></i></a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -163,7 +268,6 @@
         let amountColor = status === 'cancelled' ? 'var(--status-red)' : 'var(--status-green)';
         let statusBadge = status === 'cancelled' ? '<span style="color: var(--status-red);">VOIDED</span>' : '<span style="color: var(--status-green);">COMPLETED</span>';
 
-        // Payment Details Block (Lalabas lang kung hindi cancelled at may method kind)
         let paymentDetailsHtml = '';
         if (status !== 'cancelled') {
             if (methodKind === 'cash') {
@@ -214,6 +318,166 @@
             icon: 'info',
             confirmButtonText: 'Close',
         });
+    }
+
+    // ==========================================
+    // EXPORT LOGIC WITH BACKGROUND FETCH
+    // ==========================================
+    async function fetchCompleteDataDOM() {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('per_page', '999999'); // Force view to return all rows
+        const response = await fetch(currentUrl.toString());
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        return parser.parseFromString(htmlText, 'text/html');
+    }
+
+    async function processExport(format) {
+        const scope = document.getElementById('export-scope').value;
+        const pdfBtn = document.getElementById('btn-pdf-export');
+        const csvBtn = document.getElementById('btn-csv-export');
+        
+        pdfBtn.disabled = true;
+        csvBtn.disabled = true;
+        pdfBtn.innerHTML = "Processing...";
+        csvBtn.innerHTML = "Processing...";
+
+        try {
+            if (format === 'pdf') {
+                await generateUnpaginatedPDF(scope);
+            } else if (format === 'csv') {
+                await generateUnpaginatedCSV(scope);
+            }
+        } catch (error) {
+            console.error("Export Error: ", error);
+            Swal.fire({icon: 'error', title: 'Export Failed', text: 'An error occurred while exporting.'});
+        } finally {
+            pdfBtn.disabled = false;
+            csvBtn.disabled = false;
+            pdfBtn.innerHTML = '<i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF';
+            csvBtn.innerHTML = '<i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Export CSV';
+        }
+    }
+
+    async function generateUnpaginatedPDF(scope) {
+        const dateStamp = new Date().toISOString().split('T')[0];
+        const pdfContainer = document.createElement('div');
+        pdfContainer.className = 'pdf-export-wrapper';
+
+        const currentUser = "{{ request.user.username|default:'Administrator'|title }}";
+
+        const headerDiv = document.createElement('div');
+        headerDiv.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1.5px solid #e8e8f0; font-family: 'DM Sans', sans-serif;">
+                <div style="flex: 1;">
+                    <div style="font-size: 18px; font-weight: 800; color: #092c4c; letter-spacing: -0.02em; margin-bottom: 4px;">FakeArab Shawarma Station</div>
+                    <div style="font-size: 11px; color: #7a7a9a; line-height: 1.6;">
+                        Generated by: <strong style="color: #092c4c;">${currentUser}</strong><br>
+                        Transaction History & Revenue
+                    </div>
+                </div>
+                <div style="text-align: right; flex-shrink: 0;">
+                    <div style="font-size: 22px; font-weight: 600; color: #092c4c; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1; margin-bottom: 8px;">Transaction Report</div>
+                    <div style="display: inline-block; background: #092c4c; color: #fff; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px;">SCOPE: ALL TRANSACTIONS</div>
+                    <div style="font-size: 11px; color: #7a7a9a; margin-top: 2px;">Print Date: <span style="color: #1a1a2e; font-weight: 500;">${dateStamp}</span></div>
+                </div>
+            </div>
+        `;
+        pdfContainer.appendChild(headerDiv);
+
+        const summaryDiv = document.createElement('div');
+        summaryDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; font-family: 'DM Sans', sans-serif;">
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Total Sales Revenue</div>
+                    <div style="font-size: 16px; font-family: 'DM Mono', monospace; font-weight: 600; color: #16a34a;">₱{{ total_revenue|floatformat:"2g"|default:"0.00" }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Total Transactions</div>
+                    <div style="font-size: 16px; font-family: 'DM Mono', monospace; font-weight: 600; color: #0f172a;">{{ total_transactions|default:"0" }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Cash Breakdown</div>
+                    <div style="font-size: 12px; font-family: 'DM Mono', monospace; font-weight: 600; color: #0f172a;">₱{{ cash_total|floatformat:"2g"|default:"0.00" }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">E-Wallet Breakdown</div>
+                    <div style="font-size: 12px; font-family: 'DM Mono', monospace; font-weight: 600; color: #2563eb;">₱{{ ewallet_total|floatformat:"2g"|default:"0.00" }}</div>
+                </div>
+            </div>
+        `;
+        pdfContainer.appendChild(summaryDiv);
+
+        // Fetching DOM with all data
+        const fullDOM = await fetchCompleteDataDOM();
+        const originalArea = fullDOM.getElementById('printable-area');
+        const clone = originalArea.cloneNode(true);
+        
+        // Remove print-excluded elements
+        const actions = clone.querySelectorAll('.no-print'); 
+        actions.forEach(action => action.remove());
+
+        const rows = clone.querySelectorAll('.txn-row');
+        rows.forEach(row => {
+            if (row.style.display === 'none') {
+                row.remove();
+            }
+        });
+
+        pdfContainer.appendChild(clone);
+
+        const opt = { 
+            margin: 0.5, 
+            filename: `Transaction_History_${dateStamp}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true }, 
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }, 
+            pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }
+        };
+
+        await html2pdf().set(opt).from(pdfContainer).save();
+    }
+
+    async function generateUnpaginatedCSV(scope) {
+        const dateStamp = new Date().toISOString().split('T')[0];
+        let csv = [];
+        
+        csv.push(`"SHAWARMA POS - TRANSACTION HISTORY REPORT"`);
+        csv.push(`"Generated Date: ${dateStamp}"`);
+        csv.push(`"Scope: ALL TRANSACTIONS"`);
+        csv.push("");
+        
+        csv.push(`"Total Revenue","Total Transactions","Cash Breakdown","E-Wallet Breakdown"`);
+        csv.push(`"${{ total_revenue|default:'0.00' }}","${{ total_transactions|default:'0' }}","${{ cash_total|default:'0.00' }}","${{ ewallet_total|default:'0.00' }}"`);
+        csv.push("");
+
+        // Fetching DOM with all data
+        const fullDOM = await fetchCompleteDataDOM();
+        const table = fullDOM.getElementById('transaction-table');
+        let rows = table.querySelectorAll("tr");
+        
+        for (let i = 0; i < rows.length; i++) {
+            let tr = rows[i];
+            
+            if (tr.classList.contains('txn-row')) {
+                if (tr.style.display === 'none') continue;
+            }
+
+            let row = [], cols = tr.querySelectorAll("td:not(.no-print), th:not(.no-print)");
+            if (cols.length === 0) continue;
+            
+            for (let j = 0; j < cols.length; j++) {
+                let text = cols[j].innerText.replace(/\n/g, ' ').replace(/"/g, '""').trim();
+                row.push('"' + text + '"');
+            }
+            csv.push(row.join(","));
+        }
+
+        let csvBlob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+        let link = document.createElement("a");
+        link.download = `Transaction_History_${dateStamp}.csv`;
+        link.href = window.URL.createObjectURL(csvBlob);
+        link.click();
     }
 </script>
 

@@ -16,6 +16,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 from django.utils import timezone
+from django.core.paginator import Paginator
+from django.shortcuts import render
 
 from activity_log.services import log_activity
 from inventory.models import InsufficientStock
@@ -307,23 +309,26 @@ def api_order_status(request, pk):
     return JsonResponse(serialize_event(log))
 
 def order_list(request):
-    orders = Order.objects.prefetch_related('items').order_by('-created_at')
-    
+    order_queryset = Order.objects.prefetch_related('items').order_by('-created_at')
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(order_queryset, per_page)
+    page_number = request.GET.get('page')
+    orders = paginator.get_page(page_number)
     return render(request, 'order_list.html', {
         'orders': orders
     })
 
 def transaction_history(request):
-    # Sinama na natin ang pagkuha ng 'payments' sa database para bumilis ang loading
-    orders = Order.objects.select_related('cashier').prefetch_related('items', 'payments__method').order_by('-created_at')
+    order_queryset = Order.objects.select_related('cashier').prefetch_related('items', 'payments__method').order_by('-created_at')
     
     total_revenue = Decimal('0.00')
     cash_total = Decimal('0.00')
     ewallet_total = Decimal('0.00')
+    total_transactions = 0
     
-    # I-compute ang bawat Payment method
-    for o in orders:
+    for o in order_queryset:
         if o.status != Order.Status.CANCELLED:
+            total_transactions += 1
             total_revenue += o.total
             for p in o.payments.all():
                 if p.method.kind == 'cash':
@@ -331,15 +336,27 @@ def transaction_history(request):
                 else:
                     ewallet_total += p.amount
                     
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(order_queryset, per_page)
+    page_number = request.GET.get('page')
+    orders = paginator.get_page(page_number)
+                    
     return render(request, 'transaction_history.html', {
         'orders': orders,
         'total_revenue': total_revenue,
         'cash_total': cash_total,
-        'ewallet_total': ewallet_total
+        'ewallet_total': ewallet_total,
+        'total_transactions': total_transactions
     })
 
 def receipts_list(request):
-    receipts = Receipt.objects.select_related('order', 'issued_by').order_by('-issued_at')
+    receipt_queryset = Receipt.objects.select_related('order', 'issued_by').order_by('-issued_at')
+    
+    # Pagination Setup
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(receipt_queryset, per_page)
+    page_number = request.GET.get('page')
+    receipts = paginator.get_page(page_number)
     
     return render(request, 'receipts.html', {
         'receipts': receipts

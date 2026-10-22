@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils.text import slugify
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal
+from django.core.paginator import Paginator
 
 from .models import Ingredient, LowStockAlert, Ingredient, StockMovement, Unit, Recipe, RecipeLine
 from point_of_sale.models import Category, MenuItem, MenuVariant
@@ -56,8 +57,14 @@ def inventory_list(request):
             return JsonResponse({"success": False, "error": str(e)})
 
     # Kukunin lahat ng ingredients at ang POS categories
-    ingredients = Ingredient.objects.select_related('category').order_by('name')
+    ingredient_queryset = Ingredient.objects.select_related('category').order_by('name')
     categories = Category.objects.filter(is_active=True).order_by('name')
+    
+    # Pagination Setup
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(ingredient_queryset, per_page)
+    page_number = request.GET.get('page')
+    ingredients = paginator.get_page(page_number)
     
     return render(request, 'inventory_list.html', {
         'ingredients': ingredients,
@@ -115,7 +122,13 @@ def product_management(request):
 
     # GET Request: I-load ang Categories at MenuVariants para sa UI
     categories = Category.objects.filter(is_active=True)
-    variants = MenuVariant.objects.select_related('item__category').order_by('item__category__name', 'item__name')
+    variant_queryset = MenuVariant.objects.select_related('item__category').order_by('item__category__name', 'item__name')
+    
+    # Pagination Setup
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(variant_queryset, per_page)
+    page_number = request.GET.get('page')
+    variants = paginator.get_page(page_number)
     
     return render(request, 'product_management.html', {
         'categories': categories,
@@ -149,24 +162,32 @@ def category_management(request):
             return JsonResponse({"success": False, "error": str(e)})
 
     # GET Request: Kukunin lahat ng categories
-    categories = Category.objects.order_by('name')
+    all_categories = Category.objects.order_by('name')
     
-    for category in categories:
-        # IMBES NA ITEM, KUKUNIN NATIN ANG MISMONG VARIANTS PARA TAMA ANG STATUS
+    # Process variants for each category before pagination
+    processed_categories = []
+    for category in all_categories:
         variants = MenuVariant.objects.filter(item__category=category).select_related('item')
         
         variant_list = []
         for v in variants:
             variant_list.append({
                 'id': v.id,
-                'name': f"{v.item.name} ({v.name})", # Pinagsama: "Beef Shawarma (Large)"
+                'name': f"{v.item.name} ({v.name})",
                 'price': str(v.price),
-                'is_active': v.is_active, # Ito na ang totoong status ng variant!
+                'is_active': v.is_active,
                 'sku': v.sku if v.sku else f"PRD-{v.id}"
             })
             
-        # I-attach ang list sa mismong category object
         category.serializable_items = variant_list
+        category.items_count = len(variant_list) # Optional: Store length to avoid calling count() in template
+        processed_categories.append(category)
+        
+    # Pagination Setup
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(processed_categories, per_page)
+    page_number = request.GET.get('page')
+    categories = paginator.get_page(page_number)
     
     return render(request, 'category_management.html', {
         'categories': categories
@@ -174,7 +195,13 @@ def category_management(request):
 
 @login_required
 def stock_movements_list(request):
-    movements = StockMovement.objects.select_related('ingredient', 'performed_by').order_by('-created_at')[:300]
+    movements_qs = StockMovement.objects.select_related('ingredient', 'performed_by').order_by('-created_at')
+    
+    # Pagination Setup
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(movements_qs, per_page)
+    page_number = request.GET.get('page')
+    movements = paginator.get_page(page_number)
     
     return render(request, 'stock_movements.html', {
         'movements': movements,
@@ -209,13 +236,32 @@ def recipe_management(request):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
 
-    # GET Request: Kukunin lahat ng active menu variants at ingredients
-    variants = MenuVariant.objects.select_related('item').filter(is_active=True).order_by('item__name', 'name')
+    # GET Request: Kunin ang search query
+    search_query = request.GET.get('search', '').strip()
+    
+    # Base queryset ng active variants
+    variants_qs = MenuVariant.objects.select_related('item').filter(is_active=True)
+
+    # I-apply ang Search Filter kung may tinype
+    if search_query:
+        variants_qs = variants_qs.filter(
+            Q(item__name__icontains=search_query) | 
+            Q(name__icontains=search_query)
+        )
+        
+    variants_qs = variants_qs.order_by('item__name', 'name')
+
+    # Pagination Setup (Halimbawa: 10 items per page)
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(variants_qs, per_page)
+    page_number = request.GET.get('page')
+    paginated_variants = paginator.get_page(page_number)
+
     ingredients = Ingredient.objects.filter(is_active=True).order_by('name')
 
-    # I-convert sa JSON format para madaling i-manipulate sa JavaScript (walang page reload)
+    # I-convert yung PAGINATED items sa JSON format
     variants_data = []
-    for v in variants:
+    for v in paginated_variants:
         recipe_items = v.recipe_items.select_related('ingredient').all()
         items_list = []
         total_cost = 0
@@ -243,7 +289,9 @@ def recipe_management(request):
 
     return render(request, 'recipe_management.html', {
         'variants_json': json.dumps(variants_data),
-        'ingredients': ingredients
+        'ingredients': ingredients,
+        'paginated_variants': paginated_variants,
+        'search_query': search_query
     })
 
 @login_required
@@ -275,10 +323,16 @@ def spoilage_management(request):
     # Kukunin ang mga active ingredients para sa dropdown form
     ingredients = Ingredient.objects.filter(is_active=True).order_by('name')
     
-    # Kukunin ang pinakabagong 100 spoilage at waste logs
-    spoilage_logs = StockMovement.objects.filter(
+    # Kukunin ang lahat ng spoilage at waste logs
+    spoilage_qs = StockMovement.objects.filter(
         movement_type__in=[StockMovement.Type.SPOILAGE, StockMovement.Type.WASTE]
-    ).select_related('ingredient', 'performed_by').order_by('-created_at')[:100]
+    ).select_related('ingredient', 'performed_by').order_by('-created_at')
+
+    # Pagination Setup
+    per_page = request.GET.get('per_page', 10)
+    paginator = Paginator(spoilage_qs, per_page)
+    page_number = request.GET.get('page')
+    spoilage_logs = paginator.get_page(page_number)
 
     return render(request, 'spoilage_management.html', {
         'ingredients': ingredients,

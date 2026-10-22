@@ -19,6 +19,15 @@
     .btn-brutalist-red { background-color: var(--status-red); color: white; border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
     .btn-brutalist-red:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
     .btn-brutalist-red:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
+
+    /* Pagination Styles */
+    .pagination-bar { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #ffffff; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted); }
+    .pagination-controls { display: flex; gap: 4px; align-items: center; }
+    .page-active { background: var(--black); color: white; padding: 5px 12px; border-radius: 4px; font-weight: 700; }
+    .page-link { color: var(--text-main); padding: 5px 12px; text-decoration: none; border-radius: 4px; }
+    .page-link:hover { background: #F3F4F6; }
+    .page-btn { border: 1px solid #D1D5DB; padding: 5px 10px; border-radius: 4px; color: var(--text-main); text-decoration: none; background: white; display: flex; align-items: center; justify-content: center; }
+    .page-btn:hover { background: #F9FAFB; }
 </style>
 
 <div class="welcome-header">
@@ -81,6 +90,41 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- PAGINATION BAR -->
+    <div class="pagination-bar">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <form method="GET" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                <input type="hidden" name="search" value="{{ request.GET.search|default:'' }}">
+                <span>Row Per Page</span>
+                <select name="per_page" onchange="this.form.submit()" style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; cursor: pointer; color: var(--text-main); font-family: var(--font-body);">
+                    <option value="10" {% if request.GET.per_page == "10" %}selected{% endif %}>10</option>
+                    <option value="20" {% if request.GET.per_page == "20" %}selected{% endif %}>20</option>
+                    <option value="50" {% if request.GET.per_page == "50" %}selected{% endif %}>50</option>
+                </select>
+                <span>Entries</span>
+            </form>
+            <span>Showing {{ spoilage_logs.start_index|default:0 }} to {{ spoilage_logs.end_index|default:0 }} of {{ spoilage_logs.paginator.count|default:0 }}</span>
+        </div>
+
+        <div class="pagination-controls">
+            {% if spoilage_logs.has_previous %}
+                <a href="?page={{ spoilage_logs.previous_page_number }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-btn"><i class="ph ph-caret-left"></i></a>
+            {% endif %}
+            
+            {% for num in spoilage_logs.paginator.page_range %}
+                {% if spoilage_logs.number == num %}
+                    <span class="page-active">{{ num }}</span>
+                {% elif num > spoilage_logs.number|add:'-3' and num < spoilage_logs.number|add:'3' %}
+                    <a href="?page={{ num }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-link">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if spoilage_logs.has_next %}
+                <a href="?page={{ spoilage_logs.next_page_number }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-btn"><i class="ph ph-caret-right"></i></a>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <!-- Data para sa dropdown ng Ingredients -->
