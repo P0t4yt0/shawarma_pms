@@ -37,7 +37,7 @@
 <div class="welcome-header">
     <div>
         <h1 style="margin: 0; font-size: 32px; color: var(--black); font-family: var(--font-heading);">Sales Forecast</h1>
-        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Projected revenue and historical growth analytics.</p>
+        <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Real sales trends, forecasts and the data behind promotion recommendations.</p>
     </div>
     <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
         <div style="display: flex; flex-direction: column; gap: 2px;">
@@ -58,32 +58,165 @@
     </div>
 </div>
 
+<style>
+    .rp-section { margin-bottom: 28px; }
+    .rp-h { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--black); margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+    .rp-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 14px; }
+    .rp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .rp-metric { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
+    .rp-metric b { display: block; font-family: 'Inconsolata', monospace; font-size: 18px; color: var(--black); }
+    .rp-metric span { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+    .rp-focus { border: 2.5px solid var(--black); background: var(--yellow-tint); border-radius: 14px; padding: 20px 22px; margin-bottom: 28px; }
+    .rp-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; background: #fff; display: flex; justify-content: space-between; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .rp-card a { font-weight: 800; font-size: 13px; color: var(--black); }
+    .rp-note { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #92400E; font-weight: 600; margin-bottom: 14px; }
+    .rp-skip { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin: 0; padding-left: 18px; }
+    .hm td, .hm th { text-align: center; font-size: 12px; padding: 6px 4px !important; font-family: 'Inconsolata', monospace; }
+    .hm .l0 { background: #FEF3C7; } .hm .l1 { background: #FDE68A; } .hm .l2 { background: #FCD34D; } .hm .l3 { background: #F59E0B; } .hm .l4 { background: #D97706; color: #fff; }
+    .hm .na { background: #F3F4F6; color: #9CA3AF; }
+    .bar { display: inline-block; height: 8px; background: var(--yellow); border: 1px solid var(--black); border-radius: 4px; vertical-align: middle; }
+    .modern-table .up, .up { color: var(--status-green); font-weight: 800; } .modern-table .down, .down { color: var(--status-red); font-weight: 800; }
+</style>
+
 <div class="panel" id="printable-area">
-    <table class="modern-table" id="sales-table">
-        <thead>
-            <tr>
-                <th>Period (Month/Week)</th>
-                <th>Historical Average</th>
-                <th>Projected Sales</th>
-                <th>Expected Growth Rate</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for forecast in forecast_data %}
-            <tr class="sales-row">
-                <td style="font-weight: 600;">{{ forecast.period }}</td>
-                <td style="font-family: 'Inconsolata';">₱{{ forecast.historical_avg }}</td>
-                <td style="font-family: 'Inconsolata'; font-weight: 800; color: #2563EB;">₱{{ forecast.projected_sales }}</td>
-                <td style="font-weight: 700; color: {% if forecast.growth_rate > 0 %}var(--status-green){% else %}#EF4444{% endif %};">
-                    {{ forecast.growth_rate }}%
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" style="text-align: center; padding: 40px;">No forecasting data generated yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+
+    {# ---------- status / fallback ---------- #}
+    {% if not data.has_enough_data %}
+    <div class="rp-focus">
+        <div class="rp-h"><i class="ph ph-hourglass-medium"></i> Not enough sales data yet</div>
+        <p class="rp-sub" style="margin:0;">{{ data.message }}</p>
+        <p class="rp-sub" style="margin-top:8px;">{{ data.sufficiency.trading_days }} of {{ data.sufficiency.min_days }} sales days and {{ data.sufficiency.total_orders }} of {{ data.sufficiency.min_orders }} orders recorded ({{ data.sufficiency.progress_pct }}%). Only what has actually been sold is shown below; no forecasts are made until there is enough history.</p>
+    </div>
+    {% endif %}
+
+    {% if rec_missing %}<div class="rp-note">That recommendation is no longer available (the data changed or a promotion was already created). The latest recommendations are listed below.</div>{% endif %}
+
+    {# ---------- the data behind the selected recommendation ---------- #}
+    {% if selected %}
+    <div class="rp-focus">
+        <div class="rp-h"><i class="ph {{ selected.icon }}"></i> {{ selected.headline }}</div>
+        <p class="rp-sub" style="margin-bottom:12px;"><strong>Why:</strong> {{ selected.explanation }}</p>
+        <div class="rp-grid">
+            {% for label, value in selected.evidence.metrics %}<div class="rp-metric"><b>{{ value }}</b><span>{{ label }}</span></div>{% endfor %}
+        </div>
+        {% if hours_table %}
+        <table class="modern-table"><thead><tr><th>Hour</th><th>Avg orders</th><th>vs day average</th><th>Promo window</th></tr></thead><tbody>
+            {% for h in hours_table %}<tr {% if h.in_window %}style="background: var(--yellow-tint);"{% endif %}><td>{{ h.hour }}</td><td>{{ h.orders|floatformat:1 }}</td>
+                <td class="{% if h.vs_avg < 0 %}down{% else %}up{% endif %}">{{ h.vs_avg|floatformat:"0" }}%</td><td>{% if h.in_window %}<strong>● in window</strong>{% endif %}</td></tr>{% endfor %}
+        </tbody></table>
+        {% endif %}
+        {% if selected.evidence.weekly_units %}
+        <p class="rp-sub" style="margin-top:12px;">Units sold per week (oldest → newest): <strong>{% for u in selected.evidence.weekly_units %}{{ u }}{% if not forloop.last %} → {% endif %}{% endfor %}</strong></p>
+        {% endif %}
+        <p class="rp-sub" style="margin:10px 0 6px;"><strong>Safety checks passed:</strong> {% for g in selected.guardrails %}{{ g }}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>
+        <p class="rp-sub" style="margin:0;"><em>{{ selected.estimate_basis }} Estimates are not guarantees.</em></p>
+        {% if can_create_promo %}<p style="margin:14px 0 0;"><a class="btn-brutalist" href="{{ selected.create_url }}" style="text-decoration:none;"><i class="ph ph-tag"></i> Create Promotion</a></p>{% endif %}
+    </div>
+    {% endif %}
+
+    {# ---------- all current recommendations ---------- #}
+    {% if data.has_enough_data %}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-sparkle"></i> Promotion recommendations</h3>
+        <p class="rp-sub">Ranked by estimated weekly profit gain, after the margin and stock safety checks.</p>
+        {% for r in data.recommendations %}
+        <div class="rp-card"><div><strong>{{ r.headline }}</strong><div class="rp-sub" style="margin:2px 0 0;">{{ r.badge }} · {{ r.estimate }} · Confidence {{ r.confidence }}</div></div><a href="?rec={{ r.id }}">View data →</a></div>
+        {% empty %}<p class="rp-sub">No promotion passes the margin and stock checks right now.</p>{% endfor %}
+        {% if data.skipped %}
+        <details style="margin-top:10px;"><summary style="cursor:pointer; font-weight:700; font-size:13px;">Ideas that were ruled out ({{ data.skipped|length }})</summary>
+            <ul class="rp-skip">{% for s in data.skipped %}<li>{{ s }}</li>{% endfor %}</ul></details>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {# ---------- sales trends (observed) ---------- #}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-chart-line-up"></i> Weekly sales (completed weeks)</h3>
+        <p class="rp-sub">What was actually sold. Cancelled orders and today are excluded.</p>
+        <table class="modern-table" id="sales-table"><thead><tr><th>Week starting</th><th>Orders</th><th>Revenue</th><th>Change vs previous week</th></tr></thead><tbody>
+            {% for w in data.analysis.trends.weekly %}<tr class="sales-row"><td style="font-weight:600;">{{ w.week_start|date:"M d, Y" }}</td><td>{{ w.orders }}</td>
+                <td style="font-family:'Inconsolata'; font-weight:800;">₱{{ w.revenue|floatformat:"2g" }}</td>
+                <td>{% if w.change_pct is None %}–{% else %}<span class="{% if w.change_pct >= 0 %}up{% else %}down{% endif %}">{{ w.change_pct|floatformat:1 }}%</span>{% endif %}</td></tr>
+            {% empty %}<tr><td colspan="4" style="text-align:center; padding:28px; color:var(--text-secondary);">No completed week of sales yet.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-calendar"></i> Daily (last 14 days) and monthly</h3>
+        <table class="modern-table"><thead><tr><th>Day</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>
+            {% for d in data.analysis.trends.daily %}<tr><td>{{ d.weekday }} {{ d.date|date:"M d" }}</td><td>{{ d.orders }}</td><td style="font-family:'Inconsolata';">₱{{ d.revenue|floatformat:"2g" }}</td></tr>{% endfor %}
+        </tbody></table>
+        {% if data.analysis.trends.monthly %}
+        <table class="modern-table" style="margin-top:14px;"><thead><tr><th>Month</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>
+            {% for m in data.analysis.trends.monthly %}<tr><td>{{ m.label }}{% if m.partial %} <em style="color:var(--text-secondary);">(month in progress)</em>{% endif %}</td><td>{{ m.orders }}</td><td style="font-family:'Inconsolata';">₱{{ m.revenue|floatformat:"2g" }}</td></tr>{% endfor %}
+        </tbody></table>
+        {% endif %}
+    </div>
+
+    {% if data.has_enough_data %}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-trend-up"></i> Next 7 days forecast</h3>
+        <p class="rp-sub">{{ data.analysis.forecast.method }}. An estimate based on past weekday patterns, not a guarantee.</p>
+        <table class="modern-table"><thead><tr><th>Day</th><th>Expected orders</th><th>Expected revenue</th><th>Based on</th></tr></thead><tbody>
+            {% for d in data.analysis.forecast.days %}<tr><td>{{ d.weekday }} {{ d.date|date:"M d" }}</td>
+                <td>{% if d.orders is None %}–{% else %}{{ d.orders|floatformat:0 }}{% endif %}</td>
+                <td style="font-family:'Inconsolata'; font-weight:800;">{% if d.revenue is None %}not enough data{% else %}₱{{ d.revenue|floatformat:"2g" }}{% endif %}</td>
+                <td>{{ d.samples }} {{ d.weekday }}{{ d.samples|pluralize }}</td></tr>{% endfor %}
+        </tbody></table>
+        {% if data.analysis.forecast.complete %}<p class="rp-sub" style="margin-top:8px;">Projected 7-day revenue: <strong>₱{{ data.analysis.forecast.total_revenue|floatformat:"2g" }}</strong></p>{% endif %}
+    </div>
+
+    {# ---------- peak & low periods ---------- #}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-clock"></i> Peak and low-sales hours</h3>
+        <p class="rp-sub">Average orders per hour for each weekday. Darker = busier.</p>
+        <div style="overflow-x:auto;"><table class="modern-table hm"><thead><tr><th></th>{% for h in data.analysis.heatmap.hours %}<th>{{ h }}</th>{% endfor %}</tr></thead><tbody>
+            {% for row in data.analysis.heatmap.rows %}<tr><th style="text-align:left;">{{ row.weekday }}</th>
+                {% for c in row.cells %}{% if c.orders is None %}<td class="na">–</td>{% else %}<td class="l{{ c.level }}">{{ c.orders|floatformat:1 }}</td>{% endif %}{% endfor %}</tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+
+    {# ---------- product performance ---------- #}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-hamburger"></i> Product performance</h3>
+        <table class="modern-table"><thead><tr><th>Best sellers</th><th>Units</th><th>Revenue</th><th>Sold on</th></tr></thead><tbody>
+            {% for p in data.analysis.products.best %}<tr><td style="font-weight:600;">{{ p.name }}</td><td>{{ p.units }}</td><td>₱{{ p.revenue|floatformat:"2g" }}</td><td>{{ p.freq_pct|floatformat:0 }}% of days</td></tr>{% endfor %}
+        </tbody></table>
+        {% if data.analysis.products.declining %}
+        <table class="modern-table" style="margin-top:14px;"><thead><tr><th>Declining products</th><th>Units/day now</th><th>Units/day before</th><th>Change</th></tr></thead><tbody>
+            {% for p in data.analysis.products.declining %}<tr><td style="font-weight:600;">{{ p.name }}</td><td>{{ p.recent_per_day|floatformat:1 }}</td><td>{{ p.prior_per_day|floatformat:1 }}</td><td class="down">{{ p.change_pct|floatformat:0 }}%</td></tr>{% endfor %}
+        </tbody></table>
+        {% endif %}
+        {% if data.analysis.products.slow %}
+        <table class="modern-table" style="margin-top:14px;"><thead><tr><th>Slow-moving items</th><th>Units</th><th>Sold on</th></tr></thead><tbody>
+            {% for p in data.analysis.products.slow %}<tr><td style="font-weight:600;">{{ p.name }}</td><td>{{ p.units }}</td><td>{{ p.freq_pct|floatformat:0 }}% of days</td></tr>{% endfor %}
+        </tbody></table>
+        {% endif %}
+    </div>
+
+    {# ---------- combinations ---------- #}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-stack"></i> Frequently bought together</h3>
+        <table class="modern-table"><thead><tr><th>Items</th><th>Orders together</th><th>Lift vs chance</th></tr></thead><tbody>
+            {% for p in data.analysis.pairs %}<tr><td style="font-weight:600;">{{ p.a_name }} + {{ p.b_name }}</td><td>{{ p.pair_orders }} ({{ p.pct_of_a|floatformat:0 }}% of {{ p.a_name }})</td><td>{{ p.lift|floatformat:1 }}×</td></tr>
+            {% empty %}<tr><td colspan="3" style="text-align:center; padding:24px; color:var(--text-secondary);">No pair has been ordered together often enough yet.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+
+    {# ---------- promotion history ---------- #}
+    <div class="rp-section">
+        <h3 class="rp-h"><i class="ph ph-tag"></i> Past promotion performance</h3>
+        <p class="rp-sub">Orders on the days/hours a promotion was used versus the same weekdays without it. Cashier-applied discounts are not measured.</p>
+        <table class="modern-table"><thead><tr><th>Promotion</th><th>Discount</th><th>Orders using it</th><th>Discount given</th><th>Observed lift</th></tr></thead><tbody>
+            {% for h in data.analysis.history %}<tr><td style="font-weight:600;">{{ h.name }}<div class="rp-sub" style="margin:0;">{{ h.campaign }}</div></td><td>{{ h.discount_label }}</td><td>{{ h.orders_with_promo }}</td><td>₱{{ h.total_discount|floatformat:"2g" }}</td>
+                <td>{% if h.lift_pct is None %}<span style="color:var(--text-secondary);">not enough data</span>{% else %}<span class="{% if h.lift_pct >= 0 %}up{% else %}down{% endif %}">{{ h.lift_pct|floatformat:0 }}%</span> <span class="rp-sub">({{ h.measured_on }})</span>{% endif %}</td></tr>
+            {% empty %}<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-secondary);">No promotion has been used at checkout yet.</td></tr>{% endfor %}
+        </tbody></table>
+        <p class="rp-sub" style="margin-top:10px;">Assumed demand response used for estimates: <strong>{{ data.analysis.assumptions.elasticity|floatformat:1 }}% more units per 1% discount</strong> ({{ data.analysis.assumptions.elasticity_source }}). Minimum margin after discount: {{ data.analysis.assumptions.min_margin_pct }}%. Cost known for {{ data.analysis.assumptions.cost_coverage_pct|floatformat:0 }}% of sales.</p>
+    </div>
+    {% endif %}
 </div>
+
 <script>
     function filterSales() {
         const searchInput = document.getElementById('sales-search').value.toLowerCase();
@@ -126,7 +259,7 @@
                     <div style="font-size: 11px; color: #7a7a9a;">Generated by: <strong style="color: #092c4c;">${currentUser}</strong></div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 22px; font-weight: 600; color: #092c4c; text-transform: uppercase;">Sales Forecast Report</div>
+                    <div style="font-size: 22px; font-weight: 600; color: #092c4c; text-transform: uppercase;">Product Sales Report</div>
                     <div style="font-size: 11px; color: #7a7a9a;">Print Date: <span style="color: #1a1a2e;">${dateStamp}</span></div>
                 </div>
             </div>
@@ -145,7 +278,7 @@
 
         const opt = { 
             margin: 0.5, 
-            filename: `Sales_Forecast_${dateStamp}.pdf`, 
+            filename: `Product_Sales_${dateStamp}.pdf`, 
             image: { type: 'jpeg', quality: 0.98 }, 
             html2canvas: { scale: 2, useCORS: true }, 
             jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -156,7 +289,7 @@
     function generateUnpaginatedCSV() {
         const dateStamp = new Date().toISOString().split('T')[0];
         let csv = [];
-        csv.push(`"SALES FORECAST REPORT"`);
+        csv.push(`"PRODUCT SALES REPORT"`);
         csv.push(`"Generated Date: ${dateStamp}"\n`);
 
         const table = document.getElementById('sales-table');
@@ -173,7 +306,7 @@
         }
         let csvBlob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
         let link = document.createElement("a");
-        link.download = `Sales_Forecast_${dateStamp}.csv`;
+        link.download = `Product_Sales_${dateStamp}.csv`;
         link.href = window.URL.createObjectURL(csvBlob);
         link.click();
     }

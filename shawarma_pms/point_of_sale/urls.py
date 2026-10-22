@@ -6,6 +6,7 @@ urlpatterns = [
     path("", views.pos_screen, name="pos_screen"),
     path("kds/", views.kds_screen, name="kds_screen"),
     path("kds/update/", views.kds_update_status, name="kds_update"),
+    path("api/promo-preview/", views.promo_preview, name="promo_preview"),
     path("api/kds/tickets/", views.api_kds_tickets, name="api_kds_tickets"),
     path("api/orders/ready/", views.api_ready_orders, name="api_ready_orders"),
     path("api/orders/", views.api_create_order, name="api_create_order"),

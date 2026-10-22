@@ -27,6 +27,7 @@ from .models import Category, MenuVariant, Order, OrderItem, OrderCounter
 from billing_payment.models import PaymentMethod, Payment, Receipt
 from inventory.models import StockMovement
 from promotions.models import Promotion, AppliedDiscount
+from promotions.engine import apply_promotions, preview_discounts
 
 
 def _json_body(request):
@@ -113,7 +114,6 @@ def pos_screen(request):
                         item_name=f"{variant.item.name} ({variant.name})",
                         quantity=item['qty'],
                         unit_price=variant.price,
-                        discount_amount=Decimal(str(item.get('discount', 0))),
                         notes=item.get('notes', '')
                     )
                     
@@ -126,18 +126,13 @@ def pos_screen(request):
                             order=order, note=f"POS Sale: {item['qty']}x {variant.item.name}"
                         )
                 
+                # 3. Discounts are decided ON THE SERVER by the promotions engine: every live auto-apply promotion
+                #    (Happy Hour, BOGO, scoped, recommended ones...) plus the cashier-selected one. This writes the
+                #    AppliedDiscount audit rows and OrderItem.discount_amount. Client-sent discounts are ignored.
+                apply_promotions(order, manual_promo_ids=(int(applied_promo_id),) if applied_promo_id else ())
+
                 # I-recalculate ang overall order total (Kasama na ang discount)
                 order.recalculate_totals(save=True)
-                
-                # 3. I-save ang Official Discount Record para sa Analytics Report
-                if applied_promo_id and order.discount_total > 0:
-                    promo = Promotion.objects.get(id=applied_promo_id)
-                    AppliedDiscount.objects.create(
-                        order=order,
-                        promotion=promo,
-                        amount=order.discount_total,
-                        applied_by=request.user if request.user.is_authenticated else None
-                    )
                 
                 # 4. Create the Payment Record
                 pay_method = data.get('payment_method')
@@ -146,6 +141,8 @@ def pos_screen(request):
                 ref_num = data.get('refNum', '')
                 
                 if pay_method == 'cash':
+                    if tendered < order.total:
+                        raise ValueError(f"Cash tendered is less than the total due (₱{order.total}). Please review the order and try again.")
                     pm, _ = PaymentMethod.objects.get_or_create(code='cash', defaults={'name': 'Cash', 'kind': PaymentMethod.Kind.CASH})
                     Payment.objects.create(
                         order=order, method=pm, amount=order.total, tendered=tendered,
@@ -175,7 +172,8 @@ def pos_screen(request):
                     issued_by=order.cashier, snapshot=snapshot
                 )
 
-                return JsonResponse({"success": True, "order_number": order.order_number})
+                return JsonResponse({"success": True, "order_number": order.order_number,
+                                     "total": str(order.total), "discount_total": str(order.discount_total)})
                 
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
@@ -196,6 +194,31 @@ def pos_screen(request):
         'next_order_number': next_order_number,
         'promos_json': json.dumps(promos, default=str)
     })
+
+@login_required
+@permission_required("point_of_sale.add_order", raise_exception=True)
+@require_POST
+def promo_preview(request):
+    """Live cart preview. Body: {"items": [{"id": 3, "qty": 2}, ...], "applied_promo_id": 5 | null}.
+    Uses the SAME engine as checkout, so what the cashier sees is what is charged. Saves nothing."""
+    try:
+        data = json.loads(request.body)
+        items = data.get("items", [])
+        variants = MenuVariant.objects.select_related("item").in_bulk([int(i["id"]) for i in items])
+        lines = []
+        for i in items:
+            v = variants.get(int(i["id"]))
+            lines.append((v, int(i["qty"]), v.price if v else 0))
+        promo_id = data.get("applied_promo_id")
+        plans = preview_discounts(lines, manual_promo_ids=(int(promo_id),) if promo_id else ())
+        out, names = [], []
+        for plan in plans:
+            out.append({"discount": float(sum((a for _, a in plan), Decimal("0"))), "promos": [p.name for p, _ in plan]})
+            names += [p.name for p, _ in plan]
+        return JsonResponse({"success": True, "lines": out, "promo_names": sorted(set(names))})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
 
 # ------------------------------------------------------------------ KDS (kitchen) API
 @login_required

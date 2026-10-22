@@ -1,0 +1,85 @@
+{# Smart Promotion Recommendation banner. Included by dashboard.html above the KPI grid. #}
+{# Context: show_promo_banner, promo_rec (dict), can_view_promo_report, can_create_promo #}
+{% if show_promo_banner and promo_rec %}
+<style>
+    .promo-banner { position: relative; display: flex; gap: 22px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+        background: linear-gradient(135deg, #FFC400 0%, #FFD84D 100%); border: 2.5px solid var(--black); border-radius: var(--border-radius);
+        box-shadow: 6px 6px 0 var(--black); padding: 22px 28px; margin-bottom: 32px; overflow: hidden; }
+    .promo-banner::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,0.28); pointer-events: none; }
+    .promo-banner.is-info { background: #FFFFFF; box-shadow: 6px 6px 0 rgba(0,0,0,0.12); }
+    .promo-banner.is-info::after { display: none; }
+    .pb-main { flex: 1 1 420px; min-width: 0; position: relative; z-index: 1; }
+    .pb-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--black); color: var(--yellow); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border-radius: 6px; margin-bottom: 10px; }
+    .pb-tag.light { background: var(--yellow-tint); color: var(--black); }
+    .pb-title { font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--black); letter-spacing: -0.3px; margin-bottom: 6px; }
+    .pb-text { font-size: 14px; line-height: 1.55; color: #2b2b2b; font-weight: 500; max-width: 760px; }
+    .pb-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .pb-chip { font-size: 12px; font-weight: 700; color: var(--black); background: rgba(255,255,255,0.7); border: 1.5px solid var(--black); border-radius: 999px; padding: 4px 11px; }
+    .is-info .pb-chip { background: var(--bg-main); border-color: var(--border-color); }
+    .pb-actions { display: flex; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
+    .pb-btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; padding: 12px 20px; border-radius: 10px; border: 2.5px solid var(--black); text-decoration: none; cursor: pointer; transition: all .15s ease; font-family: var(--font-main); }
+    .pb-btn.secondary { background: #fff; color: var(--black); }
+    .pb-btn.secondary:hover { background: var(--bg-main); }
+    .pb-btn.primary { background: var(--black); color: var(--yellow); box-shadow: 4px 4px 0 rgba(0,0,0,0.25); }
+    .pb-btn.primary:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.25); }
+    .pb-progress { height: 8px; width: 260px; max-width: 100%; background: var(--border-color); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+    .pb-progress > span { display: block; height: 100%; background: var(--yellow); border-right: 2px solid var(--black); }
+    .pb-note { font-size: 12px; color: #4a4a4a; margin-top: 8px; font-weight: 600; }
+    @media (max-width: 900px) { .promo-banner { padding: 18px; } }
+</style>
+
+{% if promo_rec.top %}
+    {% with r=promo_rec.top %}
+    <section class="promo-banner" aria-label="Smart promotion recommendation">
+        <div class="pb-main">
+            <span class="pb-tag"><i class="ph ph-sparkle"></i> Smart Promotion · {{ r.badge }}</span>
+            <div class="pb-title">{{ r.headline }}</div>
+            <p class="pb-text"><strong>Why:</strong> {{ r.explanation }}</p>
+            <div class="pb-meta">
+                <span class="pb-chip"><i class="ph ph-chart-line-up"></i> {{ r.estimate }}</span>
+                <span class="pb-chip">Confidence: {{ r.confidence }}</span>
+                {% if promo_rec.others_count %}<span class="pb-chip">+{{ promo_rec.others_count }} more idea{{ promo_rec.others_count|pluralize }}</span>{% endif %}
+            </div>
+            <div class="pb-note">{{ r.estimate_basis }}</div>
+        </div>
+        <div class="pb-actions">
+            {% if can_view_promo_report %}<a class="pb-btn secondary" href="{{ r.report_url }}"><i class="ph ph-chart-bar"></i> View Sales Report</a>{% endif %}
+            {% if can_create_promo %}<a class="pb-btn primary" href="{{ r.create_url }}"><i class="ph ph-tag"></i> Create Promotion</a>{% endif %}
+        </div>
+    </section>
+    {% endwith %}
+
+{% elif promo_rec.has_enough_data %}
+    <section class="promo-banner is-info" aria-label="Smart promotion recommendation">
+        <div class="pb-main">
+            <span class="pb-tag light"><i class="ph ph-sparkle"></i> Smart Promotion</span>
+            <div class="pb-title">No promotion recommended right now</div>
+            <p class="pb-text">Based on {{ promo_rec.sufficiency.trading_days }} days of sales, nothing stands out as worth discounting that is also safe for your profit margin and stock levels.
+                {% if promo_rec.skipped %}{{ promo_rec.skipped|length }} idea{{ promo_rec.skipped|length|pluralize }} {{ promo_rec.skipped|length|pluralize:"was,were" }} ruled out - the report shows why.{% endif %}</p>
+        </div>
+        <div class="pb-actions">
+            {% if can_view_promo_report %}<a class="pb-btn secondary" href="{% url 'reports_analytics:sales_forecast_report' %}"><i class="ph ph-chart-bar"></i> View Sales Report</a>{% endif %}
+        </div>
+    </section>
+
+{% else %}
+    <section class="promo-banner is-info" aria-label="Smart promotion recommendation">
+        <div class="pb-main">
+            <span class="pb-tag light"><i class="ph ph-sparkle"></i> Smart Promotion</span>
+            <div class="pb-title">Promotion recommendations are almost ready</div>
+            <p class="pb-text">{{ promo_rec.message }}</p>
+            <div class="pb-progress" title="{{ promo_rec.sufficiency.progress_pct }}%"><span style="width: {{ promo_rec.sufficiency.progress_pct }}%"></span></div>
+            <div class="pb-note">{{ promo_rec.sufficiency.trading_days }} of {{ promo_rec.sufficiency.min_days }} sales days and {{ promo_rec.sufficiency.total_orders }} of {{ promo_rec.sufficiency.min_orders }} orders recorded.</div>
+            {% if promo_rec.insights.orders_7d or promo_rec.insights.best_seller %}
+            <div class="pb-meta">
+                {% if promo_rec.insights.orders_7d %}<span class="pb-chip">{{ promo_rec.insights.orders_7d }} orders in the last 7 days</span>{% endif %}
+                {% if promo_rec.insights.best_seller %}<span class="pb-chip">Best seller so far: {{ promo_rec.insights.best_seller }} ({{ promo_rec.insights.best_seller_units }} sold)</span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="pb-actions">
+            {% if can_view_promo_report %}<a class="pb-btn secondary" href="{% url 'reports_analytics:sales_forecast_report' %}"><i class="ph ph-chart-bar"></i> View Sales Report</a>{% endif %}
+        </div>
+    </section>
+{% endif %}
+{% endif %}

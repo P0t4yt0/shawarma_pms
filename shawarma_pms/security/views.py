@@ -140,7 +140,20 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    return render(request, "dashboard.html")
+    """Dashboard + Smart Promotion Recommendation banner (managers only; never breaks the page if it fails)."""
+    import logging
+    from .templatetags.access_tags import has_dynamic_access
+    can_report = has_dynamic_access(request.user, "reports_analytics.view_demandforecast")
+    can_create = has_dynamic_access(request.user, "promotions.add_promotion")
+    ctx = {"show_promo_banner": False, "can_view_promo_report": can_report, "can_create_promo": can_create}
+    if can_report or can_create:
+        try:
+            from reports_analytics.recommendations import get_cached_recommendations
+            ctx["promo_rec"] = get_cached_recommendations()
+            ctx["show_promo_banner"] = True
+        except Exception:
+            logging.getLogger(__name__).exception("Promotion recommendations failed; banner hidden.")
+    return render(request, "dashboard.html", ctx)
 
 @require_dynamic_access("security.manage_employees")
 def user_roles_view(request):

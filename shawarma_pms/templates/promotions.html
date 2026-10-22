@@ -6,6 +6,8 @@
     const csrfToken = '{{ csrf_token }}';
     const categoriesList = JSON.parse('{{ categories_json|escapejs }}');
     const variantsList = JSON.parse('{{ variants_json|escapejs }}');
+    const prefillData = JSON.parse('{{ prefill_json|escapejs }}');       // null unless opened from a recommendation
+    const prefillMissing = {% if prefill_missing %}true{% else %}false{% endif %};
 </script>
 
 <style>
@@ -21,6 +23,7 @@
     .swal-neo-input { border: 2px solid var(--border-color) !important; border-radius: 8px !important; font-family: var(--font-main) !important; outline: none !important; transition: border-color 0.2s ease; box-shadow: none !important; font-weight: 600 !important; font-size: 14px !important; width: 100% !important; margin: 4px 0 16px 0 !important; padding: 10px 14px !important; box-sizing: border-box; }
     .swal-neo-input:focus { border-color: var(--yellow) !important; }
     
+    .swal-neo.swal-wide { width: 640px !important; max-width: 96vw !important; }
     .btn-brutalist { background-color: var(--yellow); color: var(--black); border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); border-radius: 8px; padding: 10px 20px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
     .btn-brutalist:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--black); }
     .btn-brutalist:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--black); }
@@ -99,93 +102,140 @@
 
 <script>
     const swalNeoConfig = { customClass: { popup: 'swal-neo', title: 'swal-neo-title', confirmButton: 'swal-neo-confirm', cancelButton: 'swal-neo-cancel' }, buttonsStyling: false };
+    const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const lbl = 'font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;';
 
-    function renderScopeTargets(scope) {
+    // Multi-select of categories / variants. `selected` = ids to pre-select (used by recommendation prefill).
+    function renderScopeTargets(scope, selected = []) {
+        const sel = new Set((selected || []).map(Number));
         let html = '';
-        if (scope === 'categories') {
-            html += `<select id="swal-target" class="swal2-select swal-neo-input">`;
-            categoriesList.forEach(c => html += `<option value="${c.id}">${c.name}</option>`);
-            html += `</select>`;
-        } else if (scope === 'variants') {
-            html += `<select id="swal-target" class="swal2-select swal-neo-input">`;
-            variantsList.forEach(v => html += `<option value="${v.id}">${v.item__name} (${v.name})</option>`);
+        if (scope === 'categories' || scope === 'variants') {
+            const rows = scope === 'categories'
+                ? categoriesList.map(c => [c.id, c.name])
+                : variantsList.map(v => [v.id, `${v.item__name} (${v.name})`]);
+            html += `<label style="${lbl}">Select ${scope === 'categories' ? 'categories' : 'products'} (hold Ctrl / Cmd for several)</label>`;
+            html += `<select id="swal-target" multiple size="5" class="swal2-select swal-neo-input" style="height:auto;">`;
+            rows.forEach(([id, name]) => html += `<option value="${id}" ${sel.has(Number(id)) ? 'selected' : ''}>${name}</option>`);
             html += `</select>`;
         } else {
-            html += `<input id="swal-target" type="hidden" value=""> <span style="font-size: 13px; color: var(--status-green); font-weight: 700; display: block; margin-bottom: 16px;">Applies to all menu items</span>`;
+            html += `<span style="font-size: 13px; color: var(--status-green); font-weight: 700; display: block; margin-bottom: 16px;">Applies to all menu items</span>`;
         }
         document.getElementById('scope-target-container').innerHTML = html;
     }
 
-    function addPromotion() {
+    function toggleBogoFields() {
+        const bogo = document.getElementById('swal-kind').value === 'bogo';
+        document.getElementById('bogo-row').style.display = bogo ? 'flex' : 'none';
+    }
+
+    // `p` is an optional prefill object (from a Smart Promotion Recommendation). Everything stays editable.
+    function addPromotion(p) {
+        p = p || {};
+        const sel = (v, cur) => v === cur ? 'selected' : '';
+        const days = (p.days_of_week || []).map(Number);
         Swal.fire({
             ...swalNeoConfig,
-            title: 'Create Promotion',
+            customClass: { ...swalNeoConfig.customClass, popup: 'swal-neo swal-wide' },
+            title: p.rec_id ? 'Create Promotion (Recommended)' : 'Create Promotion',
             html: `
-                <div style="text-align: left;">
-                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Promotion Name</label>
-                    <input id="swal-name" class="swal2-input swal-neo-input" placeholder="e.g. Senior Citizen, Summer Sale">
-                    
+                <div style="text-align: left; max-height: 62vh; overflow-y: auto; padding-right: 6px;">
+                    ${p.rec_id ? `<div style="background: var(--yellow-tint); border: 1.5px solid var(--black); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; margin-bottom: 14px;">Prefilled from a Smart Promotion Recommendation. Review and edit anything before saving.</div>` : ''}
+                    <label style="${lbl}">Promotion Name</label>
+                    <input id="swal-name" class="swal2-input swal-neo-input" placeholder="e.g. Senior Citizen, Summer Sale" value="${(p.name || '').replace(/"/g, '&quot;')}">
+
                     <div style="display: flex; gap: 16px;">
                         <div style="flex: 1;">
-                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Campaign Type</label>
+                            <label style="${lbl}">Campaign Type</label>
                             <select id="swal-campaign" class="swal2-select swal-neo-input">
-                                <option value="manual">Manual (Cashier Applied)</option>
-                                <option value="seasonal">Seasonal / Holiday</option>
-                                <option value="happy_hour">Happy Hour</option>
-                                <option value="bogo">Buy One Get One</option>
+                                <option value="manual" ${sel('manual', p.campaign_type)}>Manual (Cashier Applied)</option>
+                                <option value="seasonal" ${sel('seasonal', p.campaign_type)}>Seasonal / Holiday / Bundle</option>
+                                <option value="happy_hour" ${sel('happy_hour', p.campaign_type)}>Happy Hour</option>
+                                <option value="bogo" ${sel('bogo', p.campaign_type)}>Buy One Get One</option>
+                                <option value="slow_period" ${sel('slow_period', p.campaign_type)}>Slow-period / Product booster</option>
                             </select>
                         </div>
                         <div style="flex: 1;">
-                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Discount Kind</label>
-                            <select id="swal-kind" class="swal2-select swal-neo-input">
-                                <option value="percent">Percentage (%)</option>
-                                <option value="fixed">Fixed Amount (₱)</option>
+                            <label style="${lbl}">Discount Kind</label>
+                            <select id="swal-kind" class="swal2-select swal-neo-input" onchange="toggleBogoFields()">
+                                <option value="percent" ${sel('percent', p.kind)}>Percentage (%)</option>
+                                <option value="fixed" ${sel('fixed', p.kind)}>Fixed Amount (₱ per unit)</option>
+                                <option value="bogo" ${sel('bogo', p.kind)}>Buy X Get Y (% off the Y)</option>
                             </select>
                         </div>
                     </div>
 
-                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Discount Value (% or ₱)</label>
-                    <input id="swal-value" type="number" step="0.01" class="swal2-input swal-neo-input" placeholder="e.g. 20 for 20% off">
+                    <label style="${lbl}">Discount Value (% or ₱; for Buy X Get Y: % off the free units, 100 = free)</label>
+                    <input id="swal-value" type="number" step="0.01" class="swal2-input swal-neo-input" placeholder="e.g. 20 for 20% off" value="${p.value ?? ''}">
 
-                    <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Apply To (Scope)</label>
+                    <div id="bogo-row" style="display: ${p.kind === 'bogo' ? 'flex' : 'none'}; gap: 16px;">
+                        <div style="flex: 1;"><label style="${lbl}">Buy (qty)</label><input id="swal-buy" type="number" min="1" class="swal2-input swal-neo-input" value="${p.buy_quantity || 1}"></div>
+                        <div style="flex: 1;"><label style="${lbl}">Get (qty)</label><input id="swal-get" type="number" min="1" class="swal2-input swal-neo-input" value="${p.get_quantity || 1}"></div>
+                    </div>
+
+                    <label style="${lbl}">Apply To (Scope)</label>
                     <select id="swal-scope" class="swal2-select swal-neo-input" onchange="renderScopeTargets(this.value)">
-                        <option value="all">Entire Menu</option>
-                        <option value="categories">Specific Category</option>
-                        <option value="variants">Specific Product Variant</option>
+                        <option value="all" ${sel('all', p.scope)}>Entire Menu</option>
+                        <option value="categories" ${sel('categories', p.scope)}>Specific Categories</option>
+                        <option value="variants" ${sel('variants', p.scope)}>Specific Product Variants</option>
                     </select>
-                    
                     <div id="scope-target-container"></div>
 
-                    <div style="display: flex; gap: 16px; margin-top: 4px;">
+                    <label style="${lbl}">Days of the week (leave all unticked = every day)</label>
+                    <div id="swal-days" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;">
+                        ${DAY_NAMES.map((n, i) => `<label style="display:flex; align-items:center; gap:4px; font-size:13px; font-weight:700; border:2px solid var(--border-color); border-radius:8px; padding:6px 10px; cursor:pointer;"><input type="checkbox" value="${i}" ${days.includes(i) ? 'checked' : ''}> ${n}</label>`).join('')}
+                    </div>
+
+                    <div style="display: flex; gap: 16px;">
+                        <div style="flex: 1;"><label style="${lbl}">Start Time (optional)</label><input id="swal-stime" type="time" class="swal2-input swal-neo-input" value="${p.start_time || ''}"></div>
+                        <div style="flex: 1;"><label style="${lbl}">End Time (optional)</label><input id="swal-etime" type="time" class="swal2-input swal-neo-input" value="${p.end_time || ''}"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px;">
+                        <div style="flex: 1;"><label style="${lbl}">Start Date (Optional)</label><input id="swal-start" type="date" class="swal2-input swal-neo-input" value="${p.start_date || ''}"></div>
+                        <div style="flex: 1;"><label style="${lbl}">End Date (Optional)</label><input id="swal-end" type="date" class="swal2-input swal-neo-input" value="${p.end_date || ''}"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px;">
+                        <div style="flex: 1;"><label style="${lbl}">Minimum order amount (₱)</label><input id="swal-min" type="number" min="0" step="0.01" class="swal2-input swal-neo-input" value="${p.min_order_amount || 0}"></div>
                         <div style="flex: 1;">
-                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Start Date (Optional)</label>
-                            <input id="swal-start" type="date" class="swal2-input swal-neo-input">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-weight: 700; font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px;">End Date (Optional)</label>
-                            <input id="swal-end" type="date" class="swal2-input swal-neo-input">
+                            <label style="${lbl}">Application</label>
+                            <select id="swal-auto" class="swal2-select swal-neo-input">
+                                <option value="1" ${p.auto_apply === false ? '' : 'selected'}>Automatic at checkout</option>
+                                <option value="0" ${p.auto_apply === false ? 'selected' : ''}>Only when a cashier selects it</option>
+                            </select>
                         </div>
                     </div>
                 </div>
             `,
             showCancelButton: true,
             confirmButtonText: 'Save Promotion',
-            didOpen: () => renderScopeTargets('all'),
+            didOpen: () => renderScopeTargets(p.scope || 'all', p.target_ids || []),
             preConfirm: () => {
                 const name = document.getElementById('swal-name').value;
                 const value = document.getElementById('swal-value').value;
                 if (!name || !value) { Swal.showValidationMessage('Name and Value are required!'); return false; }
-
+                const target = document.getElementById('swal-target');
+                const scope = document.getElementById('swal-scope').value;
+                const targetIds = target && target.multiple ? [...target.selectedOptions].map(o => o.value) : [];
+                if (scope !== 'all' && !targetIds.length) { Swal.showValidationMessage('Select at least one category or product.'); return false; }
+                const st = document.getElementById('swal-stime').value, et = document.getElementById('swal-etime').value;
+                if (!!st !== !!et) { Swal.showValidationMessage('Set both a start and an end time, or leave both empty.'); return false; }
                 return {
                     action: 'add',
                     name: name,
                     campaign_type: document.getElementById('swal-campaign').value,
                     kind: document.getElementById('swal-kind').value,
                     value: parseFloat(value),
-                    scope: document.getElementById('swal-scope').value,
-                    target_id: document.getElementById('swal-target') ? document.getElementById('swal-target').value : null,
+                    buy_quantity: parseInt(document.getElementById('swal-buy').value || 1),
+                    get_quantity: parseInt(document.getElementById('swal-get').value || 1),
+                    scope: scope,
+                    target_ids: targetIds,
+                    days_of_week: [...document.querySelectorAll('#swal-days input:checked')].map(c => parseInt(c.value)),
+                    start_time: st, end_time: et,
                     start_date: document.getElementById('swal-start').value,
-                    end_date: document.getElementById('swal-end').value
+                    end_date: document.getElementById('swal-end').value,
+                    min_order_amount: document.getElementById('swal-min').value || 0,
+                    auto_apply: document.getElementById('swal-auto').value === '1'
                 };
             }
         }).then((result) => {
@@ -199,7 +249,7 @@
 
     function submitData(payload) {
         Swal.fire({ ...swalNeoConfig, title: 'Processing...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-        
+
         fetch("{% url 'promotions:list' %}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
@@ -208,13 +258,20 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Success!', text: data.message }).then(() => window.location.reload());
+                Swal.fire({ ...swalNeoConfig, icon: 'success', title: 'Success!', text: data.message }).then(() => { window.location.href = "{% url 'promotions:list' %}"; });
             } else {
                 Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: data.error });
             }
         })
         .catch(err => Swal.fire({ ...swalNeoConfig, icon: 'error', title: 'Error', text: 'Server connection failed.' }));
     }
+
+    // Arrived from the dashboard banner: open the form prefilled, or explain if the recommendation expired.
+    document.addEventListener('DOMContentLoaded', () => {
+        if (prefillData) addPromotion(prefillData);
+        else if (prefillMissing) Swal.fire({ ...swalNeoConfig, icon: 'info', title: 'Recommendation updated',
+            text: 'That recommendation is no longer available (sales data changed or a promotion was already created). Check the dashboard for the latest one.' });
+    });
 </script>
 
 {% endblock %}

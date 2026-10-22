@@ -323,17 +323,27 @@
     }
     function totals() {
         let subtotal = 0, discount = 0;
-        cart.forEach(item => {
-            const sub = item.price * item.qty;
-            let d = 0;
-            if (currentPromo) {
-                const v = parseFloat(currentPromo.value);
-                d = currentPromo.kind === 'percent' ? sub * v / 100 : Math.min(v * item.qty, sub);
-            }
-            item.discount = Math.round(d * 100) / 100;
-            subtotal += sub; discount += item.discount;
-        });
+        cart.forEach(item => { subtotal += item.price * item.qty; discount += item.discount || 0; });
         return { subtotal, discount, total: subtotal - discount };
+    }
+
+    /* Discounts are computed by the server (same promotions engine as checkout), so Happy Hour / BOGO /
+       scoped / recommended promotions show up live in the cart. */
+    let previewSeq = 0;
+    function refreshPreview() {
+        const seq = ++previewSeq;
+        if (!cart.length) return Promise.resolve();
+        const body = { items: cart.map(i => ({ id: i.id, qty: i.qty })), applied_promo_id: currentPromo ? currentPromo.id : null };
+        return fetch("{% url 'pos:promo_preview' %}", {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }, body: JSON.stringify(body)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (seq !== previewSeq || !data.success) return;          // a newer request superseded this one
+            cart.forEach((item, i) => { const l = data.lines[i] || {}; item.discount = l.discount || 0; item.promoNames = l.promos || []; });
+            drawCart();
+        })
+        .catch(() => {});
     }
 
     /* ---------- filtering ---------- */
@@ -378,7 +388,8 @@
     });
 
     /* ---------- cart ---------- */
-    function renderCart() {
+    function renderCart() { drawCart(); refreshPreview(); }
+    function drawCart() {
         const t = totals();
         const empty = cart.length === 0;
         if (empty) { currentPromo = null; noteOpen = null; }
@@ -397,7 +408,7 @@
                         <h5 class="cart-item-name">${esc(item.name)}</h5>
                         <div class="cart-item-price">${peso(item.price)} each</div>
                         ${item.notes ? `<div class="note-badge">Note: ${esc(item.notes)}</div>` : ''}
-                        ${item.discount > 0 ? `<div class="promo-badge">-${peso(item.discount)} (${esc(currentPromo.name)})</div>` : ''}
+                        ${item.discount > 0 ? `<div class="promo-badge">-${peso(item.discount)} (${esc((item.promoNames || []).join(', ') || 'Promotion')})</div>` : ''}
                     </div>
                     <div class="item-subtotal">${peso(net)}${item.discount > 0 ? `<del>${peso(sub)}</del>` : ''}</div>
                 </div>
@@ -420,7 +431,7 @@
         $('subtotal').textContent = peso(t.subtotal);
         $('grand-total').textContent = peso(t.total);
         $('discount-row').style.display = t.discount > 0 ? 'flex' : 'none';
-        $('discount-name').textContent = currentPromo ? currentPromo.name : '';
+        $('discount-name').textContent = [...new Set(cart.flatMap(i => i.promoNames || []))].join(', ');
         $('discount-amount').textContent = '-' + peso(t.discount);
         $('discount-btn-label').textContent = currentPromo ? 'Change discount' : 'Discount';
         ['btn-void', 'btn-discount', 'btn-pay'].forEach(id => $(id).disabled = empty);
@@ -528,8 +539,9 @@
         }
         $('btn-confirm-pay').disabled = !ready;
     }
-    $('btn-pay').addEventListener('click', () => {
+    $('btn-pay').addEventListener('click', async () => {
         if (!cart.length) return;
+        await refreshPreview();
         payTotal = totals().total;
         $('payment-total-due').textContent = peso(payTotal);
         $('pay-cash-amount').value = ''; $('pay-ewallet-ref').value = ''; $('pay-ewallet-custom').value = '';
@@ -569,8 +581,9 @@
         .then(r => r.json())
         .then(data => {
             if (!data.success) { notice(data.error || 'The order could not be saved. Try again.', 'error', 0); return; }
+            if (data.total !== undefined) payTotal = Number(data.total);          // server total is authoritative
             const change = m === 'cash' ? cashVal() - payTotal : 0;
-            const discount = cart.reduce((s, i) => s + (i.discount || 0), 0);
+            const discount = data.discount_total !== undefined ? Number(data.discount_total) : cart.reduce((s, i) => s + (i.discount || 0), 0);
             lastReceipt = { orderNumber: data.order_number, items: JSON.parse(JSON.stringify(cart)), total: payTotal, change, method: m,
                 providerData: m === 'ewallet' ? { provider: payload.provider, refNum: payload.refNum } : null, discount, orderType };
             $('success-meta').innerHTML = `Order <strong>${esc(data.order_number)}</strong> · ${esc(orderType)} · ${peso(payTotal)} via ${m === 'cash' ? 'Cash' : esc(payload.provider)}` +

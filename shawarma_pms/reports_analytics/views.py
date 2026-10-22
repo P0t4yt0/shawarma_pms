@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from point_of_sale.models import Order, OrderItem
 from inventory.models import Ingredient, StockMovement
+from security.decorators import require_dynamic_access
 
 
 @login_required
@@ -133,44 +134,31 @@ def inventory_report(request):
 
 
 @login_required
+@require_dynamic_access("reports_analytics.view_demandforecast")
 def sales_forecast_report(request):
-    now = timezone.now()
-    forecast_data = []
-    weekly_totals = []
+    """Real trends/forecast + the evidence behind Smart Promotion Recommendations (?rec=<id>, ?refresh=1)."""
+    from statistics import mean
+    from security.templatetags.access_tags import has_dynamic_access
+    from .recommendations import get_cached_recommendations
 
-    for i in range(4, 0, -1):
-        start_date = now - timedelta(days=i * 7)
-        end_date = now - timedelta(days=(i - 1) * 7)
-        
-        week_orders = Order.objects.filter(
-            status=Order.Status.COMPLETED,
-            created_at__gte=start_date,
-            created_at__lt=end_date
-        )
-        week_rev = sum(o.total for o in week_orders) or Decimal('0.00')
-        weekly_totals.append(week_rev)
+    data = get_cached_recommendations(force=request.GET.get("refresh") == "1")
+    rec_id = request.GET.get("rec")
+    selected = next((r for r in data["recommendations"] if r["id"] == rec_id), None)
 
-        forecast_data.append({
-            'period': f"Week -{i}",
-            'historical_avg': week_rev,
-            'projected_sales': (week_rev * Decimal('1.05')).quantize(Decimal('0.01')),
-            'growth_rate': 5.0
-        })
-
-    if weekly_totals:
-        avg_rev = sum(weekly_totals) / len(weekly_totals)
-    else:
-        avg_rev = Decimal('0.00')
-
-    forecast_data.append({
-        'period': "Next Week (Forecast)",
-        'historical_avg': avg_rev.quantize(Decimal('0.01')),
-        'projected_sales': (avg_rev * Decimal('1.08')).quantize(Decimal('0.01')),
-        'growth_rate': 8.0
-    })
+    hours_table = None
+    if selected and selected["type"] == "slow_period":
+        wd, (start, end) = selected["evidence"]["hours_weekday"], selected["evidence"]["window"]
+        profile = data["analysis"].get("profile", {}).get(wd)
+        if profile:
+            avg = mean(profile["hours"].values()) or 1
+            label = lambda h: f"{(h % 12) or 12}:00 {'AM' if h < 12 else 'PM'}"
+            hours_table = [{"hour": label(h), "orders": v, "vs_avg": (v / avg - 1) * 100, "in_window": start <= h < end}
+                           for h, v in sorted(profile["hours"].items())]
 
     return render(request, 'sales_forecast.html', {
-        'forecast_data': forecast_data
+        'data': data, 'selected': selected, 'hours_table': hours_table,
+        'rec_missing': bool(rec_id) and selected is None,
+        'can_create_promo': has_dynamic_access(request.user, "promotions.add_promotion"),
     })
 
 

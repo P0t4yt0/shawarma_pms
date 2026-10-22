@@ -74,3 +74,26 @@ STORE_CLOSE_HOUR = 22
 KDS_REALTIME = False                      # Phase 2 switch: True = push over Channels (needs channels + redis)
 # CHANNEL_LAYERS = {"default": {"BACKEND": "channels_redis.core.RedisChannelLayer",
 #                               "CONFIG": {"hosts": [("127.0.0.1", 6379)]}}}
+
+
+# ---- Smart Promotion Recommendations (reports_analytics/recommendations.py) -------------------------
+PROMO_REC_LOOKBACK_DAYS = 56              # history window analysed (today is always excluded)
+PROMO_REC_MIN_DAYS = 14                   # trading days with sales required before ANY forecast is shown
+PROMO_REC_MIN_ORDERS = 100                # orders required before ANY forecast is shown
+PROMO_REC_MIN_WEEKDAY_SAMPLES = 3         # e.g. at least 3 Tuesdays before judging Tuesday hours
+PROMO_REC_MIN_BASELINE_ORDERS_PER_HOUR = 1.0   # ignore tiny volumes (noise)
+PROMO_REC_TREND_DAYS = 14                 # "recent" vs "previous" window for declining products
+PROMO_REC_MIN_PRIOR_UNITS = 10            # a product needs this many units in the previous window to count as declining
+PROMO_REC_DECLINE_PCT = 25                # decline (%) that flags a product
+PROMO_REC_SLOW_FREQ_PCT = 30              # sold on <= this % of trading days = slow mover
+PROMO_REC_MIN_PAIR_ORDERS = 8             # orders containing both items before suggesting a bundle
+PROMO_REC_MIN_LIFT = 1.2                  # bundle pair must occur this many times more than chance
+PROMO_REC_MIN_MARGIN_PCT = 20             # PROFIT GUARDRAIL: margin after discount must stay >= this
+PROMO_REC_MIN_COST_COVERAGE = 0.6         # share of revenue whose cost (recipe) must be known for whole-menu promos
+PROMO_REC_STOCK_COVER_DAYS = 2            # STOCK GUARDRAIL: stock must cover this many days of promo-day demand...
+PROMO_REC_STOCK_BUFFER = 1.2              # ...times this safety buffer
+PROMO_REC_DISCOUNT_STEPS = (5, 10, 15, 20)
+PROMO_REC_DEFAULT_ELASTICITY = 2.0        # used ONLY when no past promotion can be measured (labelled "assumed")
+PROMO_REC_GAP_RECOVERY_PER_PCT = 0.02     # slow periods: share of the missing orders won back per 1% discount
+PROMO_REC_MAX_GAP_RECOVERY = 0.5          # never assume more than half of the gap is recovered
+PROMO_REC_CACHE_SECONDS = 300
