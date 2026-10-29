@@ -74,19 +74,33 @@
         </div>
 
         <!-- PAGINATION BAR -->
-        <div class="mini-pagination">
-            <div>
-                Page {{ paginated_variants.number }} of {{ paginated_variants.paginator.num_pages }}
+        <div data-html2canvas-ignore="true" class="pagination-bar no-print">
+            <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
+                <form method="GET" style="display:flex;align-items:center;gap:8px;margin:0;">
+                    <input type="hidden" name="search" value="{{ search_query|default:'' }}">
+                    <span>Row Per Page</span>
+                    <select name="per_page" onchange="this.form.submit()">
+                        <option value="10" {% if request.GET.per_page == "10" or not request.GET.per_page %}selected{% endif %}>10</option>
+                        <option value="20" {% if request.GET.per_page == "20" %}selected{% endif %}>20</option>
+                        <option value="50" {% if request.GET.per_page == "50" %}selected{% endif %}>50</option>
+                    </select>
+                    <span>Entries</span>
+                </form>
+                <span>Showing {{ paginated_variants.start_index|default:0 }} to {{ paginated_variants.end_index|default:0 }} of {{ paginated_variants.paginator.count|default:0 }}</span>
             </div>
-            <div style="display: flex; gap: 4px;">
+            <div class="pagination-controls">
                 {% if paginated_variants.has_previous %}
-                    <a href="?page=1&search={{ search_query }}" class="mini-page-btn" title="First">&laquo;&laquo;</a>
-                    <a href="?page={{ paginated_variants.previous_page_number }}&search={{ search_query }}" class="mini-page-btn">&laquo; Prev</a>
+                    <a href="?page={{ paginated_variants.previous_page_number }}&per_page={{ request.GET.per_page|default:10 }}&search={{ search_query|urlencode }}" class="page-btn"><i class="ph ph-caret-left"></i></a>
                 {% endif %}
-                
+                {% for num in paginated_variants.paginator.page_range %}
+                    {% if paginated_variants.number == num %}
+                        <span class="page-active">{{ num }}</span>
+                    {% elif num > paginated_variants.number|add:'-3' and num < paginated_variants.number|add:'3' %}
+                        <a href="?page={{ num }}&per_page={{ request.GET.per_page|default:10 }}&search={{ search_query|urlencode }}" class="page-link">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
                 {% if paginated_variants.has_next %}
-                    <a href="?page={{ paginated_variants.next_page_number }}&search={{ search_query }}" class="mini-page-btn">Next &raquo;</a>
-                    <a href="?page={{ paginated_variants.paginator.num_pages }}&search={{ search_query }}" class="mini-page-btn" title="Last">&raquo;&raquo;</a>
+                    <a href="?page={{ paginated_variants.next_page_number }}&per_page={{ request.GET.per_page|default:10 }}&search={{ search_query|urlencode }}" class="page-btn"><i class="ph ph-caret-right"></i></a>
                 {% endif %}
             </div>
         </div>

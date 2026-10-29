@@ -419,7 +419,18 @@ def build_recommendations():
         recs += part[0]
         skipped += part[1]
     recs.sort(key=lambda r: -r["score"])
-    recs = recs[:MAX_RECOMMENDATIONS]
+    # Keep the strongest candidate from each recommendation family before
+    # filling the remaining slots. Otherwise several slow-hour ideas or bundles
+    # can crowd out all declining-product suggestions.
+    selected_recs = []
+    selected_ids = set()
+    for rec_type in ("slow_period", "declining_product", "bundle"):
+        rec = next((item for item in recs if item["type"] == rec_type), None)
+        if rec:
+            selected_recs.append(rec)
+            selected_ids.add(rec["id"])
+    selected_recs.extend(item for item in recs if item["id"] not in selected_ids)
+    recs = sorted(selected_recs[:MAX_RECOMMENDATIONS], key=lambda r: -r["score"])
 
     result.update({"recommendations": recs, "top": recs[0] if recs else None, "others_count": max(len(recs) - 1, 0),
                    "skipped": skipped})

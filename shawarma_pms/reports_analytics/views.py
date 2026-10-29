@@ -46,6 +46,13 @@ def product_sales_report(request):
         order__status=Order.Status.COMPLETED
     ).exclude(order__status=Order.Status.CANCELLED)
 
+    export_start = request.GET.get('export_start')
+    export_end = request.GET.get('export_end')
+    if export_start:
+        valid_items = valid_items.filter(order__created_at__date__gte=export_start)
+    if export_end:
+        valid_items = valid_items.filter(order__created_at__date__lte=export_end)
+
     aggregated = valid_items.values(
         'variant__id',
         'variant__name',
@@ -99,6 +106,16 @@ def product_sales_report(request):
 @login_required
 def inventory_report(request):
     ingredients = Ingredient.objects.select_related('category').filter(is_active=True).order_by('name')
+
+    # A date range on a stock report means the balance at the end of that range.
+    export_end = request.GET.get('export_end')
+    movements_after_end = {}
+    if export_end:
+        movements_after_end = dict(
+            StockMovement.objects.filter(created_at__date__gt=export_end)
+            .values('ingredient_id').annotate(total=Sum('quantity_change'))
+            .values_list('ingredient_id', 'total')
+        )
     
     total_items = ingredients.count()
     low_stock_count = 0
@@ -106,10 +123,11 @@ def inventory_report(request):
     inventory_items = []
 
     for item in ingredients:
-        if item.current_stock <= 0:
+        stock_as_of = item.current_stock - movements_after_end.get(item.id, Decimal('0.000'))
+        if stock_as_of <= 0:
             out_of_stock_count += 1
             status = 'out'
-        elif item.current_stock <= item.reorder_level:
+        elif stock_as_of <= item.reorder_level:
             low_stock_count += 1
             status = 'low'
         else:
@@ -119,7 +137,7 @@ def inventory_report(request):
             'sku': item.sku or f"SKU-{item.id}",
             'name': item.name,
             'category_name': item.category.name if item.category else 'Uncategorized',
-            'current_stock': item.current_stock,
+            'current_stock': stock_as_of,
             'reorder_level': item.reorder_level,
             'unit': item.unit,
             'status': status

@@ -38,6 +38,12 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-main); }
         h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 800; }
+        .no-print label:has([data-export-date-range]),
+        .no-print label:has([data-export-target]) { color: var(--black) !important; font-family: var(--font-main) !important; }
+        .no-print [data-export-date-range], .no-print [data-export-target], .no-print [data-export-from],
+        .no-print [data-export-to], .no-print #export-scope {
+            color: var(--black) !important; font-family: var(--font-main) !important; font-size: 13px !important;
+        }
         html, body { height: 100%; }
         body { background-color: var(--bg-main); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
 
@@ -168,7 +174,7 @@
         .sidebar-toggle { flex-shrink: 0; }
     </style>
 </head>
-<body>
+<body data-current-user="{{ request.user.get_full_name|default:request.user.username }}">
 
     <aside class="sidebar">
         <a href="{% url 'security:dashboard' %}" class="logo-container">
@@ -310,6 +316,9 @@
         <div class="nav-category">My Profile</div>
             <a href="{% url 'security:account_security' %}" class="nav-item {% if request.resolver_match.url_name == 'account_security' %}active{% endif %}">
                 <i class="ph ph-lock-key"></i> Account & Security
+            </a>
+            <a href="{% url 'security:user_manual' %}" class="nav-item {% if request.resolver_match.url_name == 'user_manual' %}active{% endif %}">
+                <i class="ph ph-book-open-text"></i> User Manual
             </a>
 
             <form action="{% url 'security:logout' %}" method="POST" class="logout-form">
@@ -455,6 +464,28 @@
                     </div>
                 </a>
             </div>
+
+            {% if can_view_inventory %}
+            <div class="panel" style="margin-bottom:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+                    <div>
+                        <h3 class="panel-title" style="margin:0;">Low Stock Items</h3>
+                        <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Showing up to 5 of {{ low_stock_count }} items at or below their reorder level.</p>
+                    </div>
+                    <a href="{% url 'inventory:list' %}" style="font-size:13px;font-weight:700;color:var(--black);text-decoration:none;white-space:nowrap;">See more &rarr;</a>
+                </div>
+                <ul class="modern-list" style="margin:0;">
+                    {% for item in low_stock_items %}
+                    <li>
+                        <div><span class="item-main">{{ item.name }}</span><span class="item-sub">{{ item.category.name|default:"Uncategorized" }} · Reorder at {{ item.reorder_level }} {{ item.unit }}</span></div>
+                        <span class="item-val" style="color:{% if item.current_stock <= 0 %}var(--status-red){% else %}#B45309{% endif %};">{{ item.current_stock }} {{ item.unit }}</span>
+                    </li>
+                    {% empty %}
+                    <li style="justify-content:center;color:var(--text-secondary);">No low-stock items right now.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
 
             <div class="chart-row">
                 <!-- Panel 1: Recent Orders Table -->
@@ -709,5 +740,222 @@
             });
         })();
     </script>
-</body>
+    <script>
+        (function () {
+            const pageSizes = [10, 20, 50];
+            function alreadyPaginated(table) {
+                let node = table.parentElement;
+                for (let depth = 0; node && depth < 7; depth++, node = node.parentElement) {
+                    if (node.matches('.content-scroll')) break;
+                    if (node.querySelector('.pagination-bar, .mini-pagination')) return true;
+                    if (node.matches('.panel, .history-card, .employee-panel, .product-list-card, .recipe-details-card')) return false;
+                }
+                return false;
+            }
+
+            function insertAfterTable(table, element) {
+                let anchor = table;
+                let parent = table.parentElement;
+                while (parent && parent !== document.querySelector('.content-scroll')) {
+                    const className = typeof parent.className === 'string' ? parent.className : '';
+                    if (/table[-_ ]?(wrap|scroll|responsive)|overflow-x-auto/i.test(className)) anchor = parent;
+                    if (parent.matches('.panel, .history-card, .employee-panel')) break;
+                    parent = parent.parentElement;
+                }
+                anchor.insertAdjacentElement('afterend', element);
+            }
+
+            function makeControl(label, className, onClick, text) {
+                const control = document.createElement('button');
+                control.type = 'button';
+                control.className = className;
+                control.setAttribute('aria-label', label);
+                control.textContent = text;
+                control.addEventListener('click', onClick);
+                return control;
+            }
+
+            function setupTable(table, index) {
+                if (alreadyPaginated(table) || table.dataset.sharedPaginated === 'true') return;
+                const body = table.tBodies[0];
+                if (!body) return;
+                const rows = Array.from(body.rows);
+                if (!rows.length) return;
+
+                table.dataset.sharedPaginated = 'true';
+                const wrapper = document.createElement('div');
+                wrapper.className = 'shared-pagination-bar no-print';
+                wrapper.setAttribute('data-html2canvas-ignore', 'true');
+                const meta = document.createElement('div');
+                meta.className = 'shared-pagination-meta';
+                const sizeLabel = document.createElement('label');
+                sizeLabel.textContent = 'Row Per Page';
+                const sizeSelect = document.createElement('select');
+                sizeSelect.setAttribute('aria-label', 'Rows per page');
+                pageSizes.forEach(size => {
+                    const option = document.createElement('option');
+                    option.value = size;
+                    option.textContent = size;
+                    sizeSelect.appendChild(option);
+                });
+                const entryLabel = document.createElement('span');
+                entryLabel.textContent = 'Entries';
+                const range = document.createElement('span');
+                meta.append(sizeLabel, sizeSelect, entryLabel, range);
+                const controls = document.createElement('div');
+                controls.className = 'shared-pagination-controls';
+                wrapper.append(meta, controls);
+                insertAfterTable(table, wrapper);
+
+                let page = 1;
+                let pageSize = 10;
+                const storageKey = 'shawarma.tablePageSize.' + location.pathname + '.' + index;
+                const savedSize = Number(localStorage.getItem(storageKey));
+                if (pageSizes.includes(savedSize)) { pageSize = savedSize; sizeSelect.value = savedSize; }
+
+                function render() {
+                    const visibleRows = rows.filter(row => row.dataset.sharedFilterHidden !== 'true');
+                    const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+                    page = Math.min(page, pageCount);
+                    const start = (page - 1) * pageSize;
+                    rows.forEach(row => {
+                        const rowIndex = visibleRows.indexOf(row);
+                        const show = rowIndex >= start && rowIndex < start + pageSize;
+                        row.style.display = show ? '' : 'none';
+                        if (show) delete row.dataset.sharedPageHidden;
+                        else row.dataset.sharedPageHidden = 'true';
+                    });
+                    range.textContent = visibleRows.length ? `Showing ${start + 1} to ${Math.min(start + pageSize, visibleRows.length)} of ${visibleRows.length}` : 'Showing 0 to 0 of 0';
+                    controls.replaceChildren();
+                    if (page > 1) controls.appendChild(makeControl('Previous page', 'shared-page-btn', () => { page--; render(); }, '‹'));
+                    for (let number = Math.max(1, page - 2); number <= Math.min(pageCount, page + 2); number++) {
+                        if (number === page) {
+                            const active = document.createElement('span');
+                            active.className = 'shared-page-active';
+                            active.setAttribute('aria-current', 'page');
+                            active.textContent = number;
+                            controls.appendChild(active);
+                        } else controls.appendChild(makeControl('Page ' + number, 'shared-page-link', () => { page = number; render(); }, String(number)));
+                    }
+                    if (page < pageCount) controls.appendChild(makeControl('Next page', 'shared-page-btn', () => { page++; render(); }, '›'));
+                }
+
+                sizeSelect.addEventListener('change', function () {
+                    pageSize = Number(sizeSelect.value);
+                    localStorage.setItem(storageKey, pageSize);
+                    page = 1;
+                    render();
+                });
+                table._refreshSharedPagination = function () { page = 1; render(); };
+                render();
+            }
+
+            function setupNewTables() {
+                document.querySelectorAll('.content-scroll table').forEach(setupTable);
+            }
+            setupNewTables();
+            const content = document.querySelector('.content-scroll');
+            if (content) new MutationObserver(setupNewTables).observe(content, { childList: true, subtree: true });
+
+            // Keep client-side table paging compatible with existing live search filters.
+            document.addEventListener('input', function (event) {
+                if (!(event.target instanceof HTMLInputElement) || !event.target.hasAttribute('oninput')) return;
+                const panel = event.target.closest('.panel, .history-card, .employee-panel') || document.querySelector('.content-scroll');
+                panel.querySelectorAll('table[data-shared-paginated]').forEach(table => {
+                    const body = table.tBodies[0];
+                    if (!body) return;
+                    Array.from(body.rows).forEach(row => {
+                        if (row.dataset.sharedPageHidden === 'true' || row.dataset.sharedFilterHidden === 'true') row.style.display = '';
+                        delete row.dataset.sharedPageHidden;
+                        delete row.dataset.sharedFilterHidden;
+                    });
+                    requestAnimationFrame(() => {
+                        Array.from(body.rows).forEach(row => {
+                            row.dataset.sharedFilterHidden = row.style.display === 'none' ? 'true' : 'false';
+                        });
+                        table._refreshSharedPagination();
+                    });
+                });
+            }, true);
+
+            document.addEventListener('input', function (event) {
+                if (!(event.target instanceof HTMLInputElement) || !event.target.hasAttribute('oninput')) return;
+                const panel = event.target.closest('.panel, .history-card, .employee-panel') || document.querySelector('.content-scroll');
+                panel.querySelectorAll('table[data-shared-paginated]').forEach(table => {
+                    const body = table.tBodies[0];
+                    if (!body) return;
+                    requestAnimationFrame(() => {
+                        Array.from(body.rows).forEach(row => {
+                            if (row.dataset.sharedFilterHidden !== 'true' && row.style.display === 'none') row.dataset.sharedFilterHidden = 'true';
+                        });
+                        table._refreshSharedPagination();
+                    });
+                });
+            });
+
+            // PDF/CSV export buttons should see every matching row, not only the current page.
+            document.addEventListener('click', function (event) {
+                const exportButton = event.target.closest('[onclick*="processExport"]');
+                if (!exportButton) return;
+                const area = exportButton.closest('.content-scroll') || document.querySelector('.content-scroll');
+                const exportTables = area.querySelectorAll('table[data-shared-paginated]');
+                exportTables.forEach(table => {
+                    Array.from(table.tBodies[0]?.rows || []).forEach(row => {
+                        if (row.dataset.sharedFilterHidden !== 'true') row.style.display = '';
+                    });
+                });
+                requestAnimationFrame(() => exportTables.forEach(table => table._refreshSharedPagination()));
+            }, true);
+        })();
+    </script>
+
+    <style id="unified-pagination-theme">
+        .content-scroll .pagination-bar,
+        .content-scroll .shared-pagination-bar,
+        .content-scroll .mini-pagination {
+            display: flex !important; justify-content: space-between !important; align-items: center !important;
+            gap: 12px !important; padding: 15px 20px !important; background: #fff !important;
+            border-top: 1px solid #E5E7EB !important; font-size: .85rem !important; color: #6B7280 !important;
+            flex-wrap: wrap !important; box-sizing: border-box !important;
+        }
+        .content-scroll .pagination-controls,
+        .content-scroll .shared-pagination-controls { display: flex !important; align-items: center !important; gap: 4px !important; flex-wrap: wrap !important; }
+        .content-scroll .pagination-bar form,
+        .content-scroll .shared-pagination-meta { display: flex !important; align-items: center !important; gap: 8px !important; }
+        .content-scroll .pagination-bar select,
+        .content-scroll .shared-pagination-bar select {
+            padding: 4px 8px !important; border: 1px solid #E5E7EB !important; border-radius: 4px !important;
+            outline: none !important; cursor: pointer !important; color: #212529 !important; background: #fff !important;
+        }
+        .content-scroll .page-active,
+        .content-scroll .shared-page-active { background: #0F0F0F !important; color: #fff !important; padding: 5px 12px !important; border: 0 !important; border-radius: 5px !important; font-weight: 700 !important; }
+        .content-scroll .page-link,
+        .content-scroll .shared-page-link { color: #212529 !important; padding: 5px 12px !important; text-decoration: none !important; border: 0 !important; outline: 0 !important; background: transparent !important; border-radius: 4px !important; box-shadow: none !important; font: inherit !important; cursor: pointer !important; }
+        .content-scroll .page-link:hover,
+        .content-scroll .shared-page-link:hover { color: #0F0F0F !important; background: transparent !important; }
+        .content-scroll .page-btn,
+        .content-scroll .mini-page-btn,
+        .content-scroll .shared-page-btn {
+            border: 1px solid #D1D5DB !important; padding: 5px 10px !important; border-radius: 4px !important;
+            color: #212529 !important; text-decoration: none !important; background: #fff !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+        }
+        .content-scroll .page-btn:hover,
+        .content-scroll .mini-page-btn:hover,
+        .content-scroll .shared-page-btn:hover { background: #F9FAFB !important; }
+        @media (max-width: 700px) {
+            .content-scroll .pagination-bar,
+            .content-scroll .shared-pagination-bar,
+            .content-scroll .mini-pagination { padding: 12px !important; }
+        }
+        @media print {
+            .content-scroll .pagination-bar,
+            .content-scroll .shared-pagination-bar,
+            .content-scroll .mini-pagination { display: none !important; }
+        }
+    </style>
+
+    <script src="{% static 'js/report_exports.js' %}"></script>
+
+    </body>
 </html>

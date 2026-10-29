@@ -5,16 +5,15 @@
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
     :root {
         --font-heading: 'Inter', sans-serif;
         --font-body: 'Inter', sans-serif;
-        --font-mono: 'Inconsolata', monospace; 
+        --font-mono: 'Inconsolata', monospace;
         --color-main-navy: #2F3F7B;
-        --color-accent-green: #22C55E;  
+        --color-accent-green: #22C55E;
         --text-main: #212529;
         --text-muted: #6B7280;
         --border-color: #E5E7EB;
@@ -50,7 +49,7 @@
     .pdf-export-wrapper tbody tr { page-break-inside: avoid !important; border-bottom: 1px solid #eef0f6 !important; }
     .pdf-export-wrapper tbody tr:nth-child(even) { background: #fafbfd !important; }
     .pdf-export-wrapper tbody td { padding: 10px 14px !important; font-size: 12.5px !important; color: #2a2a3e !important; border: none !important; vertical-align: top !important; font-family: 'DM Sans', sans-serif !important; }
-    
+
     @media print {
         .no-print, .no-print * { display: none !important; }
     }
@@ -61,16 +60,25 @@
         <h1 style="margin: 0; font-size: 32px; color: var(--black); letter-spacing: -0.5px; font-family: var(--font-heading);">Transaction History</h1>
         <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Review all completed payments, refunds, and daily revenue.</p>
     </div>
-    
+
     <!-- EXPORT BUTTONS -->
-    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-        <div style="display: flex; flex-direction: column; gap: 2px;">
-            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body);">Export Target</label>
-            <select id="export-scope" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; color: var(--color-main-navy); outline: none; cursor: pointer; background-color: #F8FAFC;">
-                <option value="all">Whole Report (All Data)</option>
+    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-family:var(--font-body);">Date Range</label>
+            <select data-export-date-range style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;font-family:var(--font-body);font-weight:600;color:var(--color-main-navy);outline:none;cursor:pointer;background-color:#F8FAFC;">
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
             </select>
+            <div data-export-custom-range style="display:none;gap:6px;margin-top:4px;">
+                <input type="date" data-export-from aria-label="Start date" style="padding:5px;border:1px solid var(--border-color);border-radius:5px;font-size:11px;">
+                <input type="date" data-export-to aria-label="End date" style="padding:5px;border:1px solid var(--border-color);border-radius:5px;font-size:11px;">
+            </div>
         </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 4px;"></div>
+        <div style="width:1px;height:32px;background:var(--border-color);margin:0 4px;"></div>
         <div style="display: flex; gap: 8px; margin-top: 12px;">
             <button id="btn-pdf-export" onclick="processExport('pdf')" class="action-btn" style="color: #EF4444; border-color: #FCA5A5; height: 36px;">
                 <i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF
@@ -122,7 +130,7 @@
                 <i class="ph ph-magnifying-glass"></i>
                 <input type="text" id="txn-search" placeholder="Search Transaction ID..." oninput="filterTransactions()">
             </div>
-            
+
             <div style="display: flex; gap: 12px;">
                 <select id="method-filter" onchange="filterTransactions()" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); outline: none; font-family: var(--font-main); font-weight: 600;">
                     <option value="all">All Transactions</option>
@@ -158,7 +166,7 @@
                             <span style="font-weight: 700; color: var(--black);"><i class="ph ph-check-circle" style="vertical-align: middle;"></i> Paid</span>
                         {% endif %}
                     </td>
-                    
+
                     {% with payment=order.payments.first %}
                     <td>
                         {% if payment.method.kind == 'cash' %}
@@ -174,18 +182,18 @@
                     </td>
                     <td>{{ order.cashier.first_name|default:"Admin" }}</td>
                     <td class="no-print" style="text-align: right;">
-                        <button class="btn btn-secondary" 
+                        <button class="btn btn-secondary"
                                 onclick="viewTransaction(
-                                    '#TXN-{{ order.order_number }}', 
-                                    '{{ order.total }}', 
-                                    '{{ order.created_at|date:"M d, Y h:i A" }}', 
+                                    '#TXN-{{ order.order_number }}',
+                                    '{{ order.total }}',
+                                    '{{ order.created_at|date:"M d, Y h:i A" }}',
                                     '{{ order.status }}',
                                     '{{ payment.method.kind|default:"none" }}',
                                     '{{ payment.tendered|default:"0.00" }}',
                                     '{{ payment.change_given|default:"0.00" }}',
                                     '{{ payment.reference_number|default:"" }}',
                                     '{{ payment.method.name|default:"" }}'
-                                )" 
+                                )"
                                 style="padding: 6px 12px; font-size: 12px; display: inline-flex;">
                             <i class="ph ph-eye"></i> Details
                         </button>
@@ -223,7 +231,7 @@
                 {% if orders.has_previous %}
                     <a href="?page={{ orders.previous_page_number }}&per_page={{ request.GET.per_page }}&search={{ request.GET.search }}" class="page-btn"><i class="ph ph-caret-left"></i></a>
                 {% endif %}
-                
+
                 {% for num in orders.paginator.page_range %}
                     {% if orders.number == num %}
                         <span class="page-active">{{ num }}</span>
@@ -249,7 +257,7 @@
         rows.forEach(row => {
             const status = row.getAttribute('data-status');
             const rowText = row.innerText.toLowerCase();
-            
+
             const matchesSearch = rowText.includes(searchInput);
             let matchesStatus = true;
 
@@ -336,7 +344,7 @@
         const scope = document.getElementById('export-scope').value;
         const pdfBtn = document.getElementById('btn-pdf-export');
         const csvBtn = document.getElementById('btn-csv-export');
-        
+
         pdfBtn.disabled = true;
         csvBtn.disabled = true;
         pdfBtn.innerHTML = "Processing...";
@@ -412,9 +420,9 @@
         const fullDOM = await fetchCompleteDataDOM();
         const originalArea = fullDOM.getElementById('printable-area');
         const clone = originalArea.cloneNode(true);
-        
+
         // Remove print-excluded elements
-        const actions = clone.querySelectorAll('.no-print'); 
+        const actions = clone.querySelectorAll('.no-print');
         actions.forEach(action => action.remove());
 
         const rows = clone.querySelectorAll('.txn-row');
@@ -426,12 +434,12 @@
 
         pdfContainer.appendChild(clone);
 
-        const opt = { 
-            margin: 0.5, 
-            filename: `Transaction_History_${dateStamp}.pdf`, 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true }, 
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }, 
+        const opt = {
+            margin: 0.5,
+            filename: `Transaction_History_${dateStamp}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }
         };
 
@@ -441,12 +449,12 @@
     async function generateUnpaginatedCSV(scope) {
         const dateStamp = new Date().toISOString().split('T')[0];
         let csv = [];
-        
+
         csv.push(`"SHAWARMA POS - TRANSACTION HISTORY REPORT"`);
         csv.push(`"Generated Date: ${dateStamp}"`);
         csv.push(`"Scope: ALL TRANSACTIONS"`);
         csv.push("");
-        
+
         csv.push(`"Total Revenue","Total Transactions","Cash Breakdown","E-Wallet Breakdown"`);
         csv.push(`"${{ total_revenue|default:'0.00' }}","${{ total_transactions|default:'0' }}","${{ cash_total|default:'0.00' }}","${{ ewallet_total|default:'0.00' }}"`);
         csv.push("");
@@ -455,17 +463,17 @@
         const fullDOM = await fetchCompleteDataDOM();
         const table = fullDOM.getElementById('transaction-table');
         let rows = table.querySelectorAll("tr");
-        
+
         for (let i = 0; i < rows.length; i++) {
             let tr = rows[i];
-            
+
             if (tr.classList.contains('txn-row')) {
                 if (tr.style.display === 'none') continue;
             }
 
             let row = [], cols = tr.querySelectorAll("td:not(.no-print), th:not(.no-print)");
             if (cols.length === 0) continue;
-            
+
             for (let j = 0; j < cols.length; j++) {
                 let text = cols[j].innerText.replace(/\n/g, ' ').replace(/"/g, '""').trim();
                 row.push('"' + text + '"');

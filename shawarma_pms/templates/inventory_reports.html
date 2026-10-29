@@ -4,15 +4,14 @@
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
     :root {
         --font-heading: 'Inter', sans-serif;
         --font-body: 'Inter', sans-serif;
-        --font-mono: 'Inconsolata', monospace; 
+        --font-mono: 'Inconsolata', monospace;
         --color-main-navy: #2F3F7B;
-        --color-accent-green: #22C55E;  
+        --color-accent-green: #22C55E;
         --text-main: #212529;
         --text-muted: #6B7280;
         --border-color: #E5E7EB;
@@ -25,7 +24,7 @@
 
     .pdf-export-wrapper { background: white !important; padding: 20px 30px !important; font-family: 'DM Sans', sans-serif !important; color: #1a1a2e !important; }
     .pdf-export-wrapper .panel { border: none !important; box-shadow: none !important; margin-bottom: 24px !important; width: 100% !important; padding: 0 !important; background: transparent !important; }
-    
+
     .pdf-export-wrapper table { width: 100% !important; border-collapse: collapse !important; border-left: 1px solid #e8e8f0 !important; border-right: 1px solid #e8e8f0 !important; border-bottom: 1px solid #e8e8f0 !important; }
     .pdf-export-wrapper thead { display: table-header-group !important; }
     .pdf-export-wrapper thead th { background: #092c4c !important; color: #fff !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; padding: 10px 14px !important; text-align: left !important; border: none !important; font-family: 'DM Sans', sans-serif !important; }
@@ -40,13 +39,9 @@
         <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Current stock levels and threshold monitoring.</p>
     </div>
     <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-        <div style="display: flex; flex-direction: column; gap: 2px;">
-            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body);">Export Target</label>
-            <select id="export-scope" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; color: var(--color-main-navy); outline: none; cursor: pointer; background-color: #F8FAFC;">
-                <option value="all">All Product Records</option>
-            </select>
-        </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 4px;"></div>
+
+        <label style="font-size:11px;font-weight:700;color:var(--text-secondary);">DATE RANGE<select data-export-date-range style="display:block;min-width:145px;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:white;"><option value="all">All Dates</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom Range</option></select></label>
+        <div data-export-custom-range style="display:none;gap:6px;align-items:center;"><input type="date" data-export-from aria-label="Start date"><input type="date" data-export-to aria-label="End date"></div>
         <div style="display: flex; gap: 8px; margin-top: 12px;">
             <button id="btn-pdf-export" onclick="processExport('pdf')" class="action-btn" style="color: #EF4444; border-color: #FCA5A5; height: 36px;">
                 <i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF
@@ -176,7 +171,7 @@
 
         const originalArea = document.getElementById('printable-area');
         const clone = originalArea.cloneNode(true);
-        const actions = clone.querySelector('.no-print'); 
+        const actions = clone.querySelector('.no-print');
         if(actions) actions.remove();
 
         const rows = clone.querySelectorAll('.sales-row');
@@ -184,11 +179,11 @@
 
         pdfContainer.appendChild(clone);
 
-        const opt = { 
-            margin: 0.5, 
-            filename: `Inventory_${dateStamp}.pdf`, 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true }, 
+        const opt = {
+            margin: 0.5,
+            filename: `Inventory_${dateStamp}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
         await html2pdf().set(opt).from(pdfContainer).save();

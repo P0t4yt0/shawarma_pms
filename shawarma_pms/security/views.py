@@ -178,6 +178,10 @@ def dashboard_view(request):
         is_active=True, 
         current_stock__lte=F('reorder_level')
     ).count()
+    low_stock_items = Ingredient.objects.filter(
+        is_active=True,
+        current_stock__lte=F('reorder_level')
+    ).select_related('category').order_by('current_stock', 'name')[:5]
     
     # 4. Active Promotions Count
     active_promotions_count = Promotion.objects.filter(
@@ -211,6 +215,7 @@ def dashboard_view(request):
     # Check permissions for Promo Banner
     can_report = has_dynamic_access(request.user, "reports_analytics.view_demandforecast")
     can_create = has_dynamic_access(request.user, "promotions.add_promotion")
+    can_view_inventory = has_dynamic_access(request.user, "inventory.view_ingredient")
     
     ctx = {
         "show_promo_banner": False, 
@@ -219,6 +224,8 @@ def dashboard_view(request):
         "total_sales": total_sales,
         "total_orders": total_orders,
         "low_stock_count": low_stock_count,
+        "low_stock_items": low_stock_items,
+        "can_view_inventory": can_view_inventory,
         "active_promotions_count": active_promotions_count,
         "recent_orders": recent_orders,
         "best_selling_products": best_selling_products,
@@ -754,6 +761,12 @@ def general_settings_view(request):
         return redirect("security:general_settings")
 
     return render(request, "general_settings.html", {"store": store})
+
+
+@login_required
+def user_manual_view(request):
+    """In-app guide for the Shawarma PMS modules and common workflows."""
+    return render(request, "user_manual.html")
 
 from django.http import JsonResponse
 from django.urls import reverse

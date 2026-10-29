@@ -88,24 +88,20 @@ class Shift(models.Model):
 
 
 class Attendance(models.Model):
-    class Status(models.TextChoices):
-        ON_TIME = "on_time", "On time"
-        LATE = "late", "Late"
-        ABSENT = "absent", "Absent"
-        UNSCHEDULED = "unscheduled", "Unscheduled"
+    class Status:
+        ON_TIME = "on_time"
+        LATE = "late"
+        ABSENT = "absent"
+        UNSCHEDULED = "unscheduled"
 
     GRACE_MINUTES = 10
 
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE, related_name="attendance")
-    shift = models.ForeignKey(Shift, null=True, blank=True, on_delete=models.SET_NULL, related_name="attendance")
-    clock_in = models.DateTimeField()
+    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE, related_name="attendances")
+    shift = models.ForeignKey(Shift, null=True, blank=True, on_delete=models.SET_NULL)
+    clock_in = models.DateTimeField(auto_now_add=True)
     clock_out = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=15, choices=Status.choices, default=Status.UNSCHEDULED)
-    notes = models.CharField(max_length=200, blank=True)
-
-    class Meta:
-        ordering = ["-clock_in"]
-        indexes = [models.Index(fields=["employee", "-clock_in"])]
+    status = models.CharField(max_length=15, default="PRESENT")
+    notes = models.CharField(max_length=200, blank=True, default="")
 
     def __str__(self):
         return f"{self.employee} in {self.clock_in:%Y-%m-%d %H:%M}"
@@ -148,19 +144,6 @@ class TemporaryAccess(models.Model):
 
     def __str__(self):
         return f"{self.employee.username} - {self.permission.name} (Valid until {self.expires_at})"
-
-# Idagdag sa pinakababa ng security/models.py
-class Attendance(models.Model):
-    employee = models.ForeignKey(EmployeeProfile, on_delete=models.CASCADE, related_name='attendances')
-    shift = models.ForeignKey('Shift', on_delete=models.SET_NULL, null=True, blank=True)
-    clock_in = models.DateTimeField(auto_now_add=True)
-    clock_out = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=15, default='PRESENT')
-    notes = models.CharField(max_length=200, blank=True, default='')
-
-    def __str__(self):
-        return f"{self.employee.user.username} - {self.clock_in.strftime('%Y-%m-%d')}"
-
 
 class StoreSettings(models.Model):
     """Singleton row holding the store-wide configuration used by the UI.

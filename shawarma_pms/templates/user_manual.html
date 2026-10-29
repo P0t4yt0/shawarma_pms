@@ -1,0 +1,96 @@
+{% extends 'dashboard.html' %}
+{% block content %}
+<style>
+.manual-page{max-width:1440px;margin:0 auto;color:var(--black);font-family:var(--font-main)}
+.manual-head{margin:4px 0 22px}.manual-head h1{margin:0;font:900 clamp(27px,3vw,36px)/1.15 var(--font-heading);letter-spacing:-1px;color:var(--black)}.manual-head p{margin:8px 0 0;color:var(--text-secondary);font-size:14px}
+.manual-tabs{display:flex;gap:9px;overflow-x:auto;padding:2px 0 15px;scrollbar-width:thin}.manual-tab{flex:none;border:1px solid var(--border-color);border-radius:999px;background:#fff;padding:10px 17px;color:#586174;font:700 12px var(--font-main);cursor:pointer;transition:.18s}.manual-tab:hover{border-color:var(--black);color:var(--black)}.manual-tab[aria-selected=true]{background:var(--yellow);border-color:var(--black);color:var(--black);box-shadow:0 4px 10px rgba(0,0,0,.12)}.manual-tab:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.manual-panel{background:var(--bg-card);border:1px solid var(--border-color);border-radius:18px;padding:clamp(22px,4vw,48px);box-shadow:var(--shadow-subtle);min-height:500px}.manual-intro{text-align:center;max-width:720px;margin:0 auto 28px}.manual-intro h2{font:900 clamp(24px,3vw,32px)/1.2 var(--font-heading);margin:0;color:var(--black)}.manual-intro p{color:var(--text-secondary);line-height:1.65;margin:10px 0 0}.manual-callout{max-width:900px;margin:0 auto 26px;padding:15px 18px;border-radius:12px;background:#fff8df;border:1px solid #f2d675;color:#564719;font-size:13px;line-height:1.6}.manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:1050px;margin:0 auto}.manual-card{border:1px solid var(--border-color);border-radius:13px;padding:20px 21px;background:#fff}.manual-card h3{margin:0 0 10px;font:800 16px var(--font-heading);color:var(--black);display:flex;align-items:center;gap:9px}.manual-card h3 i{font-size:19px;color:var(--black)}.manual-card p,.manual-card li{font-size:13px;line-height:1.7;color:var(--text-secondary)}.manual-card p{margin:0 0 8px}.manual-card ol,.manual-card ul{margin:8px 0 0;padding-left:20px}.manual-card li+li{margin-top:4px}.manual-card a{color:var(--black);font-weight:700;text-decoration:none}.manual-card a:hover{text-decoration:underline}.manual-flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:12px}.manual-flow span{background:#f3f5fa;border:1px solid #e3e7ef;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:800;color:var(--black)}.manual-flow i{color:#9aa3b4}.manual-footer{max-width:1050px;margin:20px auto 0;text-align:center;color:var(--text-secondary);font-size:12px;line-height:1.6}
+@media(max-width:760px){.manual-grid{grid-template-columns:1fr}.manual-panel{padding:22px 16px}.manual-tab{padding:9px 13px}}
+</style>
+<main class="manual-page">
+ <header class="manual-head"><h1>User Manual</h1><p>Choose a system module to read its guide. This manual covers everyday workflows and the settings available to your role.</p></header>
+ <nav class="manual-tabs" role="tablist" aria-label="User manual sections">
+  <button class="manual-tab" role="tab" id="tab-dashboard" aria-controls="panel-dashboard" aria-selected="true" data-panel="dashboard">Dashboard</button>
+  <button class="manual-tab" role="tab" id="tab-inventory" aria-controls="panel-inventory" aria-selected="false" data-panel="inventory">Inventory</button>
+  <button class="manual-tab" role="tab" id="tab-checkout" aria-controls="panel-checkout" aria-selected="false" data-panel="checkout">Checkout</button>
+  <button class="manual-tab" role="tab" id="tab-billing" aria-controls="panel-billing" aria-selected="false" data-panel="billing">Billing &amp; Payment</button>
+  <button class="manual-tab" role="tab" id="tab-reports" aria-controls="panel-reports" aria-selected="false" data-panel="reports">Reports &amp; Analytics</button>
+  <button class="manual-tab" role="tab" id="tab-users" aria-controls="panel-users" aria-selected="false" data-panel="users">User Management</button>
+  <button class="manual-tab" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" data-panel="settings">Settings</button>
+ </nav>
+ <section class="manual-panel" id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
+ <div class="manual-intro"><h2>Dashboard Overview</h2><p>A quick summary of store activity.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-chart-pie-slice"></i> What you see</h3><ul><li><strong>Gross Sales:</strong> sales before deductions.</li><li><strong>Net Profit:</strong> estimated profit for the selected period.</li><li><strong>Cash Outflow:</strong> recorded cash paid out.</li><li><strong>Unpaid Receivables:</strong> amounts not yet paid.</li><li>Charts show sales trends and top-selling products.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-navigation-arrow"></i> Quick controls</h3><ul><li><strong>Date filter:</strong> change the period shown.</li><li><strong>Bell:</strong> view alerts and updates.</li><li><strong>Sidebar:</strong> open a system page. Items depend on your access.</li><li><strong>Attendance:</strong> clock in or out for your shift.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-user"></i> Your account</h3><ul><li>Your role decides which pages and actions are available.</li><li>Use <strong>Account &amp; Security</strong> to change your password.</li><li>Sign out when finished, especially on a shared device.</li></ul></article>
+</div>
+ </section>
+ <section class="manual-panel" id="panel-inventory" role="tabpanel" aria-labelledby="tab-inventory" hidden>
+ <div class="manual-intro"><h2>Inventory</h2><p>Manage menu items, ingredients, and stock records.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-hamburger"></i> Products &amp; categories</h3><ul><li><strong>Product Management:</strong> view product, variant, category, price, and status.</li><li><strong>Add Product / Save Product:</strong> create a menu item.</li><li><strong>Category filter:</strong> narrow the list.</li><li><strong>Category Management:</strong> add, edit, or activate/deactivate categories.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-carrot"></i> Ingredient Stock</h3><ul><li>View ingredient name, category, quantity, unit cost, and status.</li><li><strong>Add Ingredient:</strong> add an ingredient to stock.</li><li><strong>Adjust:</strong> record stock coming in or going out. Enter the amount and reason.</li><li>Use the category filter to find ingredients.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-book-open"></i> Recipes &amp; movements</h3><ul><li><strong>Recipe Management:</strong> select a product, then add ingredients and required amounts.</li><li><strong>Remove:</strong> delete an ingredient from a recipe.</li><li><strong>Stock Movements:</strong> review quantity changes, balance, reason, and user.</li><li><strong>Type filter:</strong> show selected movement types.</li><li><strong>Export Target + Export PDF/CSV:</strong> choose rows and download them.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-warning-octagon"></i> Expiration &amp; spoilage</h3><ul><li><strong>Report Spoilage:</strong> choose ingredient and loss type, enter quantity and reason, then submit.</li><li>The list shows when, what, how much, why, and who reported the loss.</li><li>Check <strong>Stock &amp; Spoilage Reports</strong> for loss summaries.</li></ul></article>
+</div>
+ </section>
+ <section class="manual-panel" id="panel-checkout" role="tabpanel" aria-labelledby="tab-checkout" hidden>
+ <div class="manual-intro"><h2>Checkout</h2><p>Create an order, take payment, and track preparation.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-desktop"></i> New Sales buttons</h3><ul><li><strong>Search / category buttons:</strong> find menu items.</li><li><strong>Dine-in / Take-out:</strong> set the order type.</li><li><strong>+ / −:</strong> change item quantity.</li><li><strong>Add note:</strong> send an instruction with an item.</li><li><strong>Remove:</strong> delete an item from the cart.</li><li><strong>Discount / Apply:</strong> select an eligible promotion or voucher.</li><li><strong>Void:</strong> cancel the order after confirmation.</li><li><strong>Pay now:</strong> continue to payment.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-money"></i> Payment buttons</h3><ul><li><strong>+50 / +100 / +500 / +1000:</strong> add cash to the amount field.</li><li><strong>Exact amount:</strong> enter the amount due. <strong>Clear:</strong> empty the field.</li><li>Select the shown e-wallet provider when using e-wallet payment.</li><li><strong>Confirm payment:</strong> record the payment. Wait for confirmation.</li><li><strong>Reprint receipt:</strong> print another copy. <strong>New order:</strong> start again.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-cooking-pot"></i> Orders &amp; kitchen</h3><ul><li><strong>Kitchen Orders:</strong> view tickets and update preparation status.</li><li><strong>Order List:</strong> view orders, totals, payment, and status.</li><li><strong>Transaction History:</strong> review order status changes.</li><li><strong>Receipts:</strong> find a sale and open or print its receipt.</li></ul></article>
+</div>
+ </section>
+ <section class="manual-panel" id="panel-billing" role="tabpanel" aria-labelledby="tab-billing" hidden>
+ <div class="manual-intro"><h2>Billing &amp; Payment</h2><p>Collect payment and confirm the receipt.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-credit-card"></i> Complete a payment</h3><ul><li>Check the order items, discount, charges, and total.</li><li>Select the payment method and enter the amount or reference.</li><li>For cash, check the received amount and change.</li><li>Select <strong>Confirm payment</strong> once. Wait for success confirmation.</li><li>Use <strong>Reprint receipt</strong> if another copy is needed.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-receipt"></i> Receipts &amp; charges</h3><ul><li>Receipts show the sale and payment details.</li><li>Store name, currency, VAT, service charge, and footer come from <strong>General Settings</strong>.</li><li>If payment looks wrong, check the order and receipt before retrying.</li></ul></article>
+</div>
+ </section>
+ <section class="manual-panel" id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" hidden>
+ <div class="manual-intro"><h2>Reports &amp; Analytics</h2><p>Review sales, products, stock, and demand.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-chart-bar"></i> Sales &amp; products</h3><ul><li><strong>Sales Reports:</strong> order, date, items, payment method, total, and cashier.</li><li><strong>Product Sales:</strong> product, category, quantity sold, price, and revenue.</li><li>Set the date or available filters before reviewing results.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-chart-line-up"></i> Forecast &amp; inventory</h3><ul><li><strong>Sales Forecast:</strong> past performance, busy hours, product trends, and expected sales.</li><li><strong>Inventory Reports:</strong> stock quantity, minimum level, and stock status.</li><li><strong>Stock &amp; Spoilage:</strong> lost items, amount, reason, reporter, and estimated cost.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-file-arrow-down"></i> Export a report</h3><ul><li>Choose <strong>Export Target</strong> to select which rows to include.</li><li><strong>Export PDF:</strong> download a print-friendly file.</li><li><strong>Export CSV:</strong> download data for a spreadsheet.</li><li>Reports use recorded system data. Correct errors in the source page.</li></ul></article>
+</div>
+ </section>
+ <section class="manual-panel" id="panel-users" role="tabpanel" aria-labelledby="tab-users" hidden>
+ <div class="manual-intro"><h2>User Management</h2><p>Manage employee accounts, permissions, attendance, and shifts.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-users"></i> Employee List</h3><ul><li>View employee ID, name, username, role, and status.</li><li><strong>Add Employee:</strong> enter the requested employee and account details, then save.</li><li>Row actions can activate/deactivate or remove an account. Check before confirming.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-shield-check"></i> User Roles &amp; Access</h3><ul><li>Select an employee and review their permission checkboxes.</li><li><strong>Select All Permissions:</strong> grant every listed permission. <strong>Clear Permissions:</strong> remove all checks.</li><li>Save the intended access for the employee's job.</li><li>Temporary access: choose employee, module, and duration, then submit. Use <strong>Revoke</strong> to end it early.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-calendar-check"></i> Attendance &amp; schedules</h3><ul><li><strong>Attendance:</strong> clock in/out; history shows employee, date, times, and status.</li><li><strong>Work Schedules:</strong> choose employee, date, shift, and role, then save.</li><li>Use period and employee filters to review the schedule.</li><li>Use a row action to change or remove a shift when available.</li></ul></article>
+</div>
+ </section>
+ <section class="manual-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+ <div class="manual-intro"><h2>Settings &amp; Maintenance</h2><p>Update store preferences, account security, and system backups.</p></div><div class="manual-grid">
+<article class="manual-card"><h3><i class="ph ph-gear"></i> General Settings</h3><ul><li>Store Profile: store name, branch, address, contact, and email.</li><li>Hours &amp; Charges: opening/closing time, VAT, and service charge.</li><li>Receipt: currency, VAT display, and footer.</li><li>Operations: stock blocking, kitchen target time, and manager PIN.</li><li><strong>Save Changes:</strong> save your updates. Fix any fields named in an error message.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-lock-key"></i> Account &amp; Activity</h3><ul><li><strong>Account &amp; Security:</strong> enter current password and new password twice; <strong>Save Changes</strong> updates it.</li><li>Eye buttons show or hide typed passwords.</li><li><strong>Activity Logs:</strong> search recorded actions by user, action, or description.</li></ul></article>
+<article class="manual-card"><h3><i class="ph ph-database"></i> Backup &amp; Maintenance</h3><ul><li><strong>Run Diagnostics:</strong> check system health.</li><li><strong>Create Backup:</strong> set a password and download an encrypted backup.</li><li><strong>Restore Backup:</strong> select a backup and enter its password. This replaces current data.</li><li><strong>Wipe Data:</strong> permanently removes system records. Use only when intended.</li></ul></article>
+</div>
+ </section>
+</main>
+<script>
+(() => {
+ const tabs = [...document.querySelectorAll('.manual-tab')];
+ const panels = [...document.querySelectorAll('.manual-panel')];
+ function activate(tab, updateHash = true) {
+  tabs.forEach(item => { const selected = item === tab; item.setAttribute('aria-selected', selected); item.tabIndex = selected ? 0 : -1; });
+  panels.forEach(panel => { panel.hidden = panel.id !== tab.getAttribute('aria-controls'); });
+  if (updateHash) history.replaceState(null, '', `#${tab.dataset.panel}`);
+ }
+ tabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => activate(tab));
+  tab.addEventListener('keydown', event => {
+   if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+   event.preventDefault();
+   const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+   tabs[next].focus(); activate(tabs[next]);
+  });
+ });
+ const requested = location.hash.slice(1);
+ const initial = tabs.find(tab => tab.dataset.panel === requested);
+ if (initial) activate(initial, false); else activate(tabs[0], false);
+})();
+</script>
+{% endblock %}
+
+

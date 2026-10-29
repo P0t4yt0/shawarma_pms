@@ -29,7 +29,7 @@ MENU = [("Wraps", "Beef Shawarma Wrap", "Standard", 150, {"Beef Slices": .1, "Pi
         ("Wraps", "Chicken Shawarma Wrap", "Standard", 130, {"Chicken Slices": .1, "Pita Bread": 1, "Garlic Sauce": .02}),
         ("Sides", "French Fries", "Regular", 80, {"Potatoes (fries)": .2}),
         ("Drinks", "Soda", "Can", 40, {"Soda (can)": 1})]
-HOUR_WEIGHT = {10: 3, 11: 6, 12: 12, 13: 11, 14: 3, 15: 2, 16: 2, 17: 5, 18: 10, 19: 12, 20: 9, 21: 4}
+HOUR_WEIGHT = {10: 3, 11: 6, 12: 12, 13: 11, 14: 3, 15: 2, 16: 2, 17: 9, 18: 10, 19: 12, 20: 9, 21: 4}
 
 
 class Command(BaseCommand):

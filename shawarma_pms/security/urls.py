@@ -16,6 +16,7 @@ urlpatterns = [
     path('attendance/', views.attendance_view, name='attendance'),
     path('work-schedules/', views.work_schedules_view, name='work_schedules'),
     path('settings/general/', views.general_settings_view, name='general_settings'),
+    path('settings/user-manual/', views.user_manual_view, name='user_manual'),
     path('settings/account-security/', views.account_security_view, name='account_security'),
     path('activity/', include('activity_log.urls')),
     path('api/notifications/', views.api_notifications, name='api_notifications'),    

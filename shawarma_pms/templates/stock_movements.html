@@ -6,8 +6,6 @@
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 </style>
 
-<!-- html2pdf.js Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
     :root {
@@ -69,7 +67,7 @@
     </div>
     
     <!-- JBSON v2 EXPORT BUTTONS -->
-    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
         <div style="display: flex; flex-direction: column; gap: 2px;">
             <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body);">Export Target</label>
             <select id="export-scope" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; color: var(--color-main-navy); outline: none; cursor: pointer; background-color: #F8FAFC;">
@@ -77,6 +75,20 @@
                 <option value="in">Stock In (Added) Only</option>
                 <option value="out">Stock Out (Deducted) Only</option>
             </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;font-family:var(--font-body);">Date Range</label>
+            <select data-export-date-range style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;font-family:var(--font-body);font-weight:600;color:var(--color-main-navy);outline:none;cursor:pointer;background-color:#F8FAFC;">
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+            </select>
+            <div data-export-custom-range style="display:none;gap:6px;margin-top:4px;">
+                <input type="date" data-export-from aria-label="Start date" style="padding:5px;border:1px solid var(--border-color);border-radius:5px;font-size:11px;">
+                <input type="date" data-export-to aria-label="End date" style="padding:5px;border:1px solid var(--border-color);border-radius:5px;font-size:11px;">
+            </div>
         </div>
         <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 4px;"></div>
         <div style="display: flex; gap: 8px; margin-top: 12px;">

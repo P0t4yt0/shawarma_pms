@@ -4,15 +4,14 @@
     @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
     :root {
         --font-heading: 'Inter', sans-serif;
         --font-body: 'Inter', sans-serif;
-        --font-mono: 'Inconsolata', monospace; 
+        --font-mono: 'Inconsolata', monospace;
         --color-main-navy: #2F3F7B;
-        --color-accent-green: #22C55E;  
+        --color-accent-green: #22C55E;
         --text-main: #212529;
         --text-muted: #6B7280;
         --border-color: #E5E7EB;
@@ -25,7 +24,7 @@
 
     .pdf-export-wrapper { background: white !important; padding: 20px 30px !important; font-family: 'DM Sans', sans-serif !important; color: #1a1a2e !important; }
     .pdf-export-wrapper .panel { border: none !important; box-shadow: none !important; margin-bottom: 24px !important; width: 100% !important; padding: 0 !important; background: transparent !important; }
-    
+
     .pdf-export-wrapper table { width: 100% !important; border-collapse: collapse !important; border-left: 1px solid #e8e8f0 !important; border-right: 1px solid #e8e8f0 !important; border-bottom: 1px solid #e8e8f0 !important; }
     .pdf-export-wrapper thead { display: table-header-group !important; }
     .pdf-export-wrapper thead th { background: #092c4c !important; color: #fff !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; padding: 10px 14px !important; text-align: left !important; border: none !important; font-family: 'DM Sans', sans-serif !important; }
@@ -39,14 +38,11 @@
         <h1 style="margin: 0; font-size: 32px; color: var(--black); font-family: var(--font-heading);">Sales Forecast</h1>
         <p style="color: var(--text-secondary); font-size: 15px; margin-top: 4px;">Real sales trends, forecasts and the data behind promotion recommendations.</p>
     </div>
-    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-        <div style="display: flex; flex-direction: column; gap: 2px;">
-            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--font-body);">Export Target</label>
-            <select id="export-scope" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; color: var(--color-main-navy); outline: none; cursor: pointer; background-color: #F8FAFC;">
-                <option value="all">All Product Records</option>
-            </select>
-        </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 4px;"></div>
+    <div data-html2canvas-ignore="true" class="no-print" style="display: flex; gap: 10px; align-items: center; flex-wrap:wrap; background: white; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+
+        <label style="font-size:11px;font-weight:700;color:var(--text-secondary);">EXPORT TARGET<select data-export-target style="display:block;min-width:190px;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:white;"><option value="all">Full Report</option><option value="sales-history">Sales History</option><option value="forecast">Next 7-Day Forecast</option><option value="peak-hours">Peak and Low-Sales Hours</option><option value="products">Product Performance and Pairs</option><option value="promotions">Promotion Performance</option></select></label>
+        <label style="font-size:11px;font-weight:700;color:var(--text-secondary);">DATE RANGE<select data-export-date-range style="display:block;min-width:145px;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:white;"><option value="all">All Dates</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom Range</option></select></label>
+        <div data-export-custom-range style="display:none;gap:6px;align-items:center;"><input type="date" data-export-from aria-label="Start date"><input type="date" data-export-to aria-label="End date"></div>
         <div style="display: flex; gap: 8px; margin-top: 12px;">
             <button id="btn-pdf-export" onclick="processExport('pdf')" class="action-btn" style="color: #EF4444; border-color: #FCA5A5; height: 36px;">
                 <i class="ph ph-file-pdf" style="font-size: 1.1rem;"></i> Export PDF
@@ -130,35 +126,35 @@
     {% endif %}
 
     {# ---------- sales trends (observed) ---------- #}
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="sales-history">
         <h3 class="rp-h"><i class="ph ph-chart-line-up"></i> Weekly sales (completed weeks)</h3>
         <p class="rp-sub">What was actually sold. Cancelled orders and today are excluded.</p>
         <table class="modern-table" id="sales-table"><thead><tr><th>Week starting</th><th>Orders</th><th>Revenue</th><th>Change vs previous week</th></tr></thead><tbody>
-            {% for w in data.analysis.trends.weekly %}<tr class="sales-row"><td style="font-weight:600;">{{ w.week_start|date:"M d, Y" }}</td><td>{{ w.orders }}</td>
+            {% for w in data.analysis.trends.weekly %}<tr class="sales-row" data-export-date="{{ w.week_start|date:'Y-m-d' }}"><td style="font-weight:600;">{{ w.week_start|date:"M d, Y" }}</td><td>{{ w.orders }}</td>
                 <td style="font-family:'Inconsolata'; font-weight:800;">₱{{ w.revenue|floatformat:"2g" }}</td>
                 <td>{% if w.change_pct is None %}–{% else %}<span class="{% if w.change_pct >= 0 %}up{% else %}down{% endif %}">{{ w.change_pct|floatformat:1 }}%</span>{% endif %}</td></tr>
             {% empty %}<tr><td colspan="4" style="text-align:center; padding:28px; color:var(--text-secondary);">No completed week of sales yet.</td></tr>{% endfor %}
         </tbody></table>
     </div>
 
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="sales-history">
         <h3 class="rp-h"><i class="ph ph-calendar"></i> Daily (last 14 days) and monthly</h3>
         <table class="modern-table"><thead><tr><th>Day</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>
-            {% for d in data.analysis.trends.daily %}<tr><td>{{ d.weekday }} {{ d.date|date:"M d" }}</td><td>{{ d.orders }}</td><td style="font-family:'Inconsolata';">₱{{ d.revenue|floatformat:"2g" }}</td></tr>{% endfor %}
+            {% for d in data.analysis.trends.daily %}<tr data-export-date="{{ d.date|date:'Y-m-d' }}"><td>{{ d.weekday }} {{ d.date|date:"M d" }}</td><td>{{ d.orders }}</td><td style="font-family:'Inconsolata';">₱{{ d.revenue|floatformat:"2g" }}</td></tr>{% endfor %}
         </tbody></table>
         {% if data.analysis.trends.monthly %}
         <table class="modern-table" style="margin-top:14px;"><thead><tr><th>Month</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>
-            {% for m in data.analysis.trends.monthly %}<tr><td>{{ m.label }}{% if m.partial %} <em style="color:var(--text-secondary);">(month in progress)</em>{% endif %}</td><td>{{ m.orders }}</td><td style="font-family:'Inconsolata';">₱{{ m.revenue|floatformat:"2g" }}</td></tr>{% endfor %}
+            {% for m in data.analysis.trends.monthly %}<tr data-export-date="{{ m.label }}-01"><td>{{ m.label }}{% if m.partial %} <em style="color:var(--text-secondary);">(month in progress)</em>{% endif %}</td><td>{{ m.orders }}</td><td style="font-family:'Inconsolata';">₱{{ m.revenue|floatformat:"2g" }}</td></tr>{% endfor %}
         </tbody></table>
         {% endif %}
     </div>
 
     {% if data.has_enough_data %}
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="forecast">
         <h3 class="rp-h"><i class="ph ph-trend-up"></i> Next 7 days forecast</h3>
         <p class="rp-sub">{{ data.analysis.forecast.method }}. An estimate based on past weekday patterns, not a guarantee.</p>
         <table class="modern-table"><thead><tr><th>Day</th><th>Expected orders</th><th>Expected revenue</th><th>Based on</th></tr></thead><tbody>
-            {% for d in data.analysis.forecast.days %}<tr><td>{{ d.weekday }} {{ d.date|date:"M d" }}</td>
+            {% for d in data.analysis.forecast.days %}<tr data-export-date="{{ d.date|date:'Y-m-d' }}"><td>{{ d.weekday }} {{ d.date|date:"M d" }}</td>
                 <td>{% if d.orders is None %}–{% else %}{{ d.orders|floatformat:0 }}{% endif %}</td>
                 <td style="font-family:'Inconsolata'; font-weight:800;">{% if d.revenue is None %}not enough data{% else %}₱{{ d.revenue|floatformat:"2g" }}{% endif %}</td>
                 <td>{{ d.samples }} {{ d.weekday }}{{ d.samples|pluralize }}</td></tr>{% endfor %}
@@ -167,7 +163,7 @@
     </div>
 
     {# ---------- peak & low periods ---------- #}
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="peak-hours">
         <h3 class="rp-h"><i class="ph ph-clock"></i> Peak and low-sales hours</h3>
         <p class="rp-sub">Average orders per hour for each weekday. Darker = busier.</p>
         <div style="overflow-x:auto;"><table class="modern-table hm"><thead><tr><th></th>{% for h in data.analysis.heatmap.hours %}<th>{{ h }}</th>{% endfor %}</tr></thead><tbody>
@@ -177,7 +173,7 @@
     </div>
 
     {# ---------- product performance ---------- #}
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="products">
         <h3 class="rp-h"><i class="ph ph-hamburger"></i> Product performance</h3>
         <table class="modern-table"><thead><tr><th>Best sellers</th><th>Units</th><th>Revenue</th><th>Sold on</th></tr></thead><tbody>
             {% for p in data.analysis.products.best %}<tr><td style="font-weight:600;">{{ p.name }}</td><td>{{ p.units }}</td><td>₱{{ p.revenue|floatformat:"2g" }}</td><td>{{ p.freq_pct|floatformat:0 }}% of days</td></tr>{% endfor %}
@@ -195,7 +191,7 @@
     </div>
 
     {# ---------- combinations ---------- #}
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="products">
         <h3 class="rp-h"><i class="ph ph-stack"></i> Frequently bought together</h3>
         <table class="modern-table"><thead><tr><th>Items</th><th>Orders together</th><th>Lift vs chance</th></tr></thead><tbody>
             {% for p in data.analysis.pairs %}<tr><td style="font-weight:600;">{{ p.a_name }} + {{ p.b_name }}</td><td>{{ p.pair_orders }} ({{ p.pct_of_a|floatformat:0 }}% of {{ p.a_name }})</td><td>{{ p.lift|floatformat:1 }}×</td></tr>
@@ -204,7 +200,7 @@
     </div>
 
     {# ---------- promotion history ---------- #}
-    <div class="rp-section">
+    <div class="rp-section" data-export-group="promotions">
         <h3 class="rp-h"><i class="ph ph-tag"></i> Past promotion performance</h3>
         <p class="rp-sub">Orders on the days/hours a promotion was used versus the same weekdays without it. Cashier-applied discounts are not measured.</p>
         <table class="modern-table"><thead><tr><th>Promotion</th><th>Discount</th><th>Orders using it</th><th>Discount given</th><th>Observed lift</th></tr></thead><tbody>
@@ -268,7 +264,7 @@
 
         const originalArea = document.getElementById('printable-area');
         const clone = originalArea.cloneNode(true);
-        const actions = clone.querySelector('.no-print'); 
+        const actions = clone.querySelector('.no-print');
         if(actions) actions.remove();
 
         const rows = clone.querySelectorAll('.sales-row');
@@ -276,11 +272,11 @@
 
         pdfContainer.appendChild(clone);
 
-        const opt = { 
-            margin: 0.5, 
-            filename: `Sales_Forecast_${dateStamp}.pdf`, 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true }, 
+        const opt = {
+            margin: 0.5,
+            filename: `Sales_Forecast_${dateStamp}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
         await html2pdf().set(opt).from(pdfContainer).save();
